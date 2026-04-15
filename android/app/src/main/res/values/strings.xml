@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">appiea</string>
+    <string name="title_activity_main">appiea</string>
+    <string name="package_name">app.vercel.iea</string>
+    <string name="custom_url_scheme">app.vercel.iea</string>
+</resources>

@@ -25,6 +25,9 @@ export function AuthProvider({ children }) {
 
   function hasRole(allowedRoles) {
     if (!userData || !userData.role) return false;
+    if (Array.isArray(userData.role)) {
+       return allowedRoles.some(r => userData.role.includes(r));
+    }
     return allowedRoles.includes(userData.role);
   }
 
@@ -41,21 +44,25 @@ export function AuthProvider({ children }) {
           if (docSnap.exists()) {
             let data = docSnap.data();
             // Automatically grant Admin to specific emails
-            if (['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) && data.role !== 'Admin') {
-              data.role = 'Admin';
-              await setDoc(docRef, { ...data, role: 'Admin' }, { merge: true });
+            if (['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email)) {
+              let roles = Array.isArray(data.role) ? data.role : [data.role || 'Member'];
+              if (!roles.includes('Admin')) {
+                roles.push('Admin');
+                data.role = roles;
+                await setDoc(docRef, { ...data, role: roles }, { merge: true });
+              }
             }
             setUserData(data);
           } else {
             // Document doesn't exist yet, create it and give admin if it's the target email
-            const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? 'Admin' : 'Member';
+            const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? ['Admin'] : ['Member'];
             const newData = { role: defaultRole, email: user.email, name: user.displayName || 'Usuario', createdAt: new Date() };
             await setDoc(docRef, newData);
             setUserData(newData);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
-          setUserData({ role: 'Member' });
+          setUserData({ role: ['Member'] });
         }
       } else {
         setUserData(null);

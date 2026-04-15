@@ -4,13 +4,13 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { Plus, Users, Edit, Trash2 } from 'lucide-react';
 import { getGroups, createGroup, deleteGroup, updateGroup } from '../services/groupService';
-import { getMembers } from '../services/memberService';
+import { getMembers, updateMember } from '../services/memberService';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Groups = () => {
-  const { userData } = useAuth();
-  const isAdmin = ['Admin', 'Pastor'].includes(userData?.role);
+  const { userData, hasRole } = useAuth();
+  const isAdmin = hasRole(['Admin', 'Pastor']);
   const navigate = useNavigate();
   
   const [groups, setGroups] = useState([]);
@@ -21,7 +21,7 @@ const Groups = () => {
   // Form State
   const [groupId, setGroupId] = useState(null);
   const [groupName, setGroupName] = useState('');
-  const [groupType, setGroupType] = useState('Grupo de Crecimiento');
+  const [groupType, setGroupType] = useState('Grupo de Amistad');
   const [groupDay, setGroupDay] = useState('');
   const [groupTime, setGroupTime] = useState('');
   const [facilitators, setFacilitators] = useState([]);
@@ -88,7 +88,7 @@ const Groups = () => {
               facilitators: facilitators,
               coFacilitators: coFacilitators
           };
-          if (groupType === 'Grupo de Crecimiento') {
+          if (groupType === 'Grupo de Amistad') {
               payload.scheduleDay = groupDay;
               payload.scheduleTime = groupTime;
           }
@@ -97,6 +97,68 @@ const Groups = () => {
               await updateGroup(groupId, payload);
           } else {
               await createGroup(payload);
+          }
+
+          const findMember = (idOrName) => {
+              // 1. Exact ID
+              let m = membersList.find(x => x.id === idOrName);
+              if (m) return m;
+
+              // 2. Exact Name Match (Normalized)
+              const normSearch = idOrName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+              m = membersList.find(x => {
+                  const fullName = `${x.lastName}, ${x.firstName}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                  const reverseName = `${x.firstName} ${x.lastName}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                  return fullName === normSearch || reverseName === normSearch;
+              });
+              return m;
+          };
+
+          // Registrar roles automáticamente
+          const syncMemberPromises = [];
+          
+          const updateRoleForMember = (memberId, targetRole) => {
+              const m = membersList.find(x => x.id === memberId);
+              if (!m) return;
+
+              const toUpdate = {};
+              if (m.group !== groupName) toUpdate.group = groupName;
+              
+              // Handle role as array
+              let currentRoles = Array.isArray(m.role) ? m.role : [m.role || 'Member'];
+              
+              const eliteRoles = ['Admin', 'Pastor', 'MinistryLeader'];
+              const isElite = currentRoles.some(r => eliteRoles.includes(r));
+              
+              if (!isElite && !currentRoles.includes(targetRole)) {
+                  // If adding Facilitator, and it was just 'Member', replace or add?
+                  // Let's add and keep Member if they want, or just replace Member with the higher role
+                  let newRoles = [...currentRoles, targetRole];
+                  if (targetRole !== 'Member' && newRoles.includes('Member')) {
+                      newRoles = newRoles.filter(r => r !== 'Member');
+                  }
+                  toUpdate.role = newRoles;
+              }
+
+              if (Object.keys(toUpdate).length > 0) {
+                  syncMemberPromises.push(updateMember(memberId, toUpdate));
+              }
+          };
+
+          for (let fId of facilitators) {
+              const m = findMember(fId);
+              if (m) updateRoleForMember(m.id, 'Facilitator');
+          }
+
+          for (let cfId of coFacilitators) {
+              const m = findMember(cfId);
+              if (m) updateRoleForMember(m.id, 'CoFacilitator');
+          }
+
+          if (syncMemberPromises.length > 0) {
+              await Promise.all(syncMemberPromises);
+              const data = await getMembers();
+              setMembersList(data.sort((a,b) => (a.lastName||'').localeCompare(b.lastName||'')));
           }
 
           resetForm();
@@ -132,7 +194,7 @@ const Groups = () => {
   const handleEdit = (group) => {
       setGroupId(group.id);
       setGroupName(group.name || '');
-      setGroupType(group.type || 'Grupo de Crecimiento');
+      setGroupType(group.type || 'Grupo de Amistad');
       setGroupDay(group.scheduleDay || '');
       setGroupTime(group.scheduleTime || '');
       setFacilitators(getArray(group.facilitators));
@@ -148,7 +210,7 @@ const Groups = () => {
   const resetForm = () => {
       setGroupId(null);
       setGroupName('');
-      setGroupType('Grupo de Crecimiento');
+      setGroupType('Grupo de Amistad');
       setGroupDay('');
       setGroupTime('');
       setFacilitators([]);
@@ -193,7 +255,7 @@ const Groups = () => {
                         <span className="badge badge-gray">{group.type}</span>
                     </div>
                     <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                        {group.type === 'Grupo de Crecimiento' && group.scheduleDay && group.scheduleTime ? (
+                        {group.type === 'Grupo de Amistad' && group.scheduleDay && group.scheduleTime ? (
                             <div className="d-flex align-center gap-2 mb-2">
                                 <span>📅 {group.scheduleDay}</span>
                                 <span>🕒 {group.scheduleTime} hs</span>
@@ -207,9 +269,19 @@ const Groups = () => {
                         )}
                         
                         {(group.facilitators?.length > 0 || group.coFacilitators?.length > 0) && (
-                            <div style={{ fontSize: '0.8125rem', backgroundColor: 'var(--color-bg)', padding: '0.5rem', borderRadius: '4px' }}>
-                                {group.facilitators?.length > 0 && <div><strong>Facilitador/es:</strong> {Array.isArray(group.facilitators) ? group.facilitators.map(resolveMemberName).join(' / ') : resolveMemberName(group.facilitators)}</div>}
-                                {group.coFacilitators?.length > 0 && <div><strong>Co-Facilitador/es:</strong> {Array.isArray(group.coFacilitators) ? group.coFacilitators.map(resolveMemberName).join(' / ') : resolveMemberName(group.coFacilitators)}</div>}
+                            <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg)', borderRadius: '8px', marginBottom: '1rem' }}>
+                                {group.facilitators?.length > 0 && (
+                                    <div style={{ marginBottom: '0.5rem' }}>
+                                        <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.15rem' }}>Facilitador/es</div>
+                                        <div style={{ fontSize: '1rem', fontWeight: 600 }}>{Array.isArray(group.facilitators) ? group.facilitators.map(resolveMemberName).join(' / ') : resolveMemberName(group.facilitators)}</div>
+                                    </div>
+                                )}
+                                {group.coFacilitators?.length > 0 && (
+                                    <div>
+                                        <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.1rem' }}>Co-Facilitador/es</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{Array.isArray(group.coFacilitators) ? group.coFacilitators.map(resolveMemberName).join(' / ') : resolveMemberName(group.coFacilitators)}</div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -237,14 +309,14 @@ const Groups = () => {
               <div className="form-group mb-4">
                   <label className="form-label">Tipo de agrupación</label>
                   <select className="form-input" value={groupType} onChange={(e) => setGroupType(e.target.value)} style={{ width: '100%', height: '42px', backgroundColor: 'var(--color-surface)' }}>
-                      <option value="Grupo de Crecimiento">Grupo de Crecimiento</option>
+                      <option value="Grupo de Amistad">Grupo de Amistad</option>
                       <option value="Ministerio Administrativo">Ministerio Administrativo</option>
                       <option value="Grupo de Apoyo">Grupo de Apoyo</option>
                       <option value="Otro">Otro</option>
                   </select>
               </div>
               
-              {groupType === 'Grupo de Crecimiento' && (
+              {groupType === 'Grupo de Amistad' && (
                   <div className="grid grid-cols-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
                       <div className="form-group m-0">
                           <label className="form-label">Día de reunión *</label>

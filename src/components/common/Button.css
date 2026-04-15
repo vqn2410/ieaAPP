@@ -1,15 +1,4 @@
-.btn-sm {
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-}
-.btn-md {
-  padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-}
-.btn-lg {
-  padding: 1rem 2rem;
-  font-size: 1rem;
-}
+/* Styles moved to index.css for global design system consistency */
 .btn-icon {
   display: inline-flex;
 }

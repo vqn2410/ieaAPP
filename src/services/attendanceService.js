@@ -3,7 +3,7 @@ import { collection, doc, getDocs, addDoc, updateDoc, query, where, orderBy } fr
 
 const COLLECTION_NAME = 'group_attendance';
 
-export const saveAttendance = async (groupId, date, presentMembers) => {
+export const saveAttendance = async (groupId, date, presentMembers, absentDetails = {}) => {
     try {
         const q = query(
             collection(db, COLLECTION_NAME), 
@@ -16,6 +16,7 @@ export const saveAttendance = async (groupId, date, presentMembers) => {
             const docId = snapshot.docs[0].id;
             await updateDoc(doc(db, COLLECTION_NAME, docId), { 
                 presentMembers, 
+                absentDetails,
                 updatedAt: new Date().toISOString() 
             });
         } else {
@@ -23,6 +24,7 @@ export const saveAttendance = async (groupId, date, presentMembers) => {
                 groupId,
                 date,
                 presentMembers,
+                absentDetails,
                 createdAt: new Date().toISOString()
             });
         }

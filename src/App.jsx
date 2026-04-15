@@ -12,6 +12,7 @@ import Groups from './pages/Groups';
 import GroupDetails from './pages/GroupDetails';
 import GrowthGroups from './pages/GrowthGroups';
 import Settings from './pages/Settings';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import { useAuth } from './context/AuthContext';
 
@@ -23,7 +24,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   if (!currentUser) return <Navigate to="/login" />;
 
   if (requiredRoles && !hasRole(requiredRoles)) {
-    return <Navigate to="/" />; // Redirect to dashboard if no permission
+    return <Navigate to="/dashboard" />; // Redirect to dashboard if no permission
   }
 
   return children;
@@ -33,10 +34,11 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         
         <Route 
-          path="/" 
+          path="/dashboard" 
           element={
             <ProtectedRoute>
               <MainLayout />

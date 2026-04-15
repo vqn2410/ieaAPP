@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Button from '../common/Button';
 import { createMember, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
+import { useSettings } from '../../context/SettingsContext';
 
 const MemberForm = ({ onSuccess, initialData }) => {
+  const { settings } = useSettings();
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState([]);
   const [formData, setFormData] = useState(initialData || {
@@ -13,6 +15,7 @@ const MemberForm = ({ onSuccess, initialData }) => {
     email: '',
     phone: '',
     group: '',
+    role: ['Member'],
   });
 
   useEffect(() => {
@@ -21,13 +24,26 @@ const MemberForm = ({ onSuccess, initialData }) => {
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        role: Array.isArray(initialData.role) ? initialData.role : (initialData.role ? [initialData.role] : ['Member'])
+      });
     } else {
       setFormData({
-        firstName: '', lastName: '', dni: '', email: '', phone: '', group: ''
+        firstName: '', lastName: '', dni: '', email: '', phone: '', group: '', role: ['Member']
       });
     }
   }, [initialData]);
+
+  const toggleRole = (roleValue) => {
+    setFormData(prev => {
+        const currentRoles = Array.isArray(prev.role) ? prev.role : [prev.role || 'Member'];
+        const newRoles = currentRoles.includes(roleValue) 
+            ? currentRoles.filter(r => r !== roleValue) 
+            : [...currentRoles, roleValue];
+        return { ...prev, role: newRoles.length > 0 ? newRoles : ['Member'] };
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,6 +99,32 @@ const MemberForm = ({ onSuccess, initialData }) => {
               <option key={g.id} value={g.name}>{g.name}</option>
             ))}
           </select>
+        </div>
+        <div className="form-group mb-2" style={{ gridColumn: 'span 2' }}>
+          <label className="form-label">Roles en la Iglesia</label>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
+             {settings && settings.roles ? Object.entries(settings.roles).map(([key, label]) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                    <input 
+                        type="checkbox" 
+                        checked={Array.isArray(formData.role) && formData.role.includes(key)}
+                        onChange={() => toggleRole(key)}
+                    />
+                    {label}
+                </label>
+             )) : (
+                ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'].map(key => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={Array.isArray(formData.role) && formData.role.includes(key)}
+                            onChange={() => toggleRole(key)}
+                        />
+                        {key}
+                    </label>
+                ))
+             )}
+          </div>
         </div>
       </div>
       

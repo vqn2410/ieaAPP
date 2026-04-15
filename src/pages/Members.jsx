@@ -6,11 +6,13 @@ import MemberForm from '../components/members/MemberForm';
 import BulkUploadModal from '../components/members/BulkUploadModal';
 import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { getMembers, deleteMember } from '../services/memberService';
 import { useNavigate } from 'react-router-dom';
 
 const Members = () => {
   const { userData } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
@@ -252,19 +254,19 @@ const Members = () => {
             </div>
           </div>
           
-          <select className="form-input" style={{ width: 'auto', height: '42px', backgroundColor: 'var(--color-surface)' }} value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
+          <select className="form-input" style={{ width: 'auto' }} value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
              <option value="">Grupo: Todos</option>
              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
 
-          <select className="form-input" style={{ width: 'auto', height: '42px', backgroundColor: 'var(--color-surface)' }} value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
+          <select className="form-input" style={{ width: 'auto' }} value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
              <option value="">Estado: Todos</option>
              <option value="Activo">Activo</option>
              <option value="Inactivo">Inactivo</option>
              <option value="Baja">Baja</option>
           </select>
 
-          <select className="form-input" style={{ width: 'auto', height: '42px', backgroundColor: 'var(--color-surface)' }} value={filterBaptism} onChange={(e) => setFilterBaptism(e.target.value)}>
+          <select className="form-input" style={{ width: 'auto' }} value={filterBaptism} onChange={(e) => setFilterBaptism(e.target.value)}>
              <option value="">Bautismo: Todos</option>
              <option value="Sí">Bautizado</option>
              <option value="No">No Bautizado</option>
@@ -301,7 +303,14 @@ const Members = () => {
                         <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
                             {member.lastName}, {member.firstName}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>DNI: {member.dni}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                           <span>DNI: {member.dni}</span>
+                           <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                             {(Array.isArray(member.role) ? member.role : [member.role || 'Member']).map(r => (
+                               <span key={r} className="badge badge-gray">{settings?.roles?.[r] || r}</span>
+                             ))}
+                           </div>
+                        </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>{member.phone}</div>

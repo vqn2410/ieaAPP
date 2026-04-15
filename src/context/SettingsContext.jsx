@@ -26,6 +26,21 @@ export function SettingsProvider({ children }) {
       finances: true,
       news: true,
       live: true
+    },
+    absenceReasons: [
+      'Salud',
+      'Laboral',
+      'Estudios',
+      'Actividad de la Iglesia',
+      'Otros'
+    ],
+    rolePermissions: {
+      Admin: ['miembros', 'eventos', 'crecimiento', 'noticias', 'transmisiones', 'finanzas', 'grupos', 'configuracion'],
+      Pastor: ['miembros', 'eventos', 'crecimiento', 'noticias', 'transmisiones', 'finanzas', 'grupos'],
+      MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'noticias'],
+      Facilitator: ['miembros', 'eventos', 'crecimiento'],
+      CoFacilitator: ['miembros', 'crecimiento'],
+      Member: ['dashboard']
     }
   });
   
