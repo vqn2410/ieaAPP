@@ -9,6 +9,8 @@ import News from './pages/News';
 import Live from './pages/Live';
 import Finances from './pages/Finances';
 import Groups from './pages/Groups';
+import GroupDetails from './pages/GroupDetails';
+import GrowthGroups from './pages/GrowthGroups';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import { useAuth } from './context/AuthContext';
@@ -55,7 +57,23 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route path="grupos" element={<Groups />} />
+          <Route 
+            path="grupos" 
+            element={
+              <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                <Groups />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="grupos/:id" 
+            element={
+              <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                <GroupDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="crecimiento" element={<GrowthGroups />} />
           <Route 
             path="configuracion" 
             element={

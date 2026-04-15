@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -9,7 +9,9 @@ import {
   DollarSign,
   UsersRound,
   Settings,
-  LogOut
+  LogOut,
+  ArrowLeft,
+  Heart
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -19,6 +21,7 @@ const MainLayout = () => {
   const { currentUser, userData, logout } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -33,7 +36,7 @@ const MainLayout = () => {
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Miembros', path: '/miembros', icon: <Users size={20} /> },
     { name: 'Eventos', path: '/eventos', icon: <Calendar size={20} /> },
-    { name: 'Grupos', path: '/grupos', icon: <UsersRound size={20} /> },
+    { name: 'G. de Crecimiento', path: '/crecimiento', icon: <Heart size={20} /> },
   ];
 
   if (settings.modules.news) {
@@ -46,12 +49,17 @@ const MainLayout = () => {
 
   // Finances restricted to Admin / Pastor
   if (settings.modules.finances && userData && (userData.role === 'Admin' || userData.role === 'Pastor')) {
-    menuItems.push({ name: 'Finanzas', path: '/finanzas', icon: <DollarSign size={20} /> });
+    menuItems.push({ name: 'Finanzas', path: 'https://iea-finanzas.vercel.app/', external: true, icon: <DollarSign size={20} /> });
   }
 
   // Settings restricted to Admin
   if (userData && userData.role === 'Admin') {
     menuItems.push({ name: 'Configuración', path: '/configuracion', icon: <Settings size={20} /> });
+  }
+
+  // Group Management restricted to Admin and Pastor
+  if (userData && ['Admin', 'Pastor'].includes(userData.role)) {
+    menuItems.push({ name: 'Gestor Grupos', path: '/grupos', icon: <UsersRound size={20} /> });
   }
 
   return (
@@ -69,14 +77,21 @@ const MainLayout = () => {
           <ul>
             {menuItems.map((item) => (
               <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
-                  end={item.path === '/'}
-                >
-                  {item.icon}
-                  <span>{item.name}</span>
-                </NavLink>
+                {item.external ? (
+                  <a href={item.path} target="_blank" rel="noopener noreferrer" className="nav-item">
+                    {item.icon}
+                    <span>{item.name}</span>
+                  </a>
+                ) : (
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+                    end={item.path === '/'}
+                  >
+                    {item.icon}
+                    <span>{item.name}</span>
+                  </NavLink>
+                )}
               </li>
             ))}
           </ul>
@@ -99,17 +114,39 @@ const MainLayout = () => {
 
       <main className="main-content">
         <header className="mobile-header d-flex justify-between align-center">
-           <img 
-             src="https://i.postimg.cc/0jscK4Jr/LOGO_IEA_SIN_FONDO_B_W_2.png" 
-             alt="Logo IEA" 
-             style={{ maxHeight: '35px' }} 
-           />
+           <div className="d-flex align-center gap-2">
+             {location.pathname !== '/' && (
+                <button 
+                  onClick={() => navigate(-1)} 
+                  style={{ background: 'transparent', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'var(--color-primary)' }}
+                >
+                  <ArrowLeft size={24} />
+                </button>
+             )}
+             <img 
+               src="https://i.postimg.cc/0jscK4Jr/LOGO_IEA_SIN_FONDO_B_W_2.png" 
+               alt="Logo IEA" 
+               style={{ maxHeight: '35px' }} 
+             />
+           </div>
            <div className="d-flex align-center gap-3">
              <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '0.85rem' }}>{currentUser?.email?.charAt(0).toUpperCase()}</div>
            </div>
         </header>
 
         <div className="content-wrapper">
+          {/* Universal Desktop/Tablet Back Button */}
+          {location.pathname !== '/' && (
+            <div className="d-none lg-d-block mb-4 desktop-back-btn">
+               <button 
+                 onClick={() => navigate(-1)} 
+                 className="btn btn-outline"
+                 style={{ display: 'inline-flex', padding: '0.5rem 1rem' }}
+               >
+                 <ArrowLeft size={16} style={{ marginRight: '0.5rem' }} /> Volver atrás
+               </button>
+            </div>
+          )}
           <Outlet />
         </div>
       </main>
@@ -117,15 +154,22 @@ const MainLayout = () => {
       {/* App-like bottom navigation only visible on mobile (handled by CSS) */}
       <nav className="bottom-nav">
         {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => isActive ? 'bottom-nav-item active' : 'bottom-nav-item'}
-            end={item.path === '/'}
-          >
-            {item.icon}
-            <span>{item.name}</span>
-          </NavLink>
+          item.external ? (
+            <a key={item.path} href={item.path} target="_blank" rel="noopener noreferrer" className="bottom-nav-item">
+              {item.icon}
+              <span>{item.name}</span>
+            </a>
+          ) : (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => isActive ? 'bottom-nav-item active' : 'bottom-nav-item'}
+              end={item.path === '/'}
+            >
+              {item.icon}
+              <span>{item.name}</span>
+            </NavLink>
+          )
         ))}
       </nav>
     </div>

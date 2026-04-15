@@ -40,22 +40,22 @@ export function AuthProvider({ children }) {
           
           if (docSnap.exists()) {
             let data = docSnap.data();
-            // Automatically grant Admin to this specific email
-            if (user.email === 'vergaranicolas209@gmail.com' && data.role !== 'Admin') {
+            // Automatically grant Admin to specific emails
+            if (['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) && data.role !== 'Admin') {
               data.role = 'Admin';
               await setDoc(docRef, { ...data, role: 'Admin' }, { merge: true });
             }
             setUserData(data);
           } else {
             // Document doesn't exist yet, create it and give admin if it's the target email
-            const defaultRole = user.email === 'vergaranicolas209@gmail.com' ? 'Admin' : 'Miembro';
+            const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? 'Admin' : 'Member';
             const newData = { role: defaultRole, email: user.email, name: user.displayName || 'Usuario', createdAt: new Date() };
             await setDoc(docRef, newData);
             setUserData(newData);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
-          setUserData({ role: 'Miembro' });
+          setUserData({ role: 'Member' });
         }
       } else {
         setUserData(null);

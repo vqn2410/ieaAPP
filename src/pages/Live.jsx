@@ -4,7 +4,7 @@ import { Youtube, MonitorPlay } from 'lucide-react';
 
 const Live = () => {
   return (
-    <div>
+    <div className="animate-fade-in">
       <h1 className="mb-4">Transmisiones en Vivo</h1>
       <div className="grid grid-cols-1 mb-4">
         <Card>

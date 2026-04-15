@@ -92,7 +92,7 @@ const Login = () => {
         <p>Plataforma administrativa y comunitaria</p>
       </div>
 
-      <Card style={{ width: '100%', maxWidth: '400px' }}>
+      <Card className="animate-fade-in" style={{ width: '100%', maxWidth: '400px' }}>
         <h2 className="text-center mb-4">Iniciar Sesión</h2>
         
         {error && <div className="alert alert-danger">{error}</div>}

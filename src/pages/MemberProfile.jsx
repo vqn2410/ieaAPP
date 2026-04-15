@@ -13,7 +13,7 @@ const MemberProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { userData } = useAuth();
-    const canTransfer = ['Admin', 'Pastor', 'Facilitador', 'Co-facilitador'].includes(userData?.role);
+    const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
     const [member, setMember] = useState(null);
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -108,10 +108,9 @@ const MemberProfile = () => {
     if (!member) return <div>Miembro no encontrado.</div>;
 
     return (
-        <div>
+        <div className="animate-fade-in">
             <div className="d-flex align-center justify-between mb-4">
                <div className="d-flex align-center gap-2">
-                 <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/miembros')}>Vover</Button>
                  <h1 style={{ margin: 0 }}>Perfil del Miembro</h1>
                </div>
                <Button variant="outline" icon={<Edit size={16} />} onClick={() => setShowEditModal(true)}>Editar Datos</Button>

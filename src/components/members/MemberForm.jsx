@@ -19,6 +19,16 @@ const MemberForm = ({ onSuccess, initialData }) => {
     getGroups().then(setGroups);
   }, []);
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else {
+      setFormData({
+        firstName: '', lastName: '', dni: '', email: '', phone: '', group: ''
+      });
+    }
+  }, [initialData]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -54,12 +64,12 @@ const MemberForm = ({ onSuccess, initialData }) => {
           <input required name="lastName" value={formData.lastName} onChange={handleChange} className="form-input" placeholder="Apellidos" />
         </div>
         <div className="form-group mb-2">
-          <label className="form-label">DNI</label>
-          <input required name="dni" value={formData.dni} onChange={handleChange} className="form-input" placeholder="DNI sin puntos" />
+          <label className="form-label">DNI (Opcional)</label>
+          <input name="dni" value={formData.dni || ''} onChange={handleChange} className="form-input" placeholder="DNI sin puntos" />
         </div>
         <div className="form-group mb-2">
-          <label className="form-label">Teléfono</label>
-          <input required name="phone" value={formData.phone} onChange={handleChange} className="form-input" placeholder="+54 9 11..." />
+          <label className="form-label">Teléfono (Opcional)</label>
+          <input name="phone" value={formData.phone || ''} onChange={handleChange} className="form-input" placeholder="+54 9 11..." />
         </div>
         <div className="form-group mb-2" style={{ gridColumn: 'span 2' }}>
           <label className="form-label">Email</label>
