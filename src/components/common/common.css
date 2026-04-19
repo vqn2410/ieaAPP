@@ -1,0 +1,66 @@
+/* Common Components Styles */
+
+.badge {
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px; /* radius-full */
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo-img-small { height: 32px; width: auto; }
+.logo-img-medium { height: 50px; width: auto; }
+.logo-img-large { height: 75px; width: auto; }
+
+.logo-black { filter: brightness(0); }
+.logo-white { filter: brightness(0) invert(1); }
+
+.logo-text-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-title-main {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: 1rem;
+  line-height: 1.1;
+  color: var(--color-text);
+  text-transform: uppercase;
+}
+
+.logo-subtitle-main {
+  color: var(--color-text-muted);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* StatCard */
+.stat-card-icon-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-card-value {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.stat-card-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}

@@ -7,6 +7,8 @@ import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User } 
 import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getHolidays, addHoliday, updateHoliday, deleteHoliday, seedArgentineHolidays } from '../services/holidayService';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const Settings = () => {
   const { currentUser, userData } = useAuth();
@@ -30,8 +32,39 @@ const Settings = () => {
 
   const loadUsers = async () => {
      try {
-       const snap = await getDocs(collection(db, 'users'));
-       setAppUsers(snap.docs.map(d => ({id: d.id, ...d.data()})));
+       // Load active users from users collection
+       const userSnap = await getDocs(collection(db, 'users'));
+       const existingUsers = userSnap.docs.map(d => ({id: d.id, ...d.data()}));
+       
+       // Load members from members collection
+       const memberSnap = await getDocs(collection(db, 'members'));
+       const membersWithEmail = memberSnap.docs
+         .map(d => ({id: d.id, ...d.data()}))
+         .filter(m => m.email && m.email.includes('@'));
+
+       // Create a map for quick lookup by email
+       const usersByEmail = new Map();
+       existingUsers.forEach(u => {
+         if (u.email) usersByEmail.set(u.email.toLowerCase(), u);
+       });
+
+       // Combine lists: existing users + members not yet in users collection
+       const combined = [...existingUsers];
+       
+       membersWithEmail.forEach(m => {
+         const emailKey = m.email.toLowerCase();
+         if (!usersByEmail.has(emailKey)) {
+           combined.push({
+             id: `pending-${m.id}`,
+             email: m.email,
+             name: `${m.firstName} ${m.lastName}`,
+             role: ['Member'],
+             isMemberOnly: true
+           });
+         }
+       });
+
+       setAppUsers(combined.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
      } catch(e) {
        console.error(e);
      }
@@ -106,11 +139,45 @@ const Settings = () => {
        let newRoles = arr.includes(roleToggled) ? arr.filter(r => r !== roleToggled) : [...arr, roleToggled];
        if (newRoles.length === 0) newRoles = ['Member'];
        
-       await updateDoc(doc(db, 'users', userId), { role: newRoles });
+       if (userId.startsWith('pending-')) {
+          // It's a member without user account. We'll use their email to create a pre-assignment.
+          const userObj = appUsers.find(u => u.id === userId);
+          if (!userObj || !userObj.email) return;
+          
+          await setDoc(doc(db, 'users', `pre-${userObj.email.toLowerCase()}`), {
+            name: userObj.name,
+            email: userObj.email.toLowerCase(),
+            role: newRoles,
+            isPending: true,
+            needsPasswordChange: true
+          }, { merge: true });
+       } else {
+          await updateDoc(doc(db, 'users', userId), { role: newRoles });
+       }
+       
        loadUsers();
      } catch(e) {
        console.error(e);
        alert("Error actualizando permisos.");
+     }
+  };
+
+  const handleForceAllPasswordChange = async () => {
+     if(!window.confirm("¿Seguro que deseas obligar a TODOS los usuarios registrados a cambiar su clave en su próximo ingreso?")) return;
+     setSaving(true);
+     try {
+       const userSnap = await getDocs(collection(db, 'users'));
+       for (const d of userSnap.docs) {
+          if (!d.id.startsWith('pre-')) {
+             await updateDoc(doc(db, 'users', d.id), { needsPasswordChange: true });
+          }
+       }
+       alert("Operación completada.");
+       loadUsers();
+     } catch(e) {
+       alert("Error: " + e.message);
+     } finally {
+       setSaving(false);
      }
   };
 
@@ -358,8 +425,11 @@ const Settings = () => {
             </Card>
 
             <Card title={
-              <div className="d-flex align-center gap-2">
-                <Key size={20} color="var(--color-primary-light)" /> Gestión de Usuarios y Roles
+              <div className="d-flex align-center gap-2 justify-between w-full">
+                <div className="d-flex align-center gap-2">
+                   <Key size={20} color="var(--color-primary-light)" /> Gestión de Usuarios y Roles
+                </div>
+                <Button size="sm" variant="outline" onClick={handleForceAllPasswordChange}>OBLIGAR CAMBIO DE CLAVE (TODOS)</Button>
               </div>
             } className="lg:col-span-2">
               <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
@@ -373,16 +443,59 @@ const Settings = () => {
                   </thead>
                   <tbody>
                     {appUsers.map(u => (
-                      <tr key={u.id}>
-                        <td style={{ padding: '0.75rem 1rem' }}>{u.name}<br/><span style={{fontSize:'0.75rem', color:'var(--color-text-muted)'}}>{u.email}</span></td>
-                        <td style={{ padding: '0.75rem 1rem' }}>{(Array.isArray(u.role) ? u.role : [u.role || 'Member']).map(r => <span key={r} className="badge badge-gray" style={{margin:'0.1rem'}}>{formData.roles[r] || r}</span>)}</td>
+                      <tr key={u.id} className="table-row-hover">
                         <td style={{ padding: '0.75rem 1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                           <div style={{ fontWeight: 600 }}>{u.name}</div>
+                           <div style={{fontSize:'0.75rem', color:'var(--color-text-muted)'}}>{u.email}</div>
+                           {u.isMemberOnly && <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>Solo en BD</span>}
+                           {u.needsPasswordChange && <span className="badge badge-gold" style={{ fontSize: '0.65rem', marginLeft: '0.5rem' }}>Cambio Clave Pend.</span>}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+                            {(Array.isArray(u.role) ? u.role : [u.role || 'Member']).map(r => (
+                              <span key={r} className="badge badge-gray">{formData.roles[r] || r}</span>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             {Object.keys(formData.roles).map(r => (
-                               <label key={r} style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'0.2rem'}}>
+                               <label key={r} style={{fontSize:'0.65rem', display:'flex', alignItems:'center', gap:'0.2rem', background: '#f8fafc', padding: '2px 4px', borderRadius: '4px'}}>
                                  <input type="checkbox" checked={(Array.isArray(u.role) ? u.role : [u.role || 'Member']).includes(r)} onChange={() => handleToggleRole(u.id, u.role, r)} /> {formData.roles[r]}
                                </label>
                             ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {!u.isMemberOnly && (
+                               <>
+                                 <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={async () => {
+                                       if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
+                                          try {
+                                             await sendPasswordResetEmail(auth, u.email);
+                                             alert('Correo enviado.');
+                                          } catch(e) { alert('Error: ' + e.message); }
+                                       }
+                                    }}
+                                 >
+                                    Reset Clave
+                                 </Button>
+                                 <Button 
+                                    size="sm" 
+                                    variant={u.needsPasswordChange ? 'primary' : 'outline'}
+                                    onClick={async () => {
+                                       try {
+                                          await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: !u.needsPasswordChange });
+                                          loadUsers();
+                                       } catch(e) { alert('Error: ' + e.message); }
+                                    }}
+                                 >
+                                    {u.needsPasswordChange ? 'Quitar Req.' : 'Forzar Cambio'}
+                                 </Button>
+                               </>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -14,6 +14,7 @@ import GrowthGroups from './pages/GrowthGroups';
 import Settings from './pages/Settings';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import ChangePassword from './pages/ChangePassword';
 import { useAuth } from './context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
@@ -22,6 +23,11 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
   
   if (!currentUser) return <Navigate to="/login" />;
+  
+  const { userData } = useAuth();
+  if (userData?.needsPasswordChange && window.location.pathname !== '/dashboard/change-password') {
+    return <Navigate to="/dashboard/change-password" />;
+  }
 
   if (requiredRoles && !hasRole(requiredRoles)) {
     return <Navigate to="/dashboard" />; // Redirect to dashboard if no permission
@@ -76,14 +82,14 @@ function App() {
             } 
           />
           <Route path="crecimiento" element={<GrowthGroups />} />
-          <Route 
-            path="configuracion" 
+          <Route path="configuracion" 
             element={
               <ProtectedRoute requiredRoles={['Admin']}>
                 <Settings />
               </ProtectedRoute>
             } 
           />
+          <Route path="change-password" element={<ChangePassword />} />
         </Route>
       </Routes>
     </Router>

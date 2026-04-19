@@ -6,6 +6,8 @@ import Button from '../components/common/Button';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import Logo from '../components/common/Logo';
+import './Login.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -33,7 +35,7 @@ const Login = () => {
 
       // 3. Set Global Settings config
       await setDoc(doc(db, 'settings', 'general'), {
-        theme: { primaryColor: '#111111', secondaryColor: '#4b5563' },
+        theme: { primaryColor: '#1e293b', secondaryColor: '#64748b' },
         roles: {
           Admin: 'Administrador', Pastor: 'Pastor', MinistryLeader: 'Líder de ministerio',
           Member: 'Miembro', Facilitator: 'Facilitador', CoFacilitator: 'Co-facilitador'
@@ -82,36 +84,19 @@ const Login = () => {
   }
 
   return (
-    <div className="d-flex align-center justify-center flex-column" style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#000000', 
-      fontFamily: "'Outfit', sans-serif",
-      '--color-text': '#ffffff'
-    }}>
-      <div className="text-center mb-5 d-flex justify-center flex-column align-center" style={{ color: 'white', alignItems: 'center' }}>
-        <img 
-          src="https://i.postimg.cc/0jscK4Jr/LOGO_IEA_SIN_FONDO_B_W_2.png" 
-          alt="Logo IEA" 
-          style={{ width: '150px', marginBottom: '1rem', filter: 'brightness(0) invert(1)' }} 
-        />
-        <h1 style={{ fontWeight: 900, letterSpacing: '-1px', marginBottom: '0.5rem' }}>IEA APP</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', letterSpacing: '1px' }}>PLATAORMA ADMINISTRATIVA</p>
-      </div>
+    <div className="login-container">
+      <header className="login-header">
+        <Logo size="large" variant="full" />
+      </header>
 
-      <Card className="animate-fade-in" style={{ 
-        width: '100%', 
-        maxWidth: '400px', 
-        backgroundColor: '#111111', 
-        border: '1px solid rgba(255,255,255,0.1)',
-        padding: '2.5rem'
-      }}>
-        <h2 className="text-center mb-4" style={{ color: '#ffffff' }}>INICIAR SESIÓN</h2>
+      <Card className="animate-fade-in login-card">
+        <h2 className="login-card-title">INICIAR SESIÓN</h2>
         
         {error && <div className="alert alert-danger" style={{ fontSize: '0.85rem' }}>{error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="email" style={{ color: '#94a3b8' }}>Correo Electrónico</label>
+            <label className="form-label login-form-label" htmlFor="email">Correo Electrónico</label>
             <input 
               className="form-input"
               type="email" 
@@ -119,12 +104,11 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@iglesia.com"
-              style={{ backgroundColor: '#000000', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff' }}
             />
           </div>
           
           <div className="form-group mb-4">
-            <label className="form-label" htmlFor="password" style={{ color: '#94a3b8' }}>Contraseña</label>
+            <label className="form-label login-form-label" htmlFor="password">Contraseña</label>
             <input 
               className="form-input"
               type="password" 
@@ -132,13 +116,12 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              style={{ backgroundColor: '#000000', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff' }}
             />
           </div>
           
           <Button 
             type="submit" 
-            style={{ width: '100%', background: '#ffffff', color: '#000000', fontWeight: 800, borderRadius: '4px' }}
+            className="login-submit-btn"
             disabled={loading}
           >
             {loading ? 'INGRESANDO...' : 'INGRESAR'}
@@ -148,7 +131,7 @@ const Login = () => {
             <Button 
               type="button" 
               variant="outline" 
-              style={{ width: '100%', borderColor: 'rgba(255,255,255,0.2)', color: '#94a3b8', fontSize: '0.75rem' }}
+              className="login-setup-btn"
               disabled={loading}
               onClick={handleSetup}
             >
@@ -158,7 +141,7 @@ const Login = () => {
         </form>
       </Card>
       
-      <p style={{ color: '#475569', marginTop: '3rem', fontSize: '0.75rem', letterSpacing: '2px' }}>
+      <p className="login-footer-text">
         IGLESIA EXTREMO AMOR © 2026
       </p>
     </div>

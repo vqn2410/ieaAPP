@@ -54,11 +54,37 @@ export function AuthProvider({ children }) {
             }
             setUserData(data);
           } else {
-            // Document doesn't exist yet, create it and give admin if it's the target email
-            const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? ['Admin'] : ['Member'];
-            const newData = { role: defaultRole, email: user.email, name: user.displayName || 'Usuario', createdAt: new Date() };
-            await setDoc(docRef, newData);
-            setUserData(newData);
+            // Document doesn't exist yet, check for pre-assignment by email
+            const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
+            const preDocSnap = await getDoc(preDocRef);
+            
+            let finalAuthData;
+
+            if (preDocSnap.exists()) {
+              const preData = preDocSnap.data();
+              finalAuthData = { 
+                role: preData.role || ['Member'], 
+                email: user.email.toLowerCase(), 
+                name: preData.name || user.displayName || 'Usuario', 
+                createdAt: new Date() 
+              };
+              // Migrate and delete pre-assignment
+              await setDoc(docRef, finalAuthData);
+              // Safely delete pre-doc if needed - using setDoc instead of deleteDoc if preferred but delete is better
+              await setDoc(preDocRef, { migratedTo: user.uid, migratedAt: new Date() }, { merge: true });
+            } else {
+              // No pre-assignment, create standard Member
+              const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? ['Admin'] : ['Member'];
+              finalAuthData = { 
+                role: defaultRole, 
+                email: user.email.toLowerCase(), 
+                name: user.displayName || 'Usuario', 
+                createdAt: new Date() 
+              };
+              await setDoc(docRef, finalAuthData);
+            }
+            
+            setUserData(finalAuthData);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);

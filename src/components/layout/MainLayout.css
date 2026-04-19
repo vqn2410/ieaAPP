@@ -138,6 +138,56 @@
   padding: 0.75rem 1rem;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  position: relative;
+  height: 60px;
+}
+
+.mobile-header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-header-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+}
+
+.mobile-header-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.mobile-menu-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-user-avatar {
+  background: var(--color-primary);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border: none;
+  cursor: pointer;
 }
 
 .mobile-header h2 {
@@ -232,9 +282,75 @@
     color: var(--color-primary);
   }
 
+  .bottom-nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background: var(--color-primary);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 0 10px var(--color-primary);
+  }
+
   .bottom-nav-item svg {
     margin-bottom: 2px;
     width: 20px;
     height: 20px;
+    transition: transform 0.3s ease;
   }
+
+  .bottom-nav-item.active svg {
+    transform: translateY(-2px);
+  }
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  padding: 80px 2rem;
+  background-color: var(--color-surface);
+  z-index: 45;
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+}
+
+.mobile-menu-user h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.mobile-nav-card {
+  margin-bottom: 0;
+  justify-content: center;
+  flex-direction: column;
+  height: 100px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+.mobile-nav-card span {
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

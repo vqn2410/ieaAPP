@@ -11,8 +11,8 @@ export function useSettings() {
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState({
     theme: {
-      primaryColor: '#111111',  /* Black */
-      secondaryColor: '#4b5563', /* Dark Gray */
+      primaryColor: '#1e293b',  /* Slate 800 */
+      secondaryColor: '#64748b', /* Slate 500 */
     },
     roles: {
       Admin: 'Administrador',

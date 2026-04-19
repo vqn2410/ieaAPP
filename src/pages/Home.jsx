@@ -1,43 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
-import { 
-  ChevronRight, 
-  ChevronLeft, 
-  Play, 
-  Calendar, 
-  Newspaper, 
-  Heart, 
+import {
+  ChevronRight,
+  ChevronLeft,
+  Play,
+  Calendar,
+  Newspaper,
+  Heart,
   Info,
   ArrowRight,
   Radio
 } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
+import Logo from '../components/common/Logo';
+import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  
+
   const slides = [
     {
-      image: 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?auto=format&fit=crop&q=80&w=2073',
+      image: 'https://i.postimg.cc/L4C9BcxG/660111209-18356544013230022-8343781813054001461-n.jpg',
       title: (
         <>
-          IGLESIA<br/>
-          <span 
-            className="highlight-text animate-glow" 
-            style={{ fontWeight: 900, color: '#ffffff', fontSize: '1.15em' }}
-          >
+          IGLESIA<br />
+          <span className="highlight-text animate-glow home-title-accent">
             EXTREMO AMOR
           </span>
         </>
       ),
       subtitle: (
         <>
-          Un lugar de <strong style={{ color: '#ffffff' }}>ENCUENTRO</strong>.<br/>
-          Un lugar para la <strong style={{ color: '#ffffff' }}>FAMILIA</strong>, un lugar para <strong style={{ color: '#ffffff' }}>VOS</strong>.
+          Un lugar de <strong className="meet-highlight">ENCUENTRO</strong>.<br />
+          Un lugar para la <strong className="meet-highlight">FAMILIA</strong>, un lugar para <strong className="meet-highlight">VOS</strong>.
         </>
       ),
       cta: 'CONTACTARNOS',
@@ -55,163 +53,151 @@ const Home = () => {
   }, [slides.length]);
 
   return (
-    <div style={{ 
-      background: 'var(--public-bg)', 
-      color: 'var(--public-text)', 
-      minHeight: '100vh', 
-      fontFamily: "'Outfit', sans-serif",
-      '--color-text': 'var(--public-text)'
-    }}>
+    <div className="home-container">
       {/* Navbar Minimalist */}
-      <nav style={{ 
-        padding: '1.5rem 5%', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        position: 'absolute',
-        top: 0, width: '100%', zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <img src="https://i.postimg.cc/0jscK4Jr/LOGO_IEA_SIN_FONDO_B_W_2.png" alt="IEA Logo" style={{ height: '40px', filter: 'brightness(0) invert(1)' }} />
+      <nav className="home-nav">
+        <div className="home-nav-logo">
+          <Logo size="small" inverted />
         </div>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-          <span className="d-none lg-d-block" style={{ fontSize: '0.8rem', fontWeight: 600, letterSpacing: '2px', cursor: 'pointer' }}>CONTACTO</span>
+        <div className="home-nav-links">
+          <span className="d-none lg-d-block home-contact-link">CONTACTO</span>
           {currentUser ? (
-             <Button variant="primary" style={{ background: '#ffffff', color: '#000000', borderRadius: '4px', fontWeight: 700 }} onClick={() => navigate('/dashboard')}>IR AL PANEL</Button>
+            <Button variant="primary" className="home-nav-btn" onClick={() => navigate('/dashboard')}>IR AL PANEL</Button>
           ) : (
-             <Button variant="primary" style={{ background: '#ffffff', color: '#000000', borderRadius: '4px', fontWeight: 700 }} onClick={() => navigate('/login')}>INICIAR SESIÓN</Button>
+            <Button variant="primary" className="home-nav-btn" onClick={() => navigate('/login')}>INICIAR SESIÓN</Button>
           )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section style={{ position: 'relative', height: '100vh', width: '100%', overflow: 'hidden' }}>
+      <section className="hero-wrapper">
         {slides.map((slide, index) => (
-          <div 
+          <div
             key={index}
-            style={{ 
-              position: 'absolute', 
-              inset: 0, 
-              opacity: currentSlide === index ? 1 : 0, 
-              transition: 'opacity 1.5s ease-in-out',
-              backgroundImage: `url(${slide.image})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 10%'
+            className="hero-slide"
+            style={{
+              opacity: currentSlide === index ? 1 : 0,
+              backgroundImage: `url(${slide.image})`
             }}
           >
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.2) 100%)' }} />
-            
-            <div style={{ position: 'relative', zIndex: 1, maxWidth: '800px' }} className="animate-fade-in">
-              <span style={{ display: 'block', color: 'var(--public-muted)', letterSpacing: '4px', fontWeight: 600, fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            <div className="hero-overlay" />
+
+            <div className="hero-content animate-fade-in">
+              <span className="hero-meta">
                 {slide.meta}
               </span>
-              <h1 style={{ 
-                fontSize: 'clamp(3rem, 10vw, 6rem)', 
-                lineHeight: 0.9, 
-                fontWeight: 400, 
-                marginBottom: '2rem',
-                textTransform: 'uppercase',
-                whiteSpace: 'pre-line' 
-              }}>
+              <h1 className="hero-title">
                 {slide.title}
               </h1>
-              <p style={{ 
-                fontSize: '1.25rem', 
-                color: 'var(--public-muted)', 
-                marginBottom: '3rem', 
-                maxWidth: '600px',
-                whiteSpace: 'pre-line',
-                lineHeight: 1.6
-              }}>
+              <p className="hero-subtitle">
                 {slide.subtitle}
               </p>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <Button size="lg" style={{ background: '#ffffff', color: '#000000', borderRadius: '4px', padding: '1.25rem 2.5rem' }}>
+              <div className="hero-btns">
+                <Button size="lg" className="hero-btn-primary">
                   {slide.cta}
                 </Button>
-                <Button size="lg" variant="outline" style={{ borderColor: '#ffffff', color: '#ffffff', borderRadius: '4px', padding: '1.25rem 2.5rem' }}>
-                   UBICACIÓN
+                <Button size="lg" variant="outline" className="hero-btn-outline">
+                  UBICACIÓN
                 </Button>
               </div>
             </div>
           </div>
         ))}
-        
+
         {/* Indicators */}
-        <div style={{ position: 'absolute', bottom: '3rem', left: '10%', display: 'flex', gap: '1.5rem', zIndex: 10 }}>
+        <div className="hero-indicators">
           {slides.map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               onClick={() => setCurrentSlide(i)}
-              style={{ 
-                width: '60px', 
-                height: '3px', 
-                background: currentSlide === i ? '#ffffff' : 'rgba(255,255,255,0.2)', 
-                cursor: 'pointer',
-                transition: 'all 0.4s'
-              }} 
+              className="indicator-dot"
+              style={{
+                background: currentSlide === i ? '#ffffff' : 'rgba(255,255,255,0.2)'
+              }}
             />
           ))}
         </div>
       </section>
 
       {/* Meet Section */}
-      <section style={{ padding: 'var(--public-section-pad) 10%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+      <section className="meet-section">
         <div className="animate-fade-in">
-          <h2 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '2rem', lineHeight: 1.1 }}>CREEMOS EN UN DIOS REAL QUE TRANSFORMA VIDAS.</h2>
-          <p style={{ fontSize: '1.25rem', color: 'var(--public-muted)', lineHeight: 1.8 }}>
-            En Iglesia Extremo Amor, somos una familia que camina unida en fe, amor y esperanza. <br/><br/>
-            Un lugar de <strong style={{ color: '#ffffff' }}>ENCUENTRO</strong>. <br/>
-            Un lugar para la <strong style={{ color: '#ffffff' }}>FAMILIA</strong>. <br/>
-            Un lugar para <strong style={{ color: '#ffffff' }}>VOS</strong>.
+          <h2 className="meet-title">CREEMOS EN UN DIOS REAL QUE TRANSFORMA VIDAS.</h2>
+          <p className="meet-text">
+            En Iglesia Extremo Amor, somos una familia que camina unida en fe, amor y esperanza. <br /><br />
+            Un lugar de <strong className="meet-highlight">ENCUENTRO</strong>. <br />
+            Un lugar para la <strong className="meet-highlight">FAMILIA</strong>. <br />
+            Un lugar para <strong className="meet-highlight">VOS</strong>.
           </p>
-          <div style={{ marginTop: '3rem', padding: '2rem', borderLeft: '4px solid #ffffff', background: 'var(--public-surface)' }}>
-             <h4 style={{ color: '#ffffff', marginBottom: '0.5rem' }}>TODOS LOS SÁBADOS</h4>
-             <p style={{ fontSize: '2rem', fontWeight: 800 }}>19:30 HS</p>
-             <p style={{ color: 'var(--public-muted)' }}>Remedios de Escalada, Buenos Aires.</p>
+          <div className="meet-schedule">
+            <h4 className="schedule-title">TODOS LOS SÁBADOS</h4>
+            <p className="schedule-time">19:30 HS</p>
+            <p className="meet-text">Remedios de Escalada, Buenos Aires.</p>
           </div>
         </div>
-        <div style={{ position: 'relative' }}>
-          <img 
-            src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&q=80&w=2070" 
-            alt="Reunión" 
-            style={{ width: '100%', borderRadius: '8px', boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }} 
+        <div className="meet-image-container">
+          <img
+            src="https://i.postimg.cc/28d3rb0t/img-home.jpg"
+            alt="Reunión"
+            className="meet-image"
           />
-          <div style={{ 
-            position: 'absolute', bottom: '-20px', left: '-20px', 
-            background: '#ffffff', color: '#000000', padding: '2rem', borderRadius: '4px' 
-          }}>
-            <p style={{ fontWeight: 800, fontSize: '1.2rem' }}>SOMOS IEA</p>
-            <p style={{ fontSize: '0.9rem' }}>Vení a conocernos</p>
+          <div className="meet-badge">
+            <p className="meet-badge-title">#SOMOSIEA</p>
+            <p className="meet-badge-subtitle">Vení a conocernos</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Location Section */}
+      <section className="location-section">
+        <div className="map-container">
+          <div className="map-wrapper">
+             <iframe 
+               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3278.431057497184!2d-58.404221124235215!3d-34.71738737291244!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bccd4d7729215f%3A0xe781977755b46b6e!2sAv.%20Coronel%20Leonardo%20Rosales%20883%2C%20B1826%20Remedios%20de%20Escalada%2C%20Provincia%20de%20Buenos%20Aires!5e0!3m2!1ses-419!2sar!4v1714100000000!5m2!1ses-419!2sar" 
+               width="100%" 
+               height="100%" 
+               style={{ border: 0, filter: 'grayscale(1) invert(0.9) contrast(1.2)', opacity: 0.7 }} 
+               allowFullScreen="" 
+               loading="lazy" 
+               referrerPolicy="no-referrer-when-downgrade"
+             ></iframe>
+             <div className="map-marker-overlay">
+                <div className="map-marker-point">
+                   <img src="https://i.postimg.cc/cCc0M30b/500x500.png" alt="IEA Location" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
+                </div>
+                <div className="map-tooltip">
+                   <h3>IGLESIA EXTREMO AMOR</h3>
+                   <p>📍 Av. Cnel. Rosales 883, Escalada</p>
+                   <p>⏰ Sábados 19:30hs</p>
+                   <div className="tooltip-arrow"></div>
+                </div>
+             </div>
           </div>
         </div>
       </section>
 
       {/* Footer Minimalist */}
-      <footer style={{ padding: '4rem 10%', borderTop: '1px solid rgba(255,255,255,0.1)', background: '#080808' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '2rem' }}>
-          <div>
-            <h2 style={{ fontWeight: 400, fontSize: '2rem', marginBottom: '1rem', color: 'var(--public-muted)' }}>
-              IGLESIA <strong style={{ color: '#ffffff', fontWeight: 900 }}>EXTREMO AMOR</strong>
+      <footer className="home-footer">
+        <div className="footer-content">
+          <div className="footer-brand">
+            <h2>
+              IGLESIA <strong style={{ fontWeight: 900, color: '#ffffff' }}>EXTREMO AMOR</strong>
             </h2>
-            <p style={{ color: 'var(--public-muted)', maxWidth: '400px' }}>
+            <p className="meet-text" style={{ maxWidth: '400px' }}>
               © 2026 Todos los derechos reservados a Iglesia Extremo Amor.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '3rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '2px', color: 'var(--public-muted)' }}>REDES</span>
-              <span style={{ fontWeight: 600 }}>INSTAGRAM</span>
-              <span style={{ fontWeight: 600 }}>FACEBOOK</span>
-              <span style={{ fontWeight: 600 }}>YOUTUBE</span>
+          <div className="footer-links">
+            <div className="footer-link-col">
+              <span>REDES</span>
+              <span>INSTAGRAM</span>
+              <span>FACEBOOK</span>
+              <span>YOUTUBE</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '2px', color: 'var(--public-muted)' }}>LEGAL</span>
-              <span style={{ fontWeight: 600 }}>PRIVACIDAD</span>
-              <span style={{ fontWeight: 600 }}>TÉRMINOS</span>
+            <div className="footer-link-col">
+              <span>LEGAL</span>
+              <span>PRIVACIDAD</span>
+              <span>TÉRMINOS</span>
             </div>
           </div>
         </div>
