@@ -513,7 +513,9 @@ const Settings = () => {
                                        if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
                                           try {
                                              await sendPasswordResetEmail(auth, u.email);
-                                             alert('Correo enviado.');
+                                             await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: true });
+                                             alert('Correo enviado y bandera de cambio de clave activada.');
+                                             loadUsers();
                                           } catch(e) { alert('Error: ' + e.message); }
                                        }
                                     }}
