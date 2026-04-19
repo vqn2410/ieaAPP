@@ -3,7 +3,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User } from 'lucide-react';
+import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2 } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getHolidays, addHoliday, updateHoliday, deleteHoliday, seedArgentineHolidays } from '../services/holidayService';
@@ -32,29 +32,41 @@ const Settings = () => {
 
   const loadUsers = async () => {
      try {
-       // Load active users from users collection
+       // Load all documents from 'users' collection (real users and pre-assignments)
        const userSnap = await getDocs(collection(db, 'users'));
-       const existingUsers = userSnap.docs.map(d => ({id: d.id, ...d.data()}));
+       const allUserDocs = userSnap.docs.map(d => ({ id: d.id, ...d.data() }));
        
-       // Load members from members collection
+       // Deduplicate by email, prioritizing real UID over 'pre-' docs
+       const consolidatedUsersMap = new Map();
+       
+       allUserDocs.forEach(u => {
+         if (!u.email) return;
+         const emailKey = u.email.toLowerCase().trim();
+         
+         // If it's a pre-doc that was already migrated, ignore it unless there's no real user yet
+         if (u.id.startsWith('pre-') && u.migratedTo) return;
+
+         const existing = consolidatedUsersMap.get(emailKey);
+         // Prioritization: 
+         // 1. Real UID (non-pre)
+         // 2. Pre-doc (if no real UID yet)
+         if (!existing || (existing.id.startsWith('pre-') && !u.id.startsWith('pre-'))) {
+           consolidatedUsersMap.set(emailKey, u);
+         }
+       });
+
+       // Now load members to find those without ANY record in 'users' collection
        const memberSnap = await getDocs(collection(db, 'members'));
        const membersWithEmail = memberSnap.docs
          .map(d => ({id: d.id, ...d.data()}))
          .filter(m => m.email && m.email.includes('@'));
 
-       // Create a map for quick lookup by email
-       const usersByEmail = new Map();
-       existingUsers.forEach(u => {
-         if (u.email) usersByEmail.set(u.email.toLowerCase(), u);
-       });
-
-       // Combine lists: existing users + members not yet in users collection
-       const combined = [...existingUsers];
+       const finalUsers = Array.from(consolidatedUsersMap.values());
        
        membersWithEmail.forEach(m => {
-         const emailKey = m.email.toLowerCase();
-         if (!usersByEmail.has(emailKey)) {
-           combined.push({
+         const emailKey = m.email.toLowerCase().trim();
+         if (!consolidatedUsersMap.has(emailKey)) {
+           finalUsers.push({
              id: `pending-${m.id}`,
              email: m.email,
              name: `${m.firstName} ${m.lastName}`,
@@ -64,9 +76,9 @@ const Settings = () => {
          }
        });
 
-       setAppUsers(combined.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+       setAppUsers(finalUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
      } catch(e) {
-       console.error(e);
+       console.error("Error loading combined users:", e);
      }
   };
 
@@ -179,6 +191,32 @@ const Settings = () => {
      } finally {
        setSaving(false);
      }
+  };
+
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (userId === currentUser.uid) {
+      return alert('No puedes eliminar tu propio usuario administrador.');
+    }
+
+    if (!window.confirm(`¿Estás seguro de eliminar a ${userEmail}? Esta acción quitará sus roles y acceso al portal. No elimina la cuenta de autenticación pero le impide entrar.`)) {
+      return;
+    }
+
+    try {
+      // Delete from 'users' or 'pre-'
+      const docId = userId.startsWith('pending-') ? `pre-${userEmail.toLowerCase()}` : userId;
+      // Note: we can't delete from auth with client SDK, but deleting from firestore kills their access
+      // because ProtectedRoute and AuthContext won't find the user record/roles.
+      
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'users', docId));
+      
+      alert('Registro eliminado correctamente.');
+      loadUsers();
+    } catch (e) {
+      console.error(e);
+      alert('Error eliminando registro: ' + e.message);
+    }
   };
 
   // Holiday handlers
@@ -482,21 +520,29 @@ const Settings = () => {
                                  >
                                     Reset Clave
                                  </Button>
-                                 <Button 
-                                    size="sm" 
-                                    variant={u.needsPasswordChange ? 'primary' : 'outline'}
-                                    onClick={async () => {
-                                       try {
-                                          await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: !u.needsPasswordChange });
-                                          loadUsers();
-                                       } catch(e) { alert('Error: ' + e.message); }
-                                    }}
-                                 >
-                                    {u.needsPasswordChange ? 'Quitar Req.' : 'Forzar Cambio'}
-                                 </Button>
-                               </>
-                            )}
-                          </div>
+                                   <Button 
+                                      size="sm" 
+                                      variant={u.needsPasswordChange ? 'primary' : 'outline'}
+                                      onClick={async () => {
+                                         try {
+                                            await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: !u.needsPasswordChange });
+                                            loadUsers();
+                                         } catch(e) { alert('Error: ' + e.message); }
+                                      }}
+                                   >
+                                      {u.needsPasswordChange ? 'Quitar Req.' : 'Forzar Cambio'}
+                                   </Button>
+                                   <Button 
+                                      size="sm" 
+                                      style={{ backgroundColor: '#ef4444', color: 'white' }}
+                                      onClick={() => handleDeleteUser(u.id, u.email)}
+                                      icon={<Trash2 size={14} />}
+                                   >
+                                      Eliminar
+                                   </Button>
+                                 </>
+                              )}
+                           </div>
                         </td>
                       </tr>
                     ))}

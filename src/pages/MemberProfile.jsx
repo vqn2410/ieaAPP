@@ -7,7 +7,10 @@ import MemberForm from '../components/members/MemberForm';
 import { getMember, deleteMember, updateMember } from '../services/memberService';
 import { getGroups } from '../services/groupService';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, ArrowLeft, Mail, Phone, Hash, Edit } from 'lucide-react';
+import { Trash2, ArrowLeft, Mail, Phone, Hash, Edit, ShieldCheck, UserPlus, Lock } from 'lucide-react';
+import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { useSettings } from '../context/SettingsContext';
 
 const MemberProfile = () => {
     const { id } = useParams();
@@ -21,6 +24,10 @@ const MemberProfile = () => {
     const [savingGroup, setSavingGroup] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
 
+    const { settings } = useSettings();
+    const [associatedUser, setAssociatedUser] = useState(null);
+    const [loadingUser, setLoadingUser] = useState(false);
+
     const availablePaths = ['Bautizado', 'Encuentro', 'Discipulado', 'IETE', 'Otros estudios'];
     const pathStatuses = ['Sin información', 'En proceso', 'Finalizado'];
     const ieteYears = ['1°', '2°', '3°', '4°', '5°', '6°'];
@@ -31,10 +38,66 @@ const MemberProfile = () => {
             const data = await getMember(id);
             setMember(data);
             setLoading(false);
+            if (data?.email) {
+                fetchAssociatedUser(data.email);
+            }
         };
         fetchMember();
         getGroups().then(setGroups);
     }, [id]);
+
+    const fetchAssociatedUser = async (email) => {
+        if (!email) return;
+        setLoadingUser(true);
+        try {
+            const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                // Priority to non-pre docs
+                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const realUser = docs.find(d => !d.id.startsWith('pre-')) || docs[0];
+                setAssociatedUser(realUser);
+            } else {
+                setAssociatedUser(null);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingUser(false);
+        }
+    };
+
+    const handleToggleRole = async (roleKey) => {
+        if (!member?.email || !userData) return;
+        const isAdmin = userData.role.includes('Admin');
+        if (!isAdmin) return alert('Solo administradores pueden cambiar roles.');
+
+        try {
+            let currentRoles = associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : ['Member'];
+            let newRoles = currentRoles.includes(roleKey) ? currentRoles.filter(r => r !== roleKey) : [...currentRoles, roleKey];
+            if (newRoles.length === 0) newRoles = ['Member'];
+
+            if (associatedUser) {
+                await updateDoc(doc(db, 'users', associatedUser.id), { role: newRoles });
+            } else {
+                // Create pre-assignment if user record doesn't exist
+                const docId = `pre-${member.email.toLowerCase().trim()}`;
+                await setDoc(doc(db, 'users', docId), {
+                    name: `${member.firstName} ${member.lastName}`,
+                    email: member.email.toLowerCase().trim(),
+                    role: newRoles,
+                    isPending: true,
+                    needsPasswordChange: true,
+                    memberId: id
+                });
+            }
+            fetchAssociatedUser(member.email);
+            alert('Permisos actualizados.');
+        } catch (e) {
+            console.error(e);
+            alert('Error actualizando permisos: ' + e.message);
+        }
+    };
 
     const handleDelete = async () => {
         if(window.confirm("¿Seguro que deseas eliminar definitivamente a este miembro?")) {
@@ -166,6 +229,71 @@ const MemberProfile = () => {
                        </Button>
                    </div>
                 </Card>
+
+
+
+                {/* Role Management Card (Only for Admins) */}
+                {userData?.role?.includes('Admin') && (
+                    <Card title={
+                        <div className="d-flex align-center gap-2">
+                             <ShieldCheck size={20} color="var(--color-primary-light)" /> Permisos y Acceso al Portal
+                        </div>
+                    } className="lg:col-span-2">
+                        {!member.email ? (
+                            <div className="alert alert-warning">
+                                No se puede asignar acceso al portal porque este miembro no tiene un correo electrónico registrado.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="user-access-info">
+                                    <h4 className="mb-2">Estado de Cuenta</h4>
+                                    {loadingUser ? (
+                                        <p>Buscando vinculación...</p>
+                                    ) : associatedUser ? (
+                                        <div className="d-flex flex-column gap-2">
+                                            <div className="d-flex align-center gap-2">
+                                                {associatedUser.id.startsWith('pre-') ? (
+                                                    <><div style={{width:10, height:10, borderRadius:'50%', background:'#f59e0b'}}></div> Pendiente de registro</>
+                                                ) : (
+                                                    <><div style={{width:10, height:10, borderRadius:'50%', background:'#10b981'}}></div> Usuario activo</>
+                                                )}
+                                            </div>
+                                            <p style={{fontSize: '0.85rem', color: 'var(--color-text-muted)'}}>
+                                                Registrado como: <strong>{associatedUser.email}</strong>
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="d-flex align-center gap-2 text-muted">
+                                            <UserPlus size={18} /> 
+                                            <span>Sin acceso al portal todavía.</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="roles-assignment">
+                                    <h4 className="mb-2">Roles Asignados</h4>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                        {(associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : []).map(r => (
+                                            <span key={r} className="badge badge-gray">{settings?.roles?.[r] || r}</span>
+                                        ))}
+                                        {(!associatedUser || (Array.isArray(associatedUser.role) && associatedUser.role.length === 0)) && <span className="text-muted" style={{fontSize: '0.8rem'}}>Ningún rol especial</span>}
+                                    </div>
+                                    <div className="d-flex gap-2 flex-wrap">
+                                        {Object.keys(settings?.roles || {}).map(roleKey => (
+                                            <button 
+                                                key={roleKey}
+                                                onClick={() => handleToggleRole(roleKey)}
+                                                className={`btn btn-sm ${ (associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : []).includes(roleKey) ? 'btn-primary' : 'btn-outline' }`}
+                                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}
+                                            >
+                                                {settings.roles[roleKey]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </Card>
+                )}
 
                 <Card title="Ruta de Crecimiento y Actividad">
                     <p style={{ color: 'var(--color-text-muted)' }}>Administra los niveles y estado de cada módulo.</p>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
@@ -18,19 +18,25 @@ import ChangePassword from './pages/ChangePassword';
 import { useAuth } from './context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
-  const { currentUser, loading, hasRole } = useAuth();
+  const { currentUser, loading, userData, hasRole } = useAuth();
+  const location = useLocation();
 
   if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
   
   if (!currentUser) return <Navigate to="/login" />;
   
-  const { userData } = useAuth();
-  if (userData?.needsPasswordChange && window.location.pathname !== '/dashboard/change-password') {
+  console.log('ProtectedRoute Check:', { 
+    path: location.pathname, 
+    needsChange: userData?.needsPasswordChange 
+  });
+
+  // Force redirection ONLY if needed and NOT already on the page
+  if (userData?.needsPasswordChange === true && !location.pathname.includes('change-password')) {
     return <Navigate to="/dashboard/change-password" />;
   }
 
   if (requiredRoles && !hasRole(requiredRoles)) {
-    return <Navigate to="/dashboard" />; // Redirect to dashboard if no permission
+    return <Navigate to="/dashboard" />;
   }
 
   return children;

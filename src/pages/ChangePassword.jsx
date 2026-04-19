@@ -24,22 +24,32 @@ const ChangePassword = () => {
     setLoading(true);
     setError('');
     try {
+      console.log('Intentando actualizar contraseña para:', currentUser.email);
+      
       // 1. Update Password in Firebase Auth
       await updatePassword(currentUser, newPassword);
+      console.log('Auth password updated');
       
       // 2. Update flag in Firestore
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        needsPasswordChange: false
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userDocRef, {
+        needsPasswordChange: false,
+        lastPasswordChange: new Date()
       });
+      console.log('Firestore flag updated');
 
-      alert('¡Contraseña actualizada con éxito!');
-      navigate('/dashboard');
+      alert('¡Contraseña actualizada con éxito! Serás redirigido al panel.');
+      
+      // Force a page reload to refresh AuthContext state
+      window.location.href = '/dashboard';
     } catch (err) {
-      console.error(err);
+      console.error('ChangePassword Error:', err);
       if (err.code === 'auth/requires-recent-login') {
-        setError('Por seguridad, debes cerrar sesión e ingresar nuevamente para cambiar tu clave.');
+        setError('Por seguridad, esta operación requiere un inicio de sesión reciente. Por favor, cierra sesión e ingresa nuevamente.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('La contraseña es muy débil. Usa al menos 6 caracteres.');
       } else {
-        setError('Error al actualizar: ' + err.message);
+        setError('Error: ' + (err.message || 'No se pudo actualizar la contraseña. Reintenta en unos instantes.'));
       }
     } finally {
       setLoading(false);
