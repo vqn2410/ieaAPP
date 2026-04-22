@@ -1,25 +1,44 @@
 import admin from 'firebase-admin';
 
 // Inicializar Firebase Admin si no está inicializado
-if (!admin.apps.length) {
-    try {
-        admin.initializeApp({
-            credential: admin.credential.cert({
-                // Soporta las variables genéricas o las de Vite
-                projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                // Corrige los saltos de línea de las llaves privadas inyectadas por variables de entorno
-                privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-            })
-        });
-    } catch (error) {
-        console.error("Error inicializando Firebase Admin:", error);
-    }
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) return true;
+
+  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId || !clientEmail || !privateKey) {
+      throw new Error(`Faltan Variables de Entorno en Vercel. ProjectId: ${!!projectId}, ClientEmail: ${!!clientEmail}, PrivateKey: ${!!privateKey}`);
+  }
+
+  try {
+      // Re-formatear la clave si viene escapada (tipico en Vercel)
+      privateKey = privateKey.replace(/\\n/g, '\n');
+      
+      admin.initializeApp({
+          credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey
+          })
+      });
+      return true;
+  } catch (error) {
+      throw new Error("Fallo al inicializar admin.credential.cert: " + error.message);
+  }
 }
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+    }
+
+    try {
+        // Intenta inicializar e interceptar el error si faltan las credenciales
+        initializeFirebaseAdmin();
+    } catch (initError) {
+        return res.status(500).json({ error: initError.message });
     }
 
     const { email, newPassword } = req.body;
@@ -29,10 +48,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        // 1. Obtener el usuario de Firebase Auth por su email
         const userRecord = await admin.auth().getUserByEmail(email);
-        
-        // 2. Modificar su clave administrativamente
         await admin.auth().updateUser(userRecord.uid, {
             password: newPassword
         });
