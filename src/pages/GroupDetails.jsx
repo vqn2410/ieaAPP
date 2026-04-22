@@ -64,20 +64,20 @@ const GroupDetails = () => {
 
     const renderRow = (m) => (
         <tr key={m.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <td style={{ padding: '1rem' }}>
-                <div style={{ fontWeight: 500, cursor: 'pointer', color: 'var(--color-primary)' }} onClick={() => navigate(`/miembros/${m.id}`)}>
+            <td data-label="Miembro" style={{ padding: '1rem' }}>
+                <div style={{ fontWeight: 500, cursor: 'pointer', color: 'var(--color-primary)' }} onClick={() => navigate(`/dashboard/miembros/${m.id}`)}>
                    {m.lastName}, {m.firstName}
                 </div>
             </td>
-            <td style={{ padding: '1rem' }}>{m.dni || '-'}</td>
-            <td style={{ padding: '1rem' }}>{m.phone || '-'}</td>
+            <td data-label="DNI" style={{ padding: '1rem' }}>{m.dni || '-'}</td>
+            <td data-label="Contacto" style={{ padding: '1rem' }}>{m.phone || '-'}</td>
         </tr>
     );
 
     return (
         <div className="animate-fade-in">
             <div className="d-flex align-center gap-3 mb-4">
-                <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/grupos')}>Volver</Button>
+                <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/grupos')}>Volver</Button>
                 <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Users size={24} color="var(--color-primary)" />
                     Integrantes de {group.name}
@@ -105,7 +105,7 @@ const GroupDetails = () => {
 
             <Card style={{ padding: 0 }}>
                 <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                    <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                         <thead style={{ backgroundColor: 'var(--color-surface-hover)' }}>
                             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                                 <th style={{ padding: '1rem' }}>Miembro</th>

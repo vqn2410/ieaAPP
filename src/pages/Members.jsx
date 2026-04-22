@@ -210,32 +210,32 @@ const Members = () => {
             </div>
           </div>
           
-          <select className="form-input" style={{ width: 'auto' }} value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
              <option value="">Grupo: Todos</option>
              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
 
-          <select className="form-input" style={{ width: 'auto' }} value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
              <option value="">Estado: Todos</option>
              <option value="Activo">Activo</option>
              <option value="Inactivo">Inactivo</option>
              <option value="Baja">Baja</option>
           </select>
 
-          <select className="form-input" style={{ width: 'auto' }} value={filterBaptism} onChange={(e) => setFilterBaptism(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterBaptism} onChange={(e) => setFilterBaptism(e.target.value)}>
              <option value="">Bautismo: Todos</option>
              <option value="Sí">Bautizado</option>
              <option value="No">No Bautizado</option>
           </select>
 
-          <Button variant="outline" icon={<RefreshCw size={16} />} onClick={loadMembers}>Recargar</Button>
+          <Button variant="outline" style={{ flex: '1 1 150px' }} icon={<RefreshCw size={16} />} onClick={loadMembers}>Recargar</Button>
         </div>
 
         {loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando miembros...</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="data-table">
+            <table className="responsive-table data-table">
               <thead>
                 <tr>
                   <th className="th-cell">Nombre</th>
@@ -255,29 +255,39 @@ const Members = () => {
                 ) : (
                   paginatedMembers.map((member) => (
                     <tr key={member.id} className="table-row-hover">
-                      <td className="td-cell">
-                        <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-                            {member.lastName}, {member.firstName}
+                      <td data-label="Nombre" className="td-cell">
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+                              {member.lastName}, {member.firstName}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                             <span>DNI: {member.dni}</span>
+                             <div className="d-flex gap-1 flex-wrap">
+                               {(Array.isArray(member.role) ? member.role : [member.role || 'Member']).map(r => (
+                                 <Badge key={r} variant="gray">{settings?.roles?.[r] || r}</Badge>
+                               ))}
+                             </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                           <span>DNI: {member.dni}</span>
-                           <div className="d-flex gap-1 flex-wrap">
-                             {(Array.isArray(member.role) ? member.role : [member.role || 'Member']).map(r => (
-                               <Badge key={r} variant="gray">{settings?.roles?.[r] || r}</Badge>
-                             ))}
-                           </div>
+                      </td>
+                      <td data-label="Contacto" className="td-cell">
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.875rem' }}>{member.phone}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</div>
                         </div>
                       </td>
-                      <td className="td-cell">
-                        <div style={{ fontSize: '0.875rem' }}>{member.phone}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</div>
+                      <td data-label="Crecimiento" className="td-cell flex-wrap">
+                        <div style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          {renderGrowthPaths(member.growthPath)}
+                        </div>
                       </td>
-                      <td className="td-cell flex-wrap">
-                        {renderGrowthPaths(member.growthPath)}
+                      <td data-label="Grupo" className="td-cell" style={{ fontSize: '0.875rem' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          {member.group || 'Sin Grupo'}
+                        </div>
                       </td>
-                      <td className="td-cell" style={{ fontSize: '0.875rem' }}>{member.group || 'Sin Grupo'}</td>
-                      <td className="td-cell">
-                        <div className="d-flex gap-2">
+                      <td data-label="Acciones" className="td-cell">
+                        <div className="d-flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <Button variant="outline" size="sm" icon={<FileText size={14} />} onClick={() => navigate(`/dashboard/miembros/${member.id}`)} title="Ver Perfil" />
                           {canAddMember && (
                             <>

@@ -286,7 +286,7 @@ const Groups = () => {
                         )}
                     </div>
                     <div className="d-flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/grupos/${group.id}`)} style={{ color: 'var(--color-primary-light)', borderColor: 'var(--color-primary-light)' }} icon={<Users size={14} />}>Ver Miembros</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/grupos/${group.id}`)} style={{ color: 'var(--color-primary-light)', borderColor: 'var(--color-primary-light)' }} icon={<Users size={14} />}>Ver Miembros</Button>
                         {isAdmin && (
                           <>
                             <Button variant="outline" size="sm" onClick={() => handleEdit(group)} style={{ color: '#2563eb', borderColor: '#2563eb' }} icon={<Edit size={14} />}>Editar</Button>

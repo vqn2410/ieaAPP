@@ -73,3 +73,19 @@
   font-size: 0.75rem;
   letter-spacing: 2px;
 }
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem;
+    max-width: 90%;
+    margin: 0 auto;
+  }
+
+  .login-header {
+    margin-bottom: 2rem;
+  }
+
+  .login-title {
+    font-size: 1.8rem;
+  }
+}
