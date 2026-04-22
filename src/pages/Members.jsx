@@ -149,9 +149,6 @@ const Members = () => {
   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
   const paginatedMembers = filteredMembers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterGroup, filterActive, filterBaptism]);
 
   const uniqueGroups = [...new Set(members.map(m => m.group).filter(Boolean))].sort();
 
@@ -205,24 +202,24 @@ const Members = () => {
                 style={{ width: '100%', paddingLeft: '3rem' }} 
                 placeholder="Buscar por nombre, DNI o grupo..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
           </div>
           
-          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterGroup} onChange={(e) => { setFilterGroup(e.target.value); setCurrentPage(1); }}>
              <option value="">Grupo: Todos</option>
              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
 
-          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterActive} onChange={(e) => { setFilterActive(e.target.value); setCurrentPage(1); }}>
              <option value="">Estado: Todos</option>
              <option value="Activo">Activo</option>
              <option value="Inactivo">Inactivo</option>
              <option value="Baja">Baja</option>
           </select>
 
-          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterBaptism} onChange={(e) => setFilterBaptism(e.target.value)}>
+          <select className="form-input" style={{ flex: '1 1 150px' }} value={filterBaptism} onChange={(e) => { setFilterBaptism(e.target.value); setCurrentPage(1); }}>
              <option value="">Bautismo: Todos</option>
              <option value="Sí">Bautizado</option>
              <option value="No">No Bautizado</option>

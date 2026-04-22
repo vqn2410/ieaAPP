@@ -6,7 +6,7 @@ import GroupForm from '../components/groups/GroupForm';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getGroups, deleteGroup } from '../services/groupService';
-import { getMembers, updateMember } from '../services/memberService';
+import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
 import { Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
@@ -139,6 +139,7 @@ const GrowthGroups = () => {
         } else {
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, isAdmin]);
 
     const handleDeleteGroup = async (id) => {
@@ -392,6 +393,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
                 setAttendanceDate(dates[0]);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedGroupId, selectedGroup?.scheduleDay, holidays]);
 
     useEffect(() => {

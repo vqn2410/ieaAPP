@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Groups = () => {
-  const { userData, hasRole } = useAuth();
+  const { hasRole } = useAuth();
   const isAdmin = hasRole(['Admin', 'Pastor']);
   const navigate = useNavigate();
   
@@ -165,6 +165,7 @@ const Groups = () => {
           setShowModal(false);
           loadGroups();
       } catch (e) {
+          console.error(e);
           alert('Hubo un error');
       } finally {
           setCreating(false);
