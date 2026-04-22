@@ -7,7 +7,6 @@ import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, T
 import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getHolidays, addHoliday, updateHoliday, deleteHoliday, seedArgentineHolidays } from '../services/holidayService';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
 const Settings = () => {
@@ -509,18 +508,33 @@ const Settings = () => {
                                  <Button 
                                     size="sm" 
                                     variant="outline" 
+                                    style={{ color: 'var(--color-primary)' }}
                                     onClick={async () => {
-                                       if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
+                                       if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "123456"?`)) {
                                           try {
-                                             await sendPasswordResetEmail(auth, u.email);
+                                             // Llama a la función Serverless recien creada
+                                             const res = await fetch('/api/resetPassword', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ email: u.email, newPassword: '123456' })
+                                             });
+
+                                             if (!res.ok) {
+                                                const errData = await res.json();
+                                                throw new Error(errData.error || 'Error del servidor Vercel');
+                                             }
+
+                                             // Fuerza que el usuario tenga que cambiar la clave 123456 al entrar
                                              await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: true });
-                                             alert('Correo enviado y bandera de cambio de clave activada.');
+                                             alert('¡Clave restablecida a 123456 con éxito! El usuario deberá cambiarla obligatoriamente en su próximo ingreso.');
                                              loadUsers();
-                                          } catch(e) { alert('Error: ' + e.message); }
+                                          } catch(e) { 
+                                             alert('Error: ' + e.message + '\n\n(Nota: Las funciones /api no corren en Vite nativo. Usa "npx vercel dev" o pruébalo subido a la nube).'); 
+                                          }
                                        }
                                     }}
                                  >
-                                    Reset Clave
+                                    Forzar a 123456
                                  </Button>
                                    <Button 
                                       size="sm" 
