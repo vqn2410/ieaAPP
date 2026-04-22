@@ -6,6 +6,8 @@
   min-height: 100vh;
   font-family: 'Outfit', sans-serif;
   --color-text: #ffffff;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* Navbar */
@@ -363,4 +365,130 @@
 
 .footer-link-col span:not(:first-child) {
   font-weight: 600;
+}
+
+/* ----------------------------------
+   Mobile Responsiveness
+----------------------------------- */
+@media (max-width: 768px) {
+  .home-nav {
+    padding: 1rem 5%;
+    flex-wrap: wrap; /* allow wrapping if logo is big */
+    gap: 1rem;
+  }
+  
+  .home-nav-logo img, .home-nav-logo svg {
+    max-width: 150px;
+    height: auto;
+  }
+  
+  .home-nav-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .hero-slide {
+    padding: 0 5%;
+    align-items: center;
+    background-position: 70% center; /* Adjust background focus */
+  }
+  
+  .hero-content {
+    margin-top: 4rem; /* Spacer for navbar */
+    width: 100%;
+    max-width: 100vw;
+    overflow-wrap: break-word; /* Prevent text overflow */
+  }
+
+  .hero-meta {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+  }
+
+  .hero-title {
+    font-size: clamp(2rem, 9vw, 3rem);
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .hero-btns {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .hero-btn-primary, .hero-btn-outline {
+    width: 100%;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .hero-indicators {
+    bottom: 2rem;
+    left: 5%;
+    right: 5%;
+    justify-content: center;
+  }
+  
+  .indicator-dot {
+    width: 40px;
+  }
+
+  .meet-section {
+    grid-template-columns: 1fr;
+    padding: 80px 5%;
+    gap: 3rem;
+  }
+  
+  .meet-title {
+    font-size: 2rem;
+  }
+  
+  .meet-schedule {
+    padding: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .meet-image {
+    min-height: 250px;
+    object-fit: cover;
+  }
+
+  .meet-badge {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -30px;
+    width: 90%;
+    text-align: center;
+    padding: 1.5rem 1rem;
+  }
+
+  .map-container {
+    height: 300px;
+  }
+
+  .home-footer {
+    padding: 3rem 5%;
+  }
+
+  .footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+
+  .footer-links {
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  
+  .footer-brand h2 {
+    font-size: 1.5rem;
+  }
 }
