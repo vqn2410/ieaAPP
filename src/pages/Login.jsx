@@ -15,55 +15,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const [showReset, setShowReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
-  async function handleSetup() {
-    try {
-      setLoading(true);
-      setError('');
-      // 1. Create Admin User
-      const userCred = await createUserWithEmailAndPassword(auth, 'admin@iglesia.com', 'Cambia2410@');
-      
-      // 2. Set Admin Data
-      await setDoc(doc(db, 'users', userCred.user.uid), {
-        name: 'Administrador Principal',
-        role: 'Admin',
-        email: 'admin@iglesia.com',
-        createdAt: new Date()
-      });
 
-      // 3. Set Global Settings config
-      await setDoc(doc(db, 'settings', 'general'), {
-        theme: { primaryColor: '#1e293b', secondaryColor: '#64748b' },
-        roles: {
-          Admin: 'Administrador', Pastor: 'Pastor', MinistryLeader: 'Líder de ministerio',
-          Member: 'Miembro', Facilitator: 'Facilitador', CoFacilitator: 'Co-facilitador'
-        },
-        modules: { finances: true, news: true, live: true }
-      });
-      
-      // 4. Create one dummy member in members collection
-      await setDoc(doc(db, 'members', 'dummy-member'), {
-        firstName: 'Juan', lastName: 'Pérez', dni: '30123456',
-        phone: '+5491112345678', email: 'juan@ejemplo.com',
-        growthPath: ['Bautizado', 'IETE'], group: 'Cimientos',
-        createdAt: new Date()
-      });
-
-      // Navigate to dashboard automatically
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError('El sistema ya está inicializado. Inicia sesión directamente.');
-      } else {
-        setError('Error al crear la BD: ' + err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -83,6 +40,21 @@ const Login = () => {
     }
   }
 
+  async function handleResetSubmit(e) {
+    e.preventDefault();
+    if (!email) return setError('Ingresa tu correo');
+    try {
+      setLoading(true);
+      setError('');
+      await resetPassword(email);
+      setResetSent(true);
+    } catch (err) {
+      setError('Error al enviar el correo. Verifica que el email sea correcto.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="login-container">
       <header className="login-header">
@@ -94,51 +66,91 @@ const Login = () => {
         
         {error && <div className="alert alert-danger" style={{ fontSize: '0.85rem' }}>{error}</div>}
         
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label login-form-label" htmlFor="email">Correo Electrónico</label>
-            <input 
-              className="form-input"
-              type="email" 
-              id="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@iglesia.com"
-            />
-          </div>
-          
-          <div className="form-group mb-4">
-            <label className="form-label login-form-label" htmlFor="password">Contraseña</label>
-            <input 
-              className="form-input"
-              type="password" 
-              id="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="login-submit-btn"
-            disabled={loading}
-          >
-            {loading ? 'INGRESANDO...' : 'INGRESAR'}
-          </Button>
-
-          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+        {showReset ? (
+          <form onSubmit={handleResetSubmit}>
+             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
+                Ingresa tu correo electrónico y te enviaremos un link para restablecer tu contraseña.
+             </p>
+             {resetSent ? (
+               <div className="alert alert-success">
+                  ¡Correo enviado! Revisa tu bandeja de entrada y sigue el enlace.
+               </div>
+             ) : (
+               <>
+                 <div className="form-group mb-4">
+                    <label className="form-label login-form-label">Correo Electrónico</label>
+                    <input 
+                      className="form-input"
+                      type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tu@email.com"
+                      required
+                    />
+                 </div>
+                 <Button type="submit" className="login-submit-btn" disabled={loading}>
+                    {loading ? 'ENVIANDO...' : 'ENVIAR LINK DE RECUPERACIÓN'}
+                 </Button>
+               </>
+             )}
+             <button 
+               type="button" 
+               className="btn-text" 
+               style={{ width: '100%', marginTop: '1.5rem', color: 'var(--color-primary)' }}
+               onClick={() => { setShowReset(false); setResetSent(false); setError(''); }}
+             >
+                Volver al Inicio de Sesión
+             </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label login-form-label" htmlFor="email">Correo Electrónico</label>
+              <input 
+                className="form-input"
+                type="email" 
+                id="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@iglesia.com"
+              />
+            </div>
+            
+            <div className="form-group">
+              <div className="d-flex justify-between align-center">
+                <label className="form-label login-form-label" htmlFor="password">Contraseña</label>
+              </div>
+              <input 
+                className="form-input"
+                type="password" 
+                id="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            
             <Button 
-              type="button" 
-              variant="outline" 
-              className="login-setup-btn"
+              type="submit" 
+              className="login-submit-btn mb-2"
               disabled={loading}
-              onClick={handleSetup}
+              style={{ marginTop: '1.5rem' }}
             >
-              INICIALIZAR SISTEMA (ADMIN)
+              {loading ? 'INGRESANDO...' : 'INGRESAR'}
             </Button>
-          </div>
-        </form>
+
+            <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+               <button 
+                 type="button" 
+                 className="btn-text"
+                 style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.9rem' }}
+                 onClick={() => setShowReset(true)}
+               >
+                 ¿Problemas para ingresar? Restablecer contraseña
+               </button>
+            </div>
+          </form>
+        )}
       </Card>
       
       <p className="login-footer-text">

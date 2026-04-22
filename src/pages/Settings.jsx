@@ -510,6 +510,24 @@ const Settings = () => {
                                     variant="outline" 
                                     style={{ color: 'var(--color-primary)' }}
                                     onClick={async () => {
+                                       if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
+                                          try {
+                                             const { sendPasswordResetEmail } = await import('firebase/auth');
+                                             await sendPasswordResetEmail(auth, u.email);
+                                             await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: true });
+                                             alert('Correo enviado y bandera de cambio de clave activada.');
+                                             loadUsers();
+                                          } catch(e) { alert('Error: ' + e.message); }
+                                       }
+                                    }}
+                                 >
+                                    Enviar Link
+                                 </Button>
+                                 <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    style={{ color: 'var(--color-primary)' }}
+                                    onClick={async () => {
                                        if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "Cambia2410@"?`)) {
                                           try {
                                              // Llama a la función Serverless recien creada
