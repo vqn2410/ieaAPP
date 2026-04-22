@@ -23,7 +23,7 @@ const Login = () => {
       setLoading(true);
       setError('');
       // 1. Create Admin User
-      const userCred = await createUserWithEmailAndPassword(auth, 'admin@iglesia.com', 'admin1234');
+      const userCred = await createUserWithEmailAndPassword(auth, 'admin@iglesia.com', 'Cambia2410@');
       
       // 2. Set Admin Data
       await setDoc(doc(db, 'users', userCred.user.uid), {
