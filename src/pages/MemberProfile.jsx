@@ -87,7 +87,6 @@ const MemberProfile = () => {
                     email: member.email.toLowerCase().trim(),
                     role: newRoles,
                     isPending: true,
-                    needsPasswordChange: true,
                     memberId: id
                 });
             }

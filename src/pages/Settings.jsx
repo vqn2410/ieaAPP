@@ -466,7 +466,7 @@ const Settings = () => {
                 <div className="d-flex align-center gap-2">
                    <Key size={20} color="var(--color-primary-light)" /> Gestión de Usuarios y Roles
                 </div>
-                <Button size="sm" variant="outline" onClick={handleForceAllPasswordChange}>OBLIGAR CAMBIO DE CLAVE (TODOS)</Button>
+
               </div>
             } className="lg:col-span-2">
               <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
@@ -485,7 +485,6 @@ const Settings = () => {
                            <div style={{ fontWeight: 600 }}>{u.name}</div>
                            <div style={{fontSize:'0.75rem', color:'var(--color-text-muted)'}}>{u.email}</div>
                            {u.isMemberOnly && <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>Solo en BD</span>}
-                           {u.needsPasswordChange && <span className="badge badge-gold" style={{ fontSize: '0.65rem', marginLeft: '0.5rem' }}>Cambio Clave Pend.</span>}
                         </td>
                         <td style={{ padding: '0.75rem 1rem' }}>
                           <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
@@ -514,8 +513,7 @@ const Settings = () => {
                                           try {
                                              const { sendPasswordResetEmail } = await import('firebase/auth');
                                              await sendPasswordResetEmail(auth, u.email);
-                                             await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: true });
-                                             alert('Correo enviado y bandera de cambio de clave activada.');
+                                             alert('Correo enviado correctamente.');
                                              loadUsers();
                                           } catch(e) { alert('Error: ' + e.message); }
                                        }
@@ -542,9 +540,8 @@ const Settings = () => {
                                                 throw new Error(errData.error || 'Error del servidor Vercel');
                                              }
 
-                                             // Fuerza que el usuario tenga que cambiar la clave Cambia2410@ al entrar
-                                             await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: true });
-                                             alert('¡Clave restablecida a Cambia2410@ con éxito! El usuario deberá cambiarla obligatoriamente en su próximo ingreso.');
+                                             // Actualizar sin forzar cambio de clave
+                                             alert('¡Clave restablecida a Cambia2410@ con éxito!');
                                              loadUsers();
                                           } catch(e) { 
                                              alert('Error: ' + e.message + '\n\n(Nota: Las funciones /api no corren en Vite nativo. Usa "npx vercel dev" o pruébalo subido a la nube).'); 
@@ -554,18 +551,7 @@ const Settings = () => {
                                  >
                                     Forzar Cambia2410@
                                  </Button>
-                                   <Button 
-                                      size="sm" 
-                                      variant={u.needsPasswordChange ? 'primary' : 'outline'}
-                                      onClick={async () => {
-                                         try {
-                                            await updateDoc(doc(db, 'users', u.id), { needsPasswordChange: !u.needsPasswordChange });
-                                            loadUsers();
-                                         } catch(e) { alert('Error: ' + e.message); }
-                                      }}
-                                   >
-                                      {u.needsPasswordChange ? 'Quitar Req.' : 'Forzar Cambio'}
-                                   </Button>
+
                                    <Button 
                                       size="sm" 
                                       style={{ backgroundColor: '#ef4444', color: 'white' }}

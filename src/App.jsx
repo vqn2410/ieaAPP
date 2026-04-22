@@ -30,10 +30,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
     needsChange: userData?.needsPasswordChange 
   });
 
-  // Force redirection ONLY if needed and NOT already on the page
-  if (userData?.needsPasswordChange === true && !location.pathname.includes('change-password')) {
-    return <Navigate to="/dashboard/change-password" />;
-  }
+  // Redirection for password change removed as requested
 
   if (requiredRoles && !hasRole(requiredRoles)) {
     return <Navigate to="/dashboard" />;
