@@ -1,0 +1,20 @@
+{
+  "short_name": "IEA App",
+  "name": "Iglesia Extremo Amor App",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/cCc0M30b/500x500.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/cCc0M30b/500x500.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2b305b",
+  "background_color": "#ffffff"
+}
