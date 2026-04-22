@@ -4,12 +4,12 @@ import admin from 'firebase-admin';
 function initializeFirebaseAdmin() {
   if (admin.apps.length > 0) return true;
 
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const projectId = "iea-app-73f5f"; // Hardcoded to simplify user setup
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (!projectId || !clientEmail || !privateKey) {
-      throw new Error(`Faltan Variables de Entorno en Vercel. ProjectId: ${!!projectId}, ClientEmail: ${!!clientEmail}, PrivateKey: ${!!privateKey}`);
+  if (!clientEmail || !privateKey) {
+      throw new Error(`Faltan Variables de Entorno en Vercel. ClientEmail: ${!!clientEmail}, PrivateKey: ${!!privateKey}`);
   }
 
   try {
