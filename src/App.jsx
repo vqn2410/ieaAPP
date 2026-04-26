@@ -15,6 +15,8 @@ import Settings from './pages/Settings';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
+import SessionExpired from './pages/SessionExpired';
+import InactivityTimer from './components/common/InactivityTimer';
 import { useAuth } from './context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
@@ -42,61 +44,65 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="miembros" element={<Members />} />
-          <Route path="miembros/:id" element={<MemberProfile />} />
-          <Route path="eventos" element={<Events />} />
-          <Route path="noticias" element={<News />} />
-          <Route path="transmisiones" element={<Live />} />
+      <InactivityTimer>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/session-expired" element={<SessionExpired />} />
+          
           <Route 
-            path="finanzas" 
+            path="/dashboard" 
             element={
-              <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                <Finances />
+              <ProtectedRoute>
+                <MainLayout />
               </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="grupos" 
-            element={
-              <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                <Groups />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="grupos/:id" 
-            element={
-              <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                <GroupDetails />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="crecimiento" element={<GrowthGroups />} />
-          <Route path="configuracion" 
-            element={
-              <ProtectedRoute requiredRoles={['Admin']}>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="change-password" element={<ChangePassword />} />
-        </Route>
-      </Routes>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="miembros" element={<Members />} />
+            <Route path="miembros/:id" element={<MemberProfile />} />
+            <Route path="eventos" element={<Events />} />
+            <Route path="noticias" element={<News />} />
+            <Route path="transmisiones" element={<Live />} />
+            <Route 
+              path="finanzas" 
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                  <Finances />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="grupos" 
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                  <Groups />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="grupos/:id" 
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                  <GroupDetails />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="crecimiento" element={<GrowthGroups />} />
+            <Route path="configuracion" 
+              element={
+                <ProtectedRoute requiredRoles={['Admin']}>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="change-password" element={<ChangePassword />} />
+          </Route>
+        </Routes>
+      </InactivityTimer>
     </Router>
   );
 }
 
 export default App;
+
