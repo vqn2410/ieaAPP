@@ -19,8 +19,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [showReset, setShowReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-
-
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -56,106 +55,137 @@ const Login = () => {
   }
 
   return (
-    <div className="login-container">
-      <header className="login-header">
-        <Logo size="large" variant="full" />
-      </header>
-
-      <Card className="animate-fade-in login-card">
-        <h2 className="login-card-title">INICIAR SESIÓN</h2>
-        
-        {error && <div className="alert alert-danger" style={{ fontSize: '0.85rem' }}>{error}</div>}
-        
-        {showReset ? (
-          <form onSubmit={handleResetSubmit}>
-             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
-                Ingresa tu correo electrónico y te enviaremos un link para restablecer tu contraseña.
-             </p>
-             {resetSent ? (
-               <div className="alert alert-success">
-                  ¡Correo enviado! Revisa tu bandeja de entrada y sigue el enlace.
-               </div>
-             ) : (
-               <>
-                 <div className="form-group mb-4">
-                    <label className="form-label login-form-label">Correo Electrónico</label>
-                    <input 
-                      className="form-input"
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="tu@email.com"
-                      required
-                    />
-                 </div>
-                 <Button type="submit" className="login-submit-btn" disabled={loading}>
-                    {loading ? 'ENVIANDO...' : 'ENVIAR LINK DE RECUPERACIÓN'}
-                 </Button>
-               </>
-             )}
-             <button 
-               type="button" 
-               className="btn-text" 
-               style={{ width: '100%', marginTop: '1.5rem', color: 'var(--color-primary)' }}
-               onClick={() => { setShowReset(false); setResetSent(false); setError(''); }}
-             >
-                Volver al Inicio de Sesión
-             </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label login-form-label" htmlFor="email">Correo Electrónico</label>
-              <input 
-                className="form-input"
-                type="email" 
-                id="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@iglesia.com"
-              />
+    <div className="login-page">
+      <div className="login-left">
+        <div className="login-left-content">
+          <div className="info-card animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <div className="info-card-text">
+              <h4>Bienvenido a tu Portal</h4>
+              <p>Accede a toda la información y herramientas que necesitas en un solo lugar.</p>
             </div>
-            
-            <div className="form-group">
-              <div className="d-flex justify-between align-center">
-                <label className="form-label login-form-label" htmlFor="password">Contraseña</label>
+          </div>
+        </div>
+      </div>
+
+      <div className="login-right">
+        <div className="login-form-container">
+          <div className="login-logo-wrapper">
+            <Logo size="large" variant="full" showText={false} />
+          </div>
+
+          {!showReset && (
+            <div className="login-greeting animate-fade-in">
+              <h2>¡Hola de nuevo! 👋</h2>
+              <p>Bienvenido al Portal IEA</p>
+            </div>
+          )}
+
+          {error && <div className="alert alert-danger mb-4" style={{ borderRadius: '12px' }}>{error}</div>}
+
+          {showReset ? (
+            <div className="animate-fade-in">
+              <div className="login-greeting">
+                <h2>Recuperar Clave</h2>
+                <p onClick={() => { setShowReset(false); setResetSent(false); setError(''); }} style={{ cursor: 'pointer', color: 'var(--color-primary)' }}>
+                  Volver al inicio de sesión
+                </p>
               </div>
-              <input 
-                className="form-input"
-                type="password" 
-                id="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="login-submit-btn mb-2"
-              disabled={loading}
-              style={{ marginTop: '1.5rem' }}
-            >
-              {loading ? 'INGRESANDO...' : 'INGRESAR'}
-            </Button>
 
-            <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
-               <button 
-                 type="button" 
-                 className="btn-text"
-                 style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.9rem' }}
-                 onClick={() => setShowReset(true)}
-               >
-                 ¿Problemas para ingresar? Restablecer contraseña
-               </button>
+              <form onSubmit={handleResetSubmit}>
+                {resetSent ? (
+                  <div className="alert alert-success" style={{ borderRadius: '12px' }}>
+                    ¡Correo enviado! Revisa tu bandeja de entrada para continuar.
+                  </div>
+                ) : (
+                  <>
+                    <div className="login-field">
+                      <label>Correo Electrónico</label>
+                      <div className="login-input-wrapper">
+                        <input 
+                          className="login-input"
+                          type="email" 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="tu@email.com"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" className="login-btn-primary" disabled={loading}>
+                      {loading ? 'ENVIANDO...' : 'ENVIAR INSTRUCCIONES'}
+                    </button>
+                  </>
+                )}
+              </form>
             </div>
-          </form>
-        )}
-      </Card>
-      
-      <p className="login-footer-text">
-        IGLESIA EXTREMO AMOR © 2026
-      </p>
+          ) : (
+            <form onSubmit={handleSubmit} className="animate-fade-in">
+              <div className="login-field">
+                <label htmlFor="email">Usuario o Email</label>
+                <div className="login-input-wrapper">
+                  <input 
+                    className="login-input"
+                    type="email" 
+                    id="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ejemplo@iglesia.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="login-field">
+                <label htmlFor="password">Contraseña</label>
+                <div className="login-input-wrapper">
+                  <input 
+                    className="login-input"
+                    type={showPassword ? "text" : "password"} 
+                    id="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button 
+                    type="button" 
+                    className="input-icon-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <i className={showPassword ? "ri-eye-off-line" : "ri-eye-line"}></i>
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                type="submit" 
+                className="login-btn-primary"
+                disabled={loading}
+              >
+                {loading ? 'INGRESANDO...' : 'INGRESAR'}
+              </button>
+
+              <button 
+                type="button" 
+                className="login-recover-link"
+                onClick={() => setShowReset(true)}
+              >
+                ¿Olvidaste tu usuario o clave?
+              </button>
+            </form>
+          )}
+        </div>
+
+        <div className="social-links">
+          <a href="#" className="social-icon"><i className="ri-instagram-line"></i></a>
+          <a href="#" className="social-icon"><i className="ri-facebook-box-line"></i></a>
+          <a href="#" className="social-icon"><i className="ri-twitter-x-line"></i></a>
+        </div>
+
+        <div className="login-footer">
+          <p className="login-copy">IEA PORTAL © 2026</p>
+        </div>
+      </div>
     </div>
   );
 };
