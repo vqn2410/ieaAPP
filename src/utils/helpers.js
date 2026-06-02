@@ -33,6 +33,9 @@ export const migrateGroupName = (groupName) => {
   if (groupName.includes('4. Ortiz')) return 'ORTIZ-HARDOY (MARTES)';
   if (groupName.includes('3. T')) return 'TEVEZ-DIAZ';
   if (groupName.includes('10. Sanchez')) return 'SANCHEZ';
+  if (groupName.includes('2. Jara, Gomez')) return 'JARA-GÓMEZ';
+  if (groupName.includes('9. Fernando, Díaz') || groupName.includes('9. Fernando, Diaz')) return 'DIAZ-DIAZ (VIERNES)';
+  if (groupName.includes('6. Rivas, Coronel')) return 'RIVAS-CORONEL (MATRIMONIOS)';
   
   return groupName;
 };

@@ -66,6 +66,30 @@ const Members = () => {
                updated = true;
            }
            
+           const normalizedFullName = normalizeString(`${m.lastName}, ${m.firstName}`).toLowerCase().trim().replace(/\s+/g, ' ');
+           const peopleToOrtiz = [
+               'diaz, micaela trinidad',
+               'furia, giselle',
+               'furia, jorge alberto',
+               'gomez, rocio',
+               'larralde, ines',
+               'pereira, marcia abigail',
+               'perez, jesus sebastian',
+               'pino, daniela',
+               'quaresima, veronica alicia',
+               'sanchez, franco ezequiel',
+               'sierra, karen aez',
+               'sierra, karen anez',
+               'sierra, karen aez',
+               'tevez, misael jorge',
+               'wilde, yeison'
+           ];
+           
+           if (peopleToOrtiz.includes(normalizedFullName) && m.group !== 'ORTIZ-HARDOY (MARTES)') {
+               m.group = 'ORTIZ-HARDOY (MARTES)';
+               updated = true;
+           }
+           
            if (updated) {
                await updateMember(m.id, { group: m.group, lastName: m.lastName, firstName: m.firstName });
                madeChanges = true;

@@ -4,6 +4,7 @@ import Button from '../common/Button';
 import Card from '../common/Card';
 import Modal from '../common/Modal';
 import { createMember, getMembers, updateMember } from '../../services/memberService';
+import { migrateGroupName } from '../../utils/helpers';
 import { collection, addDoc } from 'firebase/firestore'; 
 import { db } from '../../services/firebase';
 
@@ -126,7 +127,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
             const dni = dniKey ? row[dniKey] : '';
             const phone = phoneKey ? row[phoneKey] : '';
             const email = emailKey ? row[emailKey] : '';
-            const group = groupKey ? row[groupKey] : '';
+            const group = groupKey ? migrateGroupName(row[groupKey]) : '';
             const address = addressKey ? row[addressKey] : '';
 
             if (!firstName && !lastName) {
