@@ -120,6 +120,26 @@
   transition: var(--transition);
 }
 
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  margin-bottom: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.theme-toggle:hover {
+  color: var(--color-text);
+}
+
 .btn-logout:hover {
   background-color: #ffe4e6;
   transform: translateY(-2px);
@@ -188,6 +208,20 @@
   font-size: 0.75rem;
   border: none;
   cursor: pointer;
+}
+
+.mobile-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 0.5rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
 }
 
 .mobile-header h2 {

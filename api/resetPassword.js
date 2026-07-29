@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW = 60_000;
+const FORCED_PASSWORD = '123456';
 
 function checkRateLimit(key) {
   const now = Date.now();
@@ -85,23 +86,19 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Solo administradores pueden resetear contraseñas.' });
   }
 
-  const { email, newPassword } = req.body;
+  const { email } = req.body;
 
-  if (!email || !newPassword) {
-    return res.status(400).json({ error: 'Email y nueva contraseña son obligatorios.' });
-  }
-
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+  if (!email) {
+    return res.status(400).json({ error: 'El email es obligatorio.' });
   }
 
   try {
     const userRecord = await admin.auth().getUserByEmail(email);
     await admin.auth().updateUser(userRecord.uid, {
-      password: newPassword,
+      password: FORCED_PASSWORD,
     });
 
-    res.status(200).json({ success: true, message: 'Contraseña actualizada con éxito.' });
+    res.status(200).json({ success: true, message: 'Contraseña restablecida a 123456.' });
   } catch (error) {
     console.error('Error reseteando contraseña:', error);
     res.status(500).json({ error: error.message || 'Error del servidor' });

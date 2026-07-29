@@ -19,7 +19,9 @@ import {
   ClipboardList,
    UserPlus,
    FileText,
-   BookOpen
+   BookOpen,
+   Moon,
+   Sun
 } from 'lucide-react';
 import Logo from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -32,6 +34,7 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('portal-iea-theme') === 'dark');
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -43,6 +46,11 @@ const MainLayout = () => {
     document.body.style.overflow = showMobileMenu ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [showMobileMenu]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
+    localStorage.setItem('portal-iea-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const handleLogout = async () => {
     try {
@@ -107,6 +115,10 @@ const MainLayout = () => {
               <div className="badge badge-gray">{settings?.roles?.[userData?.role] || userData?.role}</div>
             </div>
           </div>
+          <button className="theme-toggle" onClick={() => setIsDarkMode(current => !current)}>
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            <span>{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
+          </button>
           <button onClick={handleLogout} className="btn-logout">
             <LogOut size={18} />
             <span>Cerrar Sesión</span>
@@ -131,8 +143,11 @@ const MainLayout = () => {
               <Logo size="small" />
            </div>
 
-            {/* Right side: User Profile */}
-            <div className="mobile-header-right">
+             {/* Right side: User Profile */}
+             <div className="mobile-header-right">
+               <button className="mobile-theme-toggle" onClick={() => setIsDarkMode(current => !current)} aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}>
+                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+               </button>
                <button className="mobile-user-avatar" onClick={() => navigate('/dashboard/mi-perfil')} aria-label="Ir a mi perfil">
                  {userData?.name?.charAt(0) || 'U'}
                </button>

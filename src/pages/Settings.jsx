@@ -493,7 +493,7 @@ const Settings = () => {
                                     variant="outline" 
                                     style={{ color: 'var(--color-primary)' }}
                                     onClick={async () => {
-                                       if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "Cambia2410@"?`)) {
+                                        if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "123456"?`)) {
                                           try {
                                              // Llama a la función Serverless recien creada
                                               const token = await currentUser.getIdToken();
@@ -503,7 +503,7 @@ const Settings = () => {
                                                     'Content-Type': 'application/json',
                                                     'Authorization': `Bearer ${token}`
                                                  },
-                                                 body: JSON.stringify({ email: u.email, newPassword: 'Cambia2410@' })
+                                                  body: JSON.stringify({ email: u.email })
                                              });
 
                                              if (!res.ok) {
@@ -511,8 +511,7 @@ const Settings = () => {
                                                 throw new Error(errData.error || 'Error del servidor Vercel');
                                              }
 
-                                             // Actualizar sin forzar cambio de clave
-                                             alert('¡Clave restablecida a Cambia2410@ con éxito!');
+                                              alert('¡Clave restablecida a 123456 con éxito!');
                                              loadUsers();
                                           } catch(e) { 
                                              alert('Error: ' + e.message + '\n\n(Nota: Las funciones /api no corren en Vite nativo. Usa "npx vercel dev" o pruébalo subido a la nube).'); 
@@ -520,7 +519,7 @@ const Settings = () => {
                                        }
                                     }}
                                  >
-                                    Forzar Cambia2410@
+                                     Forzar 123456
                                  </Button>
 
                                    <Button 
