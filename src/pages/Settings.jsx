@@ -462,7 +462,7 @@ const Settings = () => {
                           </div>
                           <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             {Object.keys(formData.roles).map(r => (
-                               <label key={r} style={{fontSize:'0.65rem', display:'flex', alignItems:'center', gap:'0.2rem', background: '#f8fafc', padding: '2px 4px', borderRadius: '4px'}}>
+                               <label key={r} style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.2rem', background: 'var(--color-surface-hover)', color: 'var(--color-text)', padding: '2px 4px', borderRadius: '4px' }}>
                                  <input type="checkbox" checked={(Array.isArray(u.role) ? u.role : [u.role || 'Member']).includes(r)} onChange={() => handleToggleRole(u.id, u.role, r)} /> {formData.roles[r]}
                                </label>
                             ))}
