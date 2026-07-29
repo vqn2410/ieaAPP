@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import MainLayout from './components/layout/MainLayout';
 import InactivityTimer from './components/common/InactivityTimer';
@@ -21,24 +21,19 @@ const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const FollowUps = lazy(() => import('./pages/FollowUps'));
+const FriendshipClasses = lazy(() => import('./pages/FriendshipClasses'));
 
 const Visitors = lazy(() => import('./pages/Visitors'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const SessionExpired = lazy(() => import('./pages/SessionExpired'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
-  const { currentUser, loading, userData, hasRole } = useAuth();
-  const location = useLocation();
+  const { currentUser, loading, hasRole } = useAuth();
 
   if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
   
   if (!currentUser) return <Navigate to="/login" />;
   
-  console.log('ProtectedRoute Check:', { 
-    path: location.pathname, 
-    needsChange: userData?.needsPasswordChange 
-  });
-
   // Redirection for password change removed as requested
 
   if (requiredRoles && !hasRole(requiredRoles)) {
@@ -120,6 +115,7 @@ function App() {
             />
             <Route path="cambio-clave" element={<ChangePassword />} />
             <Route path="seguimientos" element={<FollowUps />} />
+            <Route path="clases" element={<FriendshipClasses />} />
             <Route path="visitantes" element={<Visitors />} />
             <Route path="mi-perfil" element={<MemberPortal />} />
             <Route path="reportes" element={<Reports />} />
@@ -133,4 +129,3 @@ function App() {
 
 const Loading = () => <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
 export default App;
-

@@ -17,8 +17,9 @@ import {
   DollarSign,
   Activity,
   ClipboardList,
-  UserPlus,
-  FileText
+   UserPlus,
+   FileText,
+   BookOpen
 } from 'lucide-react';
 import Logo from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +59,7 @@ const MainLayout = () => {
     { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'] },
     { name: 'Crecimiento', path: '/dashboard/crecimiento', icon: <Activity size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
+    { name: 'Clases', path: '/dashboard/clases', icon: <BookOpen size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Eventos', path: '/dashboard/eventos', icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Finanzas', path: '/dashboard/finanzas', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'] },
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },

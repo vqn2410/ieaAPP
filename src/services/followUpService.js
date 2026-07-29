@@ -36,11 +36,13 @@ export const getPendingFollowUps = async (limitTo = 10) => {
   try {
     const q = query(
       collection(db, COLLECTION_NAME),
-      where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc')
+      where('status', '==', 'pending')
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, limitTo);
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      .slice(0, limitTo);
   } catch (e) {
     console.error('Error fetching pending follow-ups', e);
     return [];
