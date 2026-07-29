@@ -130,6 +130,7 @@
   position: relative;
   aspect-ratio: 16 / 9;
   background: var(--color-bg);
+  overflow: hidden;
 }
 
 .dash-announcement-image,
@@ -141,7 +142,19 @@
 .dash-announcement-image {
   display: block;
   object-fit: cover;
-  animation: dash-fade-in 0.25s ease both;
+  animation: dash-announcement-fade 0.55s ease both;
+}
+
+@keyframes dash-announcement-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .dash-announcement-fallback {
@@ -174,6 +187,11 @@
   color: #fff;
   cursor: pointer;
   transform: translateY(-50%);
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.dash-announcement-control:hover {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .dash-announcement-prev { left: 0.75rem; }
@@ -194,12 +212,22 @@
   border-radius: 50%;
   background: var(--color-border);
   cursor: pointer;
+  transition: width 0.25s ease, background-color 0.25s ease;
 }
 
 .dash-announcement-dot.active {
   width: 18px;
   border-radius: 4px;
   background: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-announcement-image,
+  .dash-announcement-control,
+  .dash-announcement-dot {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* Grid layout */

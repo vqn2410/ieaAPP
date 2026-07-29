@@ -16,13 +16,13 @@ import './Dashboard.css';
 
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const announcements = [
-  { title: 'Reunión de oración', image: '/anuncios/ORACIO%CC%81N.jpg' },
+  { title: 'Reunión de oración', image: '/anuncios/ORACI%C3%93N.jpg' },
   { title: 'Generosidad', image: '/anuncios/OFRENDA.jpg' },
   { title: 'Merendero', image: '/anuncios/MERENDERO.jpg' },
   { title: 'La Tribu adolescentes', image: '/anuncios/LA-TRIBU.jpg' },
   { title: 'I.E.T.E.', image: '/anuncios/iete.jpg' },
   { title: 'Grupos de amistad', image: '/anuncios/GRUPOS-DE-AMISTAD.jpg' },
-  { title: 'Cena navideña: colaboración', image: '/anuncios/DONACIONES-CENA-NAVIDEN%CC%83A.jpg' },
+  { title: 'Cena navideña: colaboración', image: '/anuncios/DONACIONES-CENA-NAVIDE%C3%91A.jpg' },
 ];
 
 const StatWidget = ({ title, value, icon: Icon, to, loading, subtitle }) => {
