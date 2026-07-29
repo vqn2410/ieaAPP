@@ -23,6 +23,10 @@
 .logo-black { filter: brightness(0); }
 .logo-white { filter: brightness(0) invert(1); }
 
+:root[data-theme='dark'] .logo-black {
+  filter: brightness(0) invert(1);
+}
+
 .logo-text-container {
   display: flex;
   flex-direction: column;
