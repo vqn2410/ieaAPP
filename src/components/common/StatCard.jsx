@@ -2,7 +2,8 @@ import React from 'react';
 import Card from './Card';
 import './common.css';
 
-const StatCard = ({ title, value, icon: Icon, iconColor = 'var(--color-primary)', loading = false, className = '' }) => {
+const StatCard = ({ title, value, icon: IconProp, iconColor = 'var(--color-primary)', loading = false, className = '' }) => {
+  const ICON = IconProp;
   return (
     <Card className={`d-flex align-center gap-3 interactive-list-item ${className}`}>
       <div 
@@ -12,7 +13,7 @@ const StatCard = ({ title, value, icon: Icon, iconColor = 'var(--color-primary)'
           color: iconColor
         }}
       >
-        <Icon size={24} />
+        {ICON && <ICON size={24} />}
       </div>
       <div>
         {loading ? (

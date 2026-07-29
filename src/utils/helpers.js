@@ -1,5 +1,5 @@
 /**
- * Helper functions for IEA App
+ * Helper functions for Portal IEA
  */
 
 /**
@@ -45,10 +45,26 @@ export const migrateGroupName = (groupName) => {
  */
 export const formatDate = (dateStr) => {
   if (!dateStr) return 'Sin fecha';
-  // Add T12:00:00 to avoid timezone offset issues in date conversion
   return new Date(dateStr + "T12:00:00").toLocaleDateString('es-AR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long'
   });
+};
+
+export const getArray = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.trim() !== '') return val.split(',').map(s => s.trim());
+  return [];
+};
+
+export const isBaptised = (member) => {
+  const baptismPathStatus = normalizeString(member?.growthPath?.Bautismo?.status).trim().toLowerCase();
+  if (['realizado', 'completo', 'completado'].includes(baptismPathStatus)) return true;
+
+  const value = member?.extraData?.baptism ?? member?.baptism ?? member?.bautismo;
+  if (value === true || value === 1) return true;
+  return ['si', 'yes', 'true', '1', 'bautizado', 'bautizada'].includes(
+    normalizeString(value).trim().toLowerCase()
+  );
 };

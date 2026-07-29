@@ -1,0 +1,243 @@
+.visitors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.visitors-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.visitors-filters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.visitors-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.visitors-search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  display: flex;
+}
+
+.visitors-search-input {
+  width: 100%;
+  padding-left: 2.75rem;
+}
+
+.visitors-table-wrap {
+  overflow-x: auto;
+}
+
+.visitors-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.visitors-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.visitors-table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.visitors-row-converted {
+  opacity: 0.6;
+}
+
+.visitors-name {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.visitors-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.visitors-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.8125rem;
+}
+
+.visitors-phone {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.visitors-notes-cell {
+  max-width: 200px;
+}
+
+.visitors-notes {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.visitors-date {
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.visitors-badge-converted {
+  font-size: 0.6875rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.visitors-badge-pending {
+  font-size: 0.6875rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.visitors-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.visitors-action-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.visitors-action-btn:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.visitors-action-delete:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  .visitors-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .visitors-header .btn,
+  .visitors-filters > select {
+    width: 100%;
+  }
+
+  .visitors-filters > select {
+    flex: 1 1 100% !important;
+  }
+
+  .visitors-search-wrap {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .visitors-table-wrap {
+    overflow: visible;
+  }
+
+  .visitors-table,
+  .visitors-table tbody,
+  .visitors-table tr {
+    display: block;
+  }
+
+  .visitors-table thead {
+    display: none;
+  }
+
+  .visitors-table tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .visitors-table tr:last-child {
+    border-bottom: none;
+  }
+
+  .visitors-table td {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    border: none;
+  }
+
+  .visitors-table td::before {
+    content: attr(data-label);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .visitors-notes-cell {
+    max-width: none;
+  }
+
+  .visitors-notes {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

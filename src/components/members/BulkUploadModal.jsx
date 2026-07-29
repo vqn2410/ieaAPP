@@ -9,7 +9,6 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 
 const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
-  const [file, setFile] = useState(null);
   const [dataPreview, setDataPreview] = useState([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -28,7 +27,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "plantilla_miembros_iea.csv");
+    link.setAttribute("download", "plantilla_miembros.csv");
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -60,7 +59,6 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-       setFile(selectedFile);
        const reader = new FileReader();
        reader.onload = (event) => {
           const content = event.target.result;
@@ -197,7 +195,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
                 details: `Importados: ${addedCount}, Actualizados: ${updatedCount}`,
                 timestamp: new Date()
             });
-        } catch(e) {} // fail silently for logs
+        } catch { /* fail silently for system_logs */ }
 
         addLogMessage(`Proceso finalizado. Creados: ${addedCount} | Actualizados: ${updatedCount} | Omitidos: ${errorCount}`, 'success');
         
@@ -213,7 +211,6 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleReset = () => {
-      setFile(null);
       setDataPreview([]);
       setLogs([]);
       setStage('upload');
@@ -238,6 +235,10 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
                     <code style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', wordWrap: 'break-word', padding: '0.5rem', backgroundColor: 'var(--color-bg)', borderRadius: '4px' }}>
                         {EXPECTED_COLUMNS.join(' ; ')}
                     </code>
+                </div>
+
+                <div className="alert alert-warning" style={{ fontSize: '0.8rem', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fff8e1', border: '1px solid #ffe082', borderRadius: '8px', color: '#6d5200' }}>
+                    <strong>⚠️ Datos personales:</strong> Los datos importados quedan registrados en el historial del miembro. Revisa periódicamente la información almacenada y elimina los datos sensibles que ya no sean necesarios conforme a la política de retención de la iglesia.
                 </div>
 
                 <div 

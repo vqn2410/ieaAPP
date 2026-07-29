@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import { SkeletonCard } from '../components/common/Skeleton';
 import { getGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 
@@ -27,7 +28,7 @@ const GroupDetails = () => {
         loadData();
     }, [id]);
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando información del grupo...</div>;
+    if (loading) return <div style={{ padding: '2rem' }}><SkeletonCard /></div>;
     if (!group) return <div style={{ padding: '2rem', textAlign: 'center' }}>Grupo no encontrado.</div>;
 
     const getArray = (val) => {

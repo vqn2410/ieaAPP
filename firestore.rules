@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función auxiliar: verifica si el usuario está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Función auxiliar: obtiene un campo del documento del usuario en Firestore
+    function getUserField(field) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data[field];
+    }
+
+    // Función auxiliar: verifica si el usuario tiene un rol específico
+    function hasRole(role) {
+      return isAuth() && (getUserField('role')).hasAny([role]);
+    }
+
+    function hasAnyRole(roles) {
+      return isAuth() && (getUserField('role')).hasAny(roles);
+    }
+
+    // === Colección: users ===
+    // Cada usuario solo puede leer su propio documento
+    // Los admins pueden leer/escribir cualquier documento de usuario
+    match /users/{userId} {
+      allow read: if isAuth() && (request.auth.uid == userId || hasRole('Admin'));
+      allow create: if isAuth() && request.auth.uid == userId;
+      allow update: if isAuth() && (request.auth.uid == userId || hasRole('Admin'));
+      allow delete: if isAuth() && hasRole('Admin');
+    }
+
+    // === Colección: members ===
+    // Solo usuarios autenticados pueden leer
+    // Solo admins y pastores pueden escribir
+    match /members/{memberId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: events ===
+    match /events/{eventId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: attendance ===
+    match /attendance/{recordId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: groups ===
+    match /groups/{groupId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: finances ===
+    match /finances/{docId} {
+      allow read: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: news ===
+    match /news/{newsId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: settings ===
+    match /settings/{settingId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && hasRole('Admin');
+    }
+
+    // === Colección: growthGroups ===
+    match /growthGroups/{docId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: holidays ===
+    match /holidays/{holidayId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && hasRole('Admin');
+    }
+
+    // === Colección: absenceReasons ===
+    match /absenceReasons/{reasonId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && hasRole('Admin');
+    }
+
+    // === Denegar todo lo demás ===
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

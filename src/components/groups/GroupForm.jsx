@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Button from '../common/Button';
-import { getMembers, updateMember } from '../../services/memberService';
 import { createGroup, updateGroup } from '../../services/groupService';
+import { updateMember } from '../../services/memberService';
 
 const GroupForm = ({ initialData, onSuccess, membersList }) => {
     const [groupName, setGroupName] = useState(initialData?.name || '');
@@ -12,11 +12,6 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
     const [coFacilitators, setCoFacilitators] = useState(Array.isArray(initialData?.coFacilitators) ? initialData.coFacilitators : (initialData?.coFacilitators ? [initialData.coFacilitators] : []));
     const [saving, setSaving] = useState(false);
 
-    const getArray = (val) => {
-        if(Array.isArray(val)) return val;
-        if(typeof val === 'string' && val.trim() !== '') return val.split(',').map(s=>s.trim());
-        return [];
-    };
 
     const resolveMemberName = (idOrName) => {
         if(!idOrName) return '';

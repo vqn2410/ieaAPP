@@ -43,7 +43,7 @@ async function bulkImport() {
         // 2. Crear el usuario en Authentication
         const userRecord = await auth.createUser({
           email: member.email,
-          password: '123456', // Clave solicitada
+          password: process.env.DEFAULT_USER_PASSWORD || 'Cambia2410@',
           displayName: member.displayName,
         });
 

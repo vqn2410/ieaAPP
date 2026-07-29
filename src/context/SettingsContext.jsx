@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const SettingsContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSettings() {
   return useContext(SettingsContext);
 }
@@ -27,6 +28,14 @@ export function SettingsProvider({ children }) {
       news: true,
       live: true
     },
+    followUpTypes: [
+      { id: 'note', label: 'Nota' },
+      { id: 'contact', label: 'Contacto' },
+      { id: 'visit', label: 'Visita' },
+      { id: 'call', label: 'Llamada' },
+      { id: 'email', label: 'Email' },
+      { id: 'other', label: 'Otro' }
+    ],
     absenceReasons: [
       'Salud',
       'Laboral',

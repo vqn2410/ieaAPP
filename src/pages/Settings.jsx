@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2 } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { SkeletonCard } from '../components/common/Skeleton';
+import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2, ClipboardList } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../services/firebase';
-import { getHolidays, addHoliday, updateHoliday, deleteHoliday, seedArgentineHolidays } from '../services/holidayService';
+import { getHolidays, addHoliday, deleteHoliday } from '../services/holidayService';
 import { auth } from '../services/firebase';
 
 const Settings = () => {
   const { currentUser, userData } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [formData, setFormData] = useState(settings);
+  const reasonInputRef = useRef(null);
+  const holidayDateRef = useRef(null);
+  const holidayDescRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [appUsers, setAppUsers] = useState([]);
 
@@ -26,8 +31,6 @@ const Settings = () => {
   
   // Holidays state
   const [holidays, setHolidays] = useState([]);
-  const [loadingHolidays, setLoadingHolidays] = useState(true);
-  const [newHoliday, setNewHoliday] = useState({ date: '', description: '' });
 
   const loadUsers = async () => {
      try {
@@ -82,10 +85,8 @@ const Settings = () => {
   };
 
   const loadHolidays = async () => {
-      setLoadingHolidays(true);
       const data = await getHolidays();
       setHolidays(data);
-      setLoadingHolidays(false);
   };
 
   // Sync state when context loads initially
@@ -137,7 +138,7 @@ const Settings = () => {
     try {
       await updateSettings(formData);
       alert('Configuración guardada correctamente.');
-    } catch(e) {
+    } catch {
       alert('Error al guardar la configuración.');
     } finally {
       setSaving(false);
@@ -173,25 +174,6 @@ const Settings = () => {
      }
   };
 
-  const handleForceAllPasswordChange = async () => {
-     if(!window.confirm("¿Seguro que deseas obligar a TODOS los usuarios registrados a cambiar su clave en su próximo ingreso?")) return;
-     setSaving(true);
-     try {
-       const userSnap = await getDocs(collection(db, 'users'));
-       for (const d of userSnap.docs) {
-          if (!d.id.startsWith('pre-')) {
-             await updateDoc(doc(db, 'users', d.id), { needsPasswordChange: true });
-          }
-       }
-       alert("Operación completada.");
-       loadUsers();
-     } catch(e) {
-       alert("Error: " + e.message);
-     } finally {
-       setSaving(false);
-     }
-  };
-
   const handleDeleteUser = async (userId, userEmail) => {
     if (userId === currentUser.uid) {
       return alert('No puedes eliminar tu propio usuario administrador.');
@@ -207,7 +189,6 @@ const Settings = () => {
       // Note: we can't delete from auth with client SDK, but deleting from firestore kills their access
       // because ProtectedRoute and AuthContext won't find the user record/roles.
       
-      const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(doc(db, 'users', docId));
       
       alert('Registro eliminado correctamente.');
@@ -219,13 +200,12 @@ const Settings = () => {
   };
 
   // Holiday handlers
-  const handleAddHoliday = async () => {
-      if (!newHoliday.date || !newHoliday.description) return alert('Completa fecha y descripción');
+  const handleAddHoliday = async (date, description) => {
+      if (!date || !description) return alert('Completa fecha y descripción');
       try {
-          await addHoliday(newHoliday);
-          setNewHoliday({ date: '', description: '' });
+          await addHoliday({ date, description });
           loadHolidays();
-      } catch (e) {
+      } catch {
           alert('Error agregando feriado');
       }
   };
@@ -235,26 +215,14 @@ const Settings = () => {
       try {
           await deleteHoliday(id);
           loadHolidays();
-      } catch (e) {
+      } catch {
           alert('Error eliminando feriado');
-      }
-  };
-
-  const handleSeedHolidays = async () => {
-      if (!window.confirm('¿Cargar feriados nacionales argentinos por defecto?')) return;
-      setLoadingHolidays(true);
-      try {
-          await seedArgentineHolidays();
-          loadHolidays();
-      } catch (e) {
-          alert('Error cargando feriados');
-          setLoadingHolidays(false);
       }
   };
 
   const [activeTab, setActiveTab] = useState('profile');
 
-  if(!formData || !formData.theme || !formData.modules || !formData.roles) return <div className="p-4 text-center">Cargando ajustes...</div>;
+  if(!formData || !formData.theme || !formData.modules || !formData.roles) return <div className="p-4"><SkeletonCard /></div>;
 
   const tabStyle = (id) => ({
     padding: '0.75rem 1.5rem',
@@ -511,8 +479,7 @@ const Settings = () => {
                                     onClick={async () => {
                                        if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
                                           try {
-                                             const { sendPasswordResetEmail } = await import('firebase/auth');
-                                             await sendPasswordResetEmail(auth, u.email);
+                                              await sendPasswordResetEmail(auth, u.email);
                                              alert('Correo enviado correctamente.');
                                              loadUsers();
                                           } catch(e) { alert('Error: ' + e.message); }
@@ -529,10 +496,14 @@ const Settings = () => {
                                        if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "Cambia2410@"?`)) {
                                           try {
                                              // Llama a la función Serverless recien creada
-                                             const res = await fetch('/api/resetPassword', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ email: u.email, newPassword: 'Cambia2410@' })
+                                              const token = await currentUser.getIdToken();
+                                              const res = await fetch('/api/resetPassword', {
+                                                 method: 'POST',
+                                                 headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                 },
+                                                 body: JSON.stringify({ email: u.email, newPassword: 'Cambia2410@' })
                                              });
 
                                              if (!res.ok) {
@@ -587,12 +558,48 @@ const Settings = () => {
                 ))}
               </div>
               <div className="d-flex gap-2">
-                <input id="new-reason" className="form-input" placeholder="Añadir motivo..." />
+                <input ref={reasonInputRef} className="form-input" placeholder="Añadir motivo..." />
                 <Button onClick={() => {
-                  const val = document.getElementById('new-reason').value.trim();
-                  if(val) { setFormData(prev => ({ ...prev, absenceReasons: [...prev.absenceReasons, val] })); document.getElementById('new-reason').value = ''; }
+                  const val = reasonInputRef.current?.value.trim();
+                  if(val) { setFormData(prev => ({ ...prev, absenceReasons: [...prev.absenceReasons, val] })); reasonInputRef.current.value = ''; }
                 }}>Añadir</Button>
               </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <ClipboardList size={20} color="var(--color-primary-light)" /> Tipos de Seguimiento
+              </div>
+            }>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                {formData.followUpTypes?.map((t, i) => (
+                  <div key={i} className="d-flex align-center gap-2" style={{ padding: '0.375rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1, fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                      value={t.label}
+                      onChange={e => {
+                        const updated = [...(formData.followUpTypes || [])];
+                        updated[i] = { ...updated[i], label: e.target.value };
+                        setFormData(prev => ({ ...prev, followUpTypes: updated }));
+                      }}
+                    />
+                    <button
+                      style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
+                      onClick={() => setFormData(prev => ({ ...prev, followUpTypes: prev.followUpTypes.filter((_, idx) => idx !== i) }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFormData(prev => ({ ...prev, followUpTypes: [...(prev.followUpTypes || []), { id: `custom-${Date.now()}`, label: '' }] }))}
+              >
+                + Añadir tipo
+              </Button>
             </Card>
 
             <Card title={
@@ -601,12 +608,12 @@ const Settings = () => {
               </div>
             } className="lg:col-span-2">
               <div className="d-flex gap-2 mb-4">
-                <input type="date" className="form-input" id="holiday-date" />
-                <input type="text" className="form-input" placeholder="Descripción" id="holiday-desc" style={{flex:1}} />
+                <input type="date" className="form-input" ref={holidayDateRef} />
+                <input type="text" className="form-input" placeholder="Descripción" ref={holidayDescRef} style={{flex:1}} />
                 <Button onClick={() => {
-                  const d = document.getElementById('holiday-date').value;
-                  const desc = document.getElementById('holiday-desc').value;
-                  if(d && desc) { handleAddHoliday({date: d, description: desc}); document.getElementById('holiday-date').value = ''; document.getElementById('holiday-desc').value = ''; }
+                  const d = holidayDateRef.current?.value;
+                  const desc = holidayDescRef.current?.value;
+                  if(d && desc) { handleAddHoliday(d, desc); holidayDateRef.current.value = ''; holidayDescRef.current.value = ''; }
                 }}>Agregar</Button>
               </div>
               <div style={{ maxHeight: '300px', overflowY: 'auto' }}>

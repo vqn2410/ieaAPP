@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  ChevronRight,
-  ChevronLeft,
-  Play,
-  Calendar,
-  Newspaper,
-  Heart,
-  Info,
-  ArrowRight,
-  Radio
-} from 'lucide-react';
+
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Logo from '../components/common/Logo';
@@ -23,7 +13,7 @@ const Home = () => {
 
   const slides = [
     {
-      image: 'https://i.postimg.cc/L4C9BcxG/660111209-18356544013230022-8343781813054001461-n.jpg',
+      image: '/img/slider-hero.jpg',
       title: (
         <>
           IGLESIA<br />
@@ -93,10 +83,10 @@ const Home = () => {
                 {slide.subtitle}
               </p>
               <div className="hero-btns">
-                <Button size="lg" className="hero-btn-primary">
+                <Button size="lg" className="hero-btn-primary" onClick={() => document.getElementById('meet-section')?.scrollIntoView({ behavior: 'smooth' })}>
                   {slide.cta}
                 </Button>
-                <Button size="lg" variant="outline" className="hero-btn-outline">
+                <Button size="lg" variant="outline" className="hero-btn-outline" onClick={() => document.getElementById('location-section')?.scrollIntoView({ behavior: 'smooth' })}>
                   UBICACIÓN
                 </Button>
               </div>
@@ -120,7 +110,7 @@ const Home = () => {
       </section>
 
       {/* Meet Section */}
-      <section className="meet-section">
+      <section id="meet-section" className="meet-section">
         <div className="animate-fade-in">
           <h2 className="meet-title">CREEMOS EN UN DIOS REAL QUE TRANSFORMA VIDAS.</h2>
           <p className="meet-text">
@@ -137,19 +127,19 @@ const Home = () => {
         </div>
         <div className="meet-image-container">
           <img
-            src="https://i.postimg.cc/28d3rb0t/img-home.jpg"
+            src="/img/img-home.jpg"
             alt="Reunión"
             className="meet-image"
           />
           <div className="meet-badge">
-            <p className="meet-badge-title">#SOMOSIEA</p>
+                <p className="meet-badge-title">PORTAL IEA</p>
             <p className="meet-badge-subtitle">Vení a conocernos</p>
           </div>
         </div>
       </section>
 
       {/* Location Section */}
-      <section className="location-section">
+      <section id="location-section" className="location-section">
         <div className="map-container">
           <div className="map-wrapper">
              <iframe 
@@ -163,7 +153,7 @@ const Home = () => {
              ></iframe>
              <div className="map-marker-overlay">
                 <div className="map-marker-point">
-                   <img src="https://i.postimg.cc/cCc0M30b/500x500.png" alt="IEA Location" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
+                   <img src="/img/icon-500x500.png" alt="Portal IEA" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
                 </div>
                 <div className="map-tooltip">
                    <h3>IGLESIA EXTREMO AMOR</h3>

@@ -10,6 +10,9 @@ import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
 import { Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import EmptyState from '../components/common/EmptyState';
+import { SkeletonCard } from '../components/common/Skeleton';
 import { useNavigate } from 'react-router-dom';
 
 const getDayNumber = (dayStr) => {
@@ -71,7 +74,7 @@ const getAvailableDatesForDay = (scheduleDay, count = 12, holidayDates = []) => 
 };
 
 const GrowthGroups = () => {
-    const { currentUser, userData, hasRole } = useAuth();
+    const { currentUser, hasRole } = useAuth();
     const isAdmin = hasRole(['Admin', 'Pastor']);
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(null);
@@ -149,7 +152,7 @@ const GrowthGroups = () => {
         }
     };
 
-    if (loading) return <div className="p-4 text-center">Cargando tu área de ministerio...</div>;
+    if (loading) return <div className="p-4"><SkeletonCard /></div>;
 
     if (!myMemberProfile && !isAdmin) {
         return (
@@ -228,7 +231,7 @@ const GrowthGroups = () => {
                     {activeTab === 'grupos' && (
                         <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1rem' }}>
                             {myGroups.length === 0 ? (
-                                <p style={{ color: 'var(--color-text-muted)' }}>No tienes grupos asignados a tu cargo actualmente.</p>
+                                <EmptyState icon={Users} title="Sin grupos" message="No tienes grupos asignados a tu cargo actualmente." />
                             ) : (
                                 myGroups.map(g => {
                                     const facils = getArray(g.facilitators);
@@ -285,7 +288,7 @@ const GrowthGroups = () => {
                         /* (rest of the members tab code remains the same as before my latest change, effectively kept in-sync) */
                         <div className="d-flex flex-column gap-4">
                             {myGroups.length === 0 ? (
-                                <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>No hay grupos ni miembros vinculados a tu cargo.</p></Card>
+                                <Card><EmptyState icon={Users} title="Sin grupos" message="No hay grupos ni miembros vinculados a tu cargo." /></Card>
                             ) : myGroups.sort((a, b) => a.name.localeCompare(b.name)).map(group => {
                                 const membersOfGroup = myMembers.filter(m => m.group === group.name).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
                                 if (membersOfGroup.length === 0 && !isAdmin) return null;
@@ -429,7 +432,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
         try {
             await saveAttendance(selectedGroupId, attendanceDate, presentIds, cleanedAbsentDetails);
             alert('¡Asistencia guardada con éxito!');
-        } catch (e) {
+        } catch {
             alert('Hubo un error al guardar la asistencia.');
         } finally {
             setSaving(false);
@@ -460,7 +463,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
         });
 
         const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        let htmlContent = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /></head><body>';
+        const wb = XLSX.utils.book_new();
 
         Object.keys(recordsByGroup).forEach(gId => {
             const groupRecords = recordsByGroup[gId];
@@ -481,92 +484,81 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
                 });
             });
 
-            let headersHtml = '';
-            let subHeadersHtml = '';
-            
-            const bgDarkBlue = "#2b305b";
-            const fontDarkBlue = "#ffffff";
-            const borderStyle = "1px solid #cbd5e1";
-            
+            const monthSpan = {};
+            let col = 3;
             Object.keys(datesByMonth).forEach(mStr => {
-                const count = datesByMonth[mStr].length;
-                headersHtml += `<th colspan="${count}" style="border: ${borderStyle}; background-color: ${bgDarkBlue}; color: ${fontDarkBlue}; text-align: center; font-weight: bold; padding: 12px; font-size: 16px;">${mStr}</th>`;
-                datesByMonth[mStr].forEach(dObj => {
-                    const labelSpace = dObj.label.replace('-', ' ');
-                    subHeadersHtml += `<th style="border: ${borderStyle}; background-color: #dbeafe; color: #1e293b; width: 45px; text-align: center; padding: 10px 0; font-size: 14px;">${labelSpace.replace(' ', '<br/>')}</th>`;
+                monthSpan[mStr] = { start: col, count: datesByMonth[mStr].length };
+                col += datesByMonth[mStr].length;
+            });
+            const lastCol = col + 1;
+
+            const headerRow1 = Array(lastCol + 1).fill('');
+            headerRow1[0] = 'Nº';
+            headerRow1[1] = 'Apellido y Nombre';
+            Object.keys(datesByMonth).forEach(mStr => {
+                const span = monthSpan[mStr];
+                for (let c = span.start; c < span.start + span.count; c++) {
+                    headerRow1[c] = mStr;
+                }
+            });
+            headerRow1[lastCol] = 'Causas de Ausencia';
+
+            const headerRow2 = Array(lastCol + 1).fill('');
+            headerRow2[0] = '';
+            headerRow2[1] = '';
+            Object.keys(datesByMonth).forEach(mStr => {
+                const span = monthSpan[mStr];
+                datesByMonth[mStr].forEach((dObj, i) => {
+                    headerRow2[span.start + i] = dObj.label;
                 });
             });
+            headerRow2[lastCol] = '';
 
-            let tableHtml = `<table style="border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; width: 100%;">
-                <tr>
-                    <td colspan="2" style="text-align: center; padding: 20px;">
-                        <img src="https://i.postimg.cc/0jscK4Jr/LOGO-IEA-SIN-FONDO-B-W-2.png" width="180" alt="IEA Logo" />
-                    </td>
-                    <td colspan="${uniqueDatesStrings.length + 1}" style="text-align: center; color: ${bgDarkBlue}; vertical-align: middle;">
-                        <span style="font-size: 26px; font-weight: bold;">Informe de Asistencia [${gName}]</span><br/>
-                        <span style="font-size: 26px; font-weight: bold;">Rendición ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}</span>
-                    </td>
-                </tr>
-                <tr><td colspan="${uniqueDatesStrings.length + 3}" style="height: 20px;"></td></tr>
-                <tr>
-                    <th rowspan="2" style="border: ${borderStyle}; background-color: #4f72a6; color: ${fontDarkBlue}; text-align: center; width: 50px; vertical-align: middle; font-size: 16px;">Nº</th>
-                    <th rowspan="2" style="border: ${borderStyle}; background-color: ${bgDarkBlue}; color: ${fontDarkBlue}; text-align: center; width: 300px; vertical-align: middle; font-size: 16px;">Apellido y Nombre</th>
-                    ${headersHtml}
-                    <th rowspan="2" style="border: ${borderStyle}; background-color: ${bgDarkBlue}; color: ${fontDarkBlue}; text-align: center; width: 350px; vertical-align: middle; font-size: 16px;">Cuadas de Ausencia</th>
-                </tr>
-                <tr>
-                    ${subHeadersHtml}
-                </tr>
-            `;
+            const titleRow = [`Informe de Asistencia [${gName}]`, '', `Rendición ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`];
+
+            const sheetData = [titleRow, [], headerRow1, headerRow2];
 
             members.forEach((m, idx) => {
-                const isEven = idx % 2 === 0;
-                const rowBg = isEven ? "#ffffff" : "#f1f5f9";
-                const datesBg = isEven ? "#ffffff" : "#e2e8f0";
-
-                let rowHtml = `<tr style="background-color: ${rowBg};">
-                   <td style="border: ${borderStyle}; text-align: center; font-weight: bold; color: #1e293b; padding: 12px;">${idx + 1}</td>
-                   <td style="border: ${borderStyle}; padding-left: 15px; color: #334155; font-size: 15px;">${m.lastName}, ${m.firstName}</td>
-                `;
-                let causes = [];
+                const row = Array(lastCol + 1).fill('');
+                row[0] = idx + 1;
+                row[1] = `${m.lastName}, ${m.firstName}`;
+                const causes = [];
                 Object.keys(datesByMonth).forEach(mStr => {
-                    datesByMonth[mStr].forEach(dObj => {
+                    datesByMonth[mStr].forEach((dObj, i) => {
+                        const span = monthSpan[mStr];
                         const rec = groupRecords.find(r => r.date === dObj.str);
                         if (rec) {
                             const isPresent = rec.presentMembers.includes(m.id);
-                            if (isPresent) {
-                                rowHtml += `<td style="border: ${borderStyle}; background-color: ${datesBg}; text-align: center; font-weight: bold; color: #475569; font-size: 15px;">P</td>`;
-                            } else {
-                                rowHtml += `<td style="border: ${borderStyle}; background-color: ${datesBg}; text-align: center; color: #94a3b8; font-size: 15px;">A</td>`;
+                            row[span.start + i] = isPresent ? 'P' : 'A';
+                            if (!isPresent) {
                                 const causeObj = rec.absentDetails && rec.absentDetails[m.id];
                                 if (causeObj && causeObj.reason) {
-                                     let str = dObj.label.replace('-', '/') + " " + causeObj.reason;
-                                     if (causeObj.detail) str += " (" + causeObj.detail + ")";
-                                     causes.push(str);
+                                    let str = dObj.label + " " + causeObj.reason;
+                                    if (causeObj.detail) str += " (" + causeObj.detail + ")";
+                                    causes.push(str);
                                 }
                             }
                         } else {
-                            rowHtml += `<td style="border: ${borderStyle}; background-color: ${datesBg}; text-align: center; color: #cbd5e1;">-</td>`;
+                            row[span.start + i] = '-';
                         }
                     });
                 });
-                rowHtml += `<td style="border: ${borderStyle}; font-size: 14px; color: #475569; padding-left: 15px;">${causes.join('<br/>')}</td></tr>`;
-                tableHtml += rowHtml;
+                row[lastCol] = causes.join('; ');
+                sheetData.push(row);
             });
 
-            tableHtml += `</table><br/><br/>`;
-            htmlContent += tableHtml;
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [
+                { wch: 5 },
+                { wch: 35 },
+                ...Object.keys(datesByMonth).flatMap(mStr => datesByMonth[mStr].map(() => ({ wch: 6 }))),
+                { wch: 40 }
+            ];
+            const sheetName = gName.substring(0, 31);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
         });
 
-        htmlContent += '</body></html>';
-        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Reporte_Asistencia_${reportPeriod}_${endStr}.xls`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        XLSX.writeFile(wb, `Reporte_Asistencia_${reportPeriod}_${endStr}.xlsx`);
     };
 
     if (myGroups.length === 0) {
@@ -661,7 +653,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
                                                             <td style={{ padding: '0.75rem 1rem' }}>
                                                                 <div style={{ fontWeight: isPresent ? 600 : 500, cursor: 'pointer' }} onClick={() => toggleMember(m.id)}>{m.lastName}, {m.firstName}</div>
                                                                 {!isPresent && (
-                                                                    <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                    <div className="attendance-absence-fields" style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                         <select
                                                                             value={absentDetails[m.id]?.reason || ''}
                                                                             onChange={e => setAbsentDetails(prev => ({ ...prev, [m.id]: { ...prev[m.id], reason: e.target.value } }))}

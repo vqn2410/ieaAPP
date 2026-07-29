@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { useNavigate } from 'react-router-dom';
+
 import { Lock, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const ChangePassword = () => {
@@ -14,7 +14,6 @@ const ChangePassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

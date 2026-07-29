@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'groups';
 
@@ -17,7 +17,7 @@ export const getGroups = async () => {
 export const getGroup = async (id) => {
     try {
         const docRef = doc(db, COLLECTION_NAME, id);
-        const docSnap = await import('firebase/firestore').then(m => m.getDoc(docRef));
+        const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             return { id: docSnap.id, ...docSnap.data() };
         }

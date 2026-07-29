@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, getDocs, addDoc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, getDocs, addDoc, updateDoc, query, where } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'group_attendance';
 

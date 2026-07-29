@@ -3,374 +3,428 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Badge from '../components/common/Badge';
 import MemberForm from '../components/members/MemberForm';
 import { getMember, deleteMember, updateMember } from '../services/memberService';
-import { getGroups } from '../services/groupService';
+import { getMembers } from '../services/memberService';
+import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, ArrowLeft, Mail, Phone, Hash, Edit, ShieldCheck, UserPlus, Lock } from 'lucide-react';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { SkeletonCard } from '../components/common/Skeleton';
 import { useSettings } from '../context/SettingsContext';
+import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../services/followUpService';
+import './MemberProfile.css';
+
+const initialAvatar = (firstName, lastName) => {
+  const f = (firstName || '?')[0];
+  const l = (lastName || '?')[0];
+  return `${f}${l}`.toUpperCase();
+};
+
+const ProfileField = ({ icon: Icon, label, value }) => (
+  <div className="profile-field">
+    <div className="profile-field-icon">{Icon && <Icon size={16} strokeWidth={1.5} />}</div>
+    <div className="profile-field-content">
+      <span className="profile-field-label">{label}</span>
+      <span className="profile-field-value">{value || <span className="profile-field-empty">-</span>}</span>
+    </div>
+  </div>
+);
 
 const MemberProfile = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { userData } = useAuth();
-    const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
-    const [member, setMember] = useState(null);
-    const [groups, setGroups] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [savingPath, setSavingPath] = useState(false);
-    const [savingGroup, setSavingGroup] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { userData } = useAuth();
+  const { settings } = useSettings();
+  const [member, setMember] = useState(null);
+  const [allMembers, setAllMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [newGroup, setNewGroup] = useState('');
+  const [followUps, setFollowUps] = useState([]);
+  const [followUpText, setFollowUpText] = useState('');
+  const [followUpType, setFollowUpType] = useState('note');
+  const [showFollowUpForm, setShowFollowUpForm] = useState(false);
 
-    const { settings } = useSettings();
-    const [associatedUser, setAssociatedUser] = useState(null);
-    const [loadingUser, setLoadingUser] = useState(false);
+  const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
+  const isAdmin = userData?.role?.includes('Admin');
 
-    const availablePaths = ['Bautizado', 'Encuentro', 'Discipulado', 'IETE', 'Otros estudios'];
-    const pathStatuses = ['Sin información', 'En proceso', 'Finalizado'];
-    const ieteYears = ['1°', '2°', '3°', '4°', '5°', '6°'];
-    const ieteModalities = ['Presencial', 'Virtual', 'Libre'];
-
-    useEffect(() => {
-        const fetchMember = async () => {
-            const data = await getMember(id);
-            setMember(data);
-            setLoading(false);
-            if (data?.email) {
-                fetchAssociatedUser(data.email);
-            }
-        };
-        fetchMember();
-        getGroups().then(setGroups);
-    }, [id]);
-
-    const fetchAssociatedUser = async (email) => {
-        if (!email) return;
-        setLoadingUser(true);
-        try {
-            const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                // Priority to non-pre docs
-                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                const realUser = docs.find(d => !d.id.startsWith('pre-')) || docs[0];
-                setAssociatedUser(realUser);
-            } else {
-                setAssociatedUser(null);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoadingUser(false);
-        }
-    };
-
-    const handleToggleRole = async (roleKey) => {
-        if (!member?.email || !userData) return;
-        const isAdmin = userData.role.includes('Admin');
-        if (!isAdmin) return alert('Solo administradores pueden cambiar roles.');
-
-        try {
-            let currentRoles = associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : ['Member'];
-            let newRoles = currentRoles.includes(roleKey) ? currentRoles.filter(r => r !== roleKey) : [...currentRoles, roleKey];
-            if (newRoles.length === 0) newRoles = ['Member'];
-
-            if (associatedUser) {
-                await updateDoc(doc(db, 'users', associatedUser.id), { role: newRoles });
-            } else {
-                // Create pre-assignment if user record doesn't exist
-                const docId = `pre-${member.email.toLowerCase().trim()}`;
-                await setDoc(doc(db, 'users', docId), {
-                    name: `${member.firstName} ${member.lastName}`,
-                    email: member.email.toLowerCase().trim(),
-                    role: newRoles,
-                    isPending: true,
-                    memberId: id
-                });
-            }
-            fetchAssociatedUser(member.email);
-            alert('Permisos actualizados.');
-        } catch (e) {
-            console.error(e);
-            alert('Error actualizando permisos: ' + e.message);
-        }
-    };
-
-    const handleDelete = async () => {
-        if(window.confirm("¿Seguro que deseas eliminar definitivamente a este miembro?")) {
-            await deleteMember(id);
-            navigate('/miembros');
-        }
-    };
-
-    const handleMemberUpdated = async () => {
-        setShowEditModal(false);
-        setLoading(true);
-        const data = await getMember(id);
-        setMember(data);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [m, members, fups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id)]);
+        setMember(m);
+        setNewGroup(m?.group || '');
+        setAllMembers(members.filter(other => other.id !== id));
+        setFollowUps(fups);
+      } catch {
+        navigate('/dashboard/miembros');
+      } finally {
         setLoading(false);
+      }
     };
+    load();
+  }, [id, navigate]);
 
-    const getNormalizedGrowthPath = () => {
-        let gp = member?.growthPath;
-        if (!gp) return {};
-        if (Array.isArray(gp)) {
-            let obj = {};
-            gp.forEach(p => { obj[p] = { status: 'Finalizado' }; });
-            return obj;
-        }
-        return gp;
-    };
+  const handleTransfer = async (newGroupName) => {
+    setNewGroup(newGroupName);
+    await updateMember(id, { group: newGroupName });
+    setMember(prev => ({ ...prev, group: newGroupName }));
+  };
 
-    const handleUpdatePath = async (path, field, value) => {
-        if(!member) return;
-        setSavingPath(true);
-        
-        const currentPaths = getNormalizedGrowthPath();
-        const pathData = currentPaths[path] || { status: 'Sin información' };
-        
-        const newPaths = {
-            ...currentPaths,
-            [path]: {
-                ...pathData,
-                [field]: value
-            }
-        };
-        
-        try {
-            await updateMember(id, { growthPath: newPaths });
-            setMember({ ...member, growthPath: newPaths });
-        } catch (e) {
-            console.error(e);
-            alert("No se pudo actualizar la ruta");
-        } finally {
-            setSavingPath(false);
-        }
-    };
-
-    const handleGroupChange = async (e) => {
-        const newGroup = e.target.value;
-        if(!window.confirm(`¿Estás seguro de transferir a este miembro a: ${newGroup || 'Sin Grupo'}?`)) return;
-        
-        setSavingGroup(true);
-        try {
-            await updateMember(id, { group: newGroup });
-            setMember(prev => ({ ...prev, group: newGroup }));
-        } catch(err) {
-            console.error(err);
-            alert("Hubo un error al intentar cambiar de grupo.");
-        } finally {
-            setSavingGroup(false);
-        }
-    };
-
-    if (loading) return <div>Cargando perfil...</div>;
-    if (!member) return <div>Miembro no encontrado.</div>;
-
-    return (
-        <div className="animate-fade-in">
-            <div className="d-flex align-center justify-between mb-4">
-               <div className="d-flex align-center gap-2">
-                 <h1 style={{ margin: 0 }}>Perfil del Miembro</h1>
-               </div>
-               <Button variant="outline" icon={<Edit size={16} />} onClick={() => setShowEditModal(true)}>Editar Datos</Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2">
-                <Card>
-                   <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                      <div style={{ width: 100, height: 100, borderRadius: '50%', backgroundColor: 'var(--color-secondary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 1rem' }}>
-                         {member.firstName.charAt(0)}{member.lastName?.charAt(0)}
-                      </div>
-                      <h2>{member.firstName} {member.lastName}</h2>
-                      <div className="d-flex align-center justify-center gap-2 mt-2">
-                         <span className="badge badge-gray">{member.group || 'Sin Grupo'}</span>
-                         {canTransfer && (
-                             <select 
-                               className="form-input" 
-                               style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.75rem', width: 'auto', display: 'inline-block', backgroundColor: 'var(--color-surface)', cursor: 'pointer' }}
-                               value={member.group || ''}
-                               onChange={handleGroupChange}
-                               disabled={savingGroup}
-                             >
-                                <option value="" disabled>Transferir...</option>
-                                <option value="">Remover del Grupo (Sin Grupo)</option>
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.name}>{g.name}</option>
-                                ))}
-                             </select>
-                         )}
-                      </div>
-                   </div>
-
-                   <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '1.5rem 0' }} />
-
-                   <div className="d-flex flex-column gap-3">
-                       <div className="d-flex align-center gap-2">
-                           <Hash size={18} color="var(--color-text-muted)" />
-                           <span><strong>DNI:</strong> {member.dni}</span>
-                       </div>
-                       <div className="d-flex align-center gap-2">
-                           <Phone size={18} color="var(--color-text-muted)" />
-                           <span><strong>Teléfono:</strong> {member.phone}</span>
-                       </div>
-                       <div className="d-flex align-center gap-2">
-                           <Mail size={18} color="var(--color-text-muted)" />
-                           <span><strong>Email:</strong> {member.email || '-'}</span>
-                       </div>
-                   </div>
-
-                   <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                       <Button variant="outline" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', width: '100%' }} icon={<Trash2 size={16} />} onClick={handleDelete}>
-                          Eliminar Miembro
-                       </Button>
-                   </div>
-                </Card>
-
-
-
-                {/* Role Management Card (Only for Admins) */}
-                {userData?.role?.includes('Admin') && (
-                    <Card title={
-                        <div className="d-flex align-center gap-2">
-                             <ShieldCheck size={20} color="var(--color-primary-light)" /> Permisos y Acceso al Portal
-                        </div>
-                    } className="lg:col-span-2">
-                        {!member.email ? (
-                            <div className="alert alert-warning">
-                                No se puede asignar acceso al portal porque este miembro no tiene un correo electrónico registrado.
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="user-access-info">
-                                    <h4 className="mb-2">Estado de Cuenta</h4>
-                                    {loadingUser ? (
-                                        <p>Buscando vinculación...</p>
-                                    ) : associatedUser ? (
-                                        <div className="d-flex flex-column gap-2">
-                                            <div className="d-flex align-center gap-2">
-                                                {associatedUser.id.startsWith('pre-') ? (
-                                                    <><div style={{width:10, height:10, borderRadius:'50%', background:'#f59e0b'}}></div> Pendiente de registro</>
-                                                ) : (
-                                                    <><div style={{width:10, height:10, borderRadius:'50%', background:'#10b981'}}></div> Usuario activo</>
-                                                )}
-                                            </div>
-                                            <p style={{fontSize: '0.85rem', color: 'var(--color-text-muted)'}}>
-                                                Registrado como: <strong>{associatedUser.email}</strong>
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="d-flex align-center gap-2 text-muted">
-                                            <UserPlus size={18} /> 
-                                            <span>Sin acceso al portal todavía.</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="roles-assignment">
-                                    <h4 className="mb-2">Roles Asignados</h4>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                                        {(associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : []).map(r => (
-                                            <span key={r} className="badge badge-gray">{settings?.roles?.[r] || r}</span>
-                                        ))}
-                                        {(!associatedUser || (Array.isArray(associatedUser.role) && associatedUser.role.length === 0)) && <span className="text-muted" style={{fontSize: '0.8rem'}}>Ningún rol especial</span>}
-                                    </div>
-                                    <div className="d-flex gap-2 flex-wrap">
-                                        {Object.keys(settings?.roles || {}).map(roleKey => (
-                                            <button 
-                                                key={roleKey}
-                                                onClick={() => handleToggleRole(roleKey)}
-                                                className={`btn btn-sm ${ (associatedUser ? (Array.isArray(associatedUser.role) ? associatedUser.role : [associatedUser.role]) : []).includes(roleKey) ? 'btn-primary' : 'btn-outline' }`}
-                                                style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem' }}
-                                            >
-                                                {settings.roles[roleKey]}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </Card>
-                )}
-
-                <Card title="Ruta de Crecimiento y Actividad">
-                    <p style={{ color: 'var(--color-text-muted)' }}>Administra los niveles y estado de cada módulo.</p>
-                    
-                    <div className="d-flex flex-column gap-3 mb-4">
-                        {availablePaths.map(path => {
-                            const pathsObj = getNormalizedGrowthPath();
-                            const pathData = pathsObj[path] || { status: 'Sin información' };
-                            const isActive = pathData.status && pathData.status !== 'Sin información';
-                            
-                            return (
-                                <div key={path} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: isActive ? 'var(--color-surface)' : 'transparent' }}>
-                                    <div className="d-flex justify-between align-center mb-2" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{path}</h3>
-                                        <select 
-                                            className="form-input" 
-                                            value={pathData.status || 'Sin información'} 
-                                            onChange={(e) => handleUpdatePath(path, 'status', e.target.value)}
-                                            disabled={savingPath}
-                                            style={{ width: 'auto', minWidth: '150px' }}
-                                        >
-                                            {pathStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                    
-                                    {isActive && path === 'IETE' && (
-                                        <div className="d-flex gap-2 mt-2" style={{ flexWrap: 'wrap' }}>
-                                            <div className="form-group" style={{ flex: 1, minWidth: '100px', margin: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Año</label>
-                                                <select 
-                                                    className="form-input" 
-                                                    value={pathData.year || ''} 
-                                                    onChange={(e) => handleUpdatePath(path, 'year', e.target.value)}
-                                                    disabled={savingPath}
-                                                >
-                                                    <option value="">Seleccionar</option>
-                                                    {ieteYears.map(y => <option key={y} value={y}>{y}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="form-group" style={{ flex: 1, minWidth: '100px', margin: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Modalidad</label>
-                                                <select 
-                                                    className="form-input" 
-                                                    value={pathData.modalidad || ''} 
-                                                    onChange={(e) => handleUpdatePath(path, 'modalidad', e.target.value)}
-                                                    disabled={savingPath}
-                                                >
-                                                    <option value="">Seleccionar</option>
-                                                    {ieteModalities.map(m => <option key={m} value={m}>{m}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {isActive && path === 'Otros estudios' && (
-                                        <div className="form-group mt-2" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Detalle de estudios</label>
-                                            <input 
-                                                className="form-input" 
-                                                placeholder="Ej. Seminario Teológico..." 
-                                                value={pathData.detail || ''}
-                                                onChange={(e) => handleUpdatePath(path, 'detail', e.target.value)}
-                                                disabled={savingPath}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Card>
-            </div>
-
-            <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar Datos del Miembro">
-                <MemberForm onSuccess={handleMemberUpdated} initialData={member} />
-            </Modal>
-        </div>
+  const handleAutoAssign = async () => {
+    if (!member?.email || !userData) return;
+    const isAdminRole = userData.role.includes('Admin');
+    const existingUser = allMembers.find(m =>
+      m.email?.toLowerCase() === member.email.toLowerCase() && m.id !== id
     );
+    if (existingUser && !isAdminRole) {
+      alert('Ya existe un miembro con este email.');
+      return;
+    }
+    await deleteMember(id);
+    alert('Miembro eliminado correctamente.');
+    navigate('/dashboard/miembros');
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('¿Seguro que deseas eliminar permanentemente a este miembro?')) return;
+    await deleteMember(id);
+    navigate('/dashboard/miembros');
+  };
+
+  const handleEditSuccess = async () => {
+    setShowEditModal(false);
+    const updated = await getMember(id);
+    setMember(updated);
+  };
+
+  const handleAddFollowUp = async () => {
+    if (!followUpText.trim()) return;
+    await createFollowUp({
+      memberId: id,
+      type: followUpType,
+      content: followUpText.trim(),
+      status: 'pending',
+      createdBy: userData?.email || 'unknown'
+    });
+    setFollowUpText('');
+    setShowFollowUpForm(false);
+    const updated = await getFollowUpsByMember(id);
+    setFollowUps(updated);
+  };
+
+  const handleCompleteFollowUp = async (fup) => {
+    await updateFollowUp(fup.id, { status: 'completed' });
+    setFollowUps(prev => prev.map(f => f.id === fup.id ? { ...f, status: 'completed' } : f));
+  };
+
+  const handleDeleteFollowUp = async (fup) => {
+    if (!window.confirm('¿Eliminar este registro?')) return;
+    await deleteFollowUp(fup.id);
+    setFollowUps(prev => prev.filter(f => f.id !== fup.id));
+  };
+
+  const followUpStatusIcon = (status) => {
+    if (status === 'completed') return <CheckCircle size={14} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />;
+    if (status === 'pending') return <Clock size={14} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />;
+    return <AlertCircle size={14} strokeWidth={1.5} />;
+  };
+
+  if (loading) {
+    return <div style={{ padding: '1rem' }}><SkeletonCard /></div>;
+  }
+
+  if (!member) {
+    return (
+      <div className="profile-empty">
+        <p>Miembro no encontrado.</p>
+        <Button variant="outline" onClick={() => navigate('/dashboard/miembros')}>
+          <ArrowLeft size={16} /> Volver
+        </Button>
+      </div>
+    );
+  }
+
+  const roles = Array.isArray(member.role) ? member.role : [member.role || 'Member'];
+  const growthPaths = member.growthPath || {};
+  const availablePaths = ['Bautismo', 'Discipulado', 'IETE', 'Otros estudios teológicos'];
+
+  return (
+    <div className="profile animate-fade-in">
+      <div className="profile-header">
+        <Button variant="outline" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/miembros')}>
+          Volver
+        </Button>
+        {canTransfer && (
+          <div className="profile-header-actions">
+            <Button size="sm" icon={<Edit size={14} />} onClick={() => setShowEditModal(true)}>Editar</Button>
+          </div>
+        )}
+      </div>
+
+      <div className="profile-grid">
+        <div className="profile-sidebar">
+          <Card>
+            <div className="profile-avatar-section">
+              <div className="profile-avatar">{initialAvatar(member.firstName, member.lastName)}</div>
+              <h2 className="profile-name">{member.firstName} {member.lastName}</h2>
+              <div className="profile-badges">
+                {roles.map(r => (
+                  <Badge key={r}>{settings?.roles?.[r] || r}</Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="profile-divider" />
+
+            <ProfileField icon={Hash} label="DNI" value={member.dni} />
+            <ProfileField icon={Phone} label="Teléfono" value={member.phone} />
+            <ProfileField icon={Mail} label="Email" value={member.email} />
+            <ProfileField icon={MapPin} label="Dirección" value={member.address} />
+
+            <div className="profile-divider" />
+
+            <div className="profile-field">
+              <div className="profile-field-icon"><User size={16} strokeWidth={1.5} /></div>
+              <div className="profile-field-content">
+                <span className="profile-field-label">Grupo</span>
+                {canTransfer ? (
+                  <select
+                    className="form-input"
+                    value={newGroup}
+                    onChange={(e) => handleTransfer(e.target.value)}
+                    style={{ marginTop: '0.25rem', fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                  >
+                    <option value="">Sin grupo</option>
+                    {[...new Set(allMembers.map(m => m.group).filter(Boolean))].sort().map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="profile-field-value">{member.group || <span className="profile-field-empty">Sin grupo</span>}</span>
+                )}
+              </div>
+            </div>
+
+            {canTransfer && (
+              <div style={{ marginTop: '1rem' }}>
+                <Button variant="outline" size="sm" style={{ width: '100%' }} onClick={handleAutoAssign}>
+                  Eliminar duplicados por email
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {isAdmin && (
+            <Card>
+              <div className="profile-section-header">
+                <Shield size={16} strokeWidth={1.5} />
+                <span>Roles y permisos</span>
+              </div>
+              <div className="profile-roles">
+                {['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'].map(role => {
+                  const active = roles.includes(role);
+                  return (
+                    <button
+                      key={role}
+                      className={`profile-role-btn ${active ? 'profile-role-active' : ''}`}
+                      onClick={async () => {
+                        const newRoles = active
+                          ? roles.filter(r => r !== role)
+                          : [...roles, role];
+                        if (newRoles.length === 0) newRoles.push('Member');
+                        await updateMember(id, { role: newRoles });
+                        setMember(prev => ({ ...prev, role: newRoles }));
+                      }}
+                    >
+                      {settings?.roles?.[role] || role}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        <div className="profile-main">
+          <Card>
+            <div className="profile-section-header">
+              <BookOpen size={16} strokeWidth={1.5} />
+              <span>Ruta de Crecimiento</span>
+            </div>
+            <div className="profile-paths">
+              {availablePaths.map(path => {
+                const pathData = growthPaths[path] || {};
+                const status = pathData?.status || 'Sin información';
+
+                return (
+                  <div key={path} className="profile-path-item">
+                    <div className="profile-path-header">
+                      <span className="profile-path-name">{path}</span>
+                      <span className={`profile-path-status profile-path-${status.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {status}
+                      </span>
+                    </div>
+                    {path === 'IETE' && (pathData?.status === 'Cursando' || pathData?.status === 'Completo') && (
+                      <div className="profile-path-extras">
+                        <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Año</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={pathData?.year || ''}
+                            onChange={async (e) => {
+                              const updated = { ...member, growthPath: { ...growthPaths, [path]: { ...pathData, year: e.target.value } } };
+                              await updateMember(id, { growthPath: updated.growthPath });
+                              setMember(updated);
+                            }}
+                            style={{ fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Modalidad</label>
+                          <select
+                            className="form-input"
+                            value={pathData?.modality || 'Online'}
+                            onChange={async (e) => {
+                              const updated = { ...member, growthPath: { ...growthPaths, [path]: { ...pathData, modality: e.target.value } } };
+                              await updateMember(id, { growthPath: updated.growthPath });
+                              setMember(updated);
+                            }}
+                            style={{ fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                          >
+                            <option value="Online">Online</option>
+                            <option value="Presencial">Presencial</option>
+                            <option value="Híbrido">Híbrido</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    {path === 'Otros estudios teológicos' && (pathData?.status === 'Cursando' || pathData?.status === 'Completo') && (
+                      <div className="form-group" style={{ margin: '0.5rem 0 0' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="¿Cuáles estudios?"
+                          value={pathData?.detail || ''}
+                          onChange={async (e) => {
+                            const updated = { ...member, growthPath: { ...growthPaths, [path]: { ...pathData, detail: e.target.value } } };
+                            await updateMember(id, { growthPath: updated.growthPath });
+                            setMember(updated);
+                          }}
+                          style={{ fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                        />
+                      </div>
+                    )}
+                      <div className="profile-path-status-select">
+                        {['Sin información', 'Cursando', 'Completo', 'Pausado'].map(s => (
+                          <button
+                            key={s}
+                            className={`profile-path-opt ${status === s ? `profile-path-opt-active profile-path-opt-${s.toLowerCase().replace(/\s+/g, '-')}` : ''}`}
+                            onClick={async () => {
+                              const updated = { ...member, growthPath: { ...growthPaths, [path]: { ...pathData, status: s } } };
+                              await updateMember(id, { growthPath: updated.growthPath });
+                              setMember(updated);
+                            }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {canTransfer && (
+        <Card style={{ marginTop: '1rem' }}>
+          <div className="profile-section-header">
+            <MessageSquare size={16} strokeWidth={1.5} />
+            <span>Seguimiento pastoral</span>
+            <button className="profile-fup-add" onClick={() => setShowFollowUpForm(true)}>
+              <Plus size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {showFollowUpForm && (
+            <div className="profile-fup-form">
+              <select
+                className="form-input"
+                value={followUpType}
+                onChange={(e) => setFollowUpType(e.target.value)}
+                style={{ fontSize: '0.75rem', marginBottom: '0.5rem', padding: '0.375rem 0.5rem' }}
+              >
+                {(settings.followUpTypes || []).map(t => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+              <textarea
+                className="form-input"
+                placeholder="Escribí una nota de seguimiento..."
+                value={followUpText}
+                onChange={(e) => setFollowUpText(e.target.value)}
+                rows={3}
+                style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', resize: 'vertical' }}
+              />
+              <div className="d-flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => { setShowFollowUpForm(false); setFollowUpText(''); }}>Cancelar</Button>
+                <Button size="sm" onClick={handleAddFollowUp}>Guardar</Button>
+              </div>
+            </div>
+          )}
+
+          <div className="profile-fup-list">
+            {followUps.length === 0 && !showFollowUpForm && (
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                Sin registros de seguimiento.
+              </div>
+            )}
+            {followUps.map(fup => (
+              <div key={fup.id} className="profile-fup-item">
+                <div className="profile-fup-header">
+                  <div className="profile-fup-type">
+                    {followUpStatusIcon(fup.status)}
+                    <span className={`profile-fup-status ${fup.status}`}>
+                      {(settings.followUpTypes || []).find(t => t.id === fup.type)?.label || fup.type}
+                    </span>
+                  </div>
+                  <div className="profile-fup-actions">
+                    {fup.status === 'pending' && (
+                      <button className="profile-fup-action" onClick={() => handleCompleteFollowUp(fup)} title="Completar">
+                        <CheckCircle size={14} strokeWidth={1.5} />
+                      </button>
+                    )}
+                    <button className="profile-fup-action" onClick={() => handleDeleteFollowUp(fup)} title="Eliminar">
+                      <Trash2 size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+                <div className="profile-fup-content">{fup.content}</div>
+                <div className="profile-fup-date">
+                  {fup.createdAt?.toDate?.().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) || ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar Miembro">
+        <MemberForm onSuccess={handleEditSuccess} initialData={member} />
+      </Modal>
+
+      {canTransfer && (
+        <div className="profile-delete-section">
+          <Button variant="outline" size="sm" icon={<Trash2 size={14} />} onClick={handleDelete}>
+            Eliminar miembro
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default MemberProfile;

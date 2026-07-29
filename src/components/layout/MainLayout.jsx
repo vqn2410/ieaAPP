@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { 
+import {
   Users, 
   Calendar, 
   LayoutDashboard, 
@@ -15,7 +15,10 @@ import {
   X,
   Radio,
   DollarSign,
-  Activity
+  Activity,
+  ClipboardList,
+  UserPlus,
+  FileText
 } from 'lucide-react';
 import Logo from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -31,8 +34,14 @@ const MainLayout = () => {
 
   // Close mobile menu on route change
   useEffect(() => {
-    setShowMobileMenu(false);
+    const t = setTimeout(() => setShowMobileMenu(false), 0);
+    return () => clearTimeout(t);
   }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = showMobileMenu ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showMobileMenu]);
 
   const handleLogout = async () => {
     try {
@@ -44,21 +53,23 @@ const MainLayout = () => {
   };
 
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+    { name: 'Mi Perfil', path: '/dashboard/mi-perfil', icon: <User size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'] },
     { name: 'Crecimiento', path: '/dashboard/crecimiento', icon: <Activity size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Eventos', path: '/dashboard/eventos', icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Finanzas', path: '/dashboard/finanzas', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'] },
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
+    { name: 'Seguimientos', path: '/dashboard/seguimientos', icon: <ClipboardList size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+    { name: 'Visitantes', path: '/dashboard/visitantes', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator'] },
     { name: 'Noticias', path: '/dashboard/noticias', icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor'] },
+    { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin'] },
   ].filter(item => hasRole(item.roles));
-
-  const getCurrentPageTitle = () => {
-    const item = menuItems.find(item => item.path === location.pathname);
-    return item ? item.name : 'IEA Portal';
-  };
+  const mobilePrimaryItems = menuItems
+    .filter(item => item.path !== '/dashboard/mi-perfil')
+    .slice(0, 4);
 
   return (
     <div className="layout-container">
@@ -118,17 +129,17 @@ const MainLayout = () => {
               <Logo size="small" />
            </div>
 
-           {/* Right side: User Profile */}
-           <div className="mobile-header-right">
-              <button className="mobile-user-avatar" onClick={() => setShowMobileMenu(!showMobileMenu)}>
-                {userData?.name?.charAt(0) || 'U'}
-              </button>
+            {/* Right side: User Profile */}
+            <div className="mobile-header-right">
+               <button className="mobile-user-avatar" onClick={() => navigate('/dashboard/mi-perfil')} aria-label="Ir a mi perfil">
+                 {userData?.name?.charAt(0) || 'U'}
+               </button>
            </div>
         </header>
 
         {/* Dynamic Navigation for Mobile (Bottom Bar) */}
         <nav className="bottom-nav">
-          {menuItems.slice(0, 4).map((item) => (
+           {mobilePrimaryItems.map((item) => (
             <NavLink 
               key={item.path} 
               to={item.path} 
@@ -162,7 +173,7 @@ const MainLayout = () => {
              </div>
 
              <div className="mobile-menu-grid">
-               {menuItems.map((item) => (
+                {menuItems.filter(item => item.path !== '/dashboard/mi-perfil').map((item) => (
                  <NavLink 
                    key={item.path} 
                    to={item.path} 

@@ -42,7 +42,7 @@ const SessionExpired = () => {
         </div>
 
         <div className="login-footer">
-          <p className="login-copy">IEA PORTAL © 2026</p>
+          <p className="login-copy">PORTAL IEA © 2026</p>
         </div>
       </div>
     </div>

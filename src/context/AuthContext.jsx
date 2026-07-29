@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }
@@ -46,17 +47,7 @@ export function AuthProvider({ children }) {
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
-            let data = docSnap.data();
-            // Automatically grant Admin to specific emails
-            if (['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email)) {
-              let roles = Array.isArray(data.role) ? data.role : [data.role || 'Member'];
-              if (!roles.includes('Admin')) {
-                roles.push('Admin');
-                data.role = roles;
-                await setDoc(docRef, { ...data, role: roles }, { merge: true });
-              }
-            }
-            setUserData(data);
+            setUserData(docSnap.data());
           } else {
             // Document doesn't exist yet, check for pre-assignment by email
             const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
@@ -78,9 +69,8 @@ export function AuthProvider({ children }) {
               await setDoc(preDocRef, { migratedTo: user.uid, migratedAt: new Date() }, { merge: true });
             } else {
               // No pre-assignment, create standard Member
-              const defaultRole = ['vergaranicolas209@gmail.com', 'admin@iglesia.com'].includes(user.email) ? ['Admin'] : ['Member'];
               finalAuthData = { 
-                role: defaultRole, 
+                role: ['Member'],
                 email: user.email.toLowerCase(), 
                 name: user.displayName || 'Usuario', 
                 createdAt: new Date() 

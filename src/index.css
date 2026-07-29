@@ -16,12 +16,12 @@
   --color-secondary: hsl(var(--color-secondary-h), var(--color-secondary-s), var(--color-secondary-l));
   --color-secondary-rgb: 100, 116, 139;
   
-  --color-success: #334155;
-  --color-success-rgb: 51, 65, 85;
-  --color-warning: #64748b;
-  --color-warning-rgb: 100, 116, 139;
-  --color-danger: #0f172a;
-  --color-danger-rgb: 15, 23, 42;
+  --color-success: #22c55e;
+  --color-success-rgb: 34, 197, 94;
+  --color-warning: #f59e0b;
+  --color-warning-rgb: 245, 158, 11;
+  --color-danger: #ef4444;
+  --color-danger-rgb: 239, 68, 68;
   
   --color-background: #f8fafc;
   --color-surface: #ffffff;
@@ -124,8 +124,15 @@ h1, h2, h3, h4, h5, h6 {
   gap: 1.5rem;
 }
 
-@media (min-width: 640px) { .grid-cols-2 { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 768px) { .grid-cols-3 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 640px) {
+  .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .sm\:col-span-2 { grid-column: span 2 / span 2; }
+}
+@media (min-width: 768px) {
+  .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+}
 
 @media (min-width: 1024px) {
   .lg\:grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
@@ -435,6 +442,16 @@ h1, h2, h3, h4, h5, h6 {
     display: inline-flex;
     margin-bottom: 0;
   }
+
+  .attendance-absence-fields {
+    flex-direction: column;
+  }
+
+  .attendance-absence-fields select,
+  .attendance-absence-fields input {
+    width: 100%;
+    min-width: 0 !important;
+  }
   
   /* Flexbox utilities - stack horizontally aligned elements on mobile */
   .d-flex.justify-between.align-center {
@@ -499,3 +516,14 @@ h1, h2, h3, h4, h5, h6 {
 .d-flex { display: flex; }
 .flex-wrap { flex-wrap: wrap; }
 .d-flex-nowrap { display: flex; flex-wrap: nowrap; }
+.input-error { border-color: var(--color-danger) !important; }
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

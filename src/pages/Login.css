@@ -12,7 +12,7 @@
 .login-left {
   flex: 1.2;
   position: relative;
-  background-image: url('https://i.postimg.cc/zfdT5Wwz/img-cris-romi.png');
+  background-image: url('/img/login-bg.png');
   background-size: cover;
   background-position: center;
   display: flex;
@@ -320,4 +320,4 @@
   .login-logo-wrapper {
     margin-bottom: 2.5rem;
   }
-}
+}

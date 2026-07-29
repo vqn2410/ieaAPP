@@ -3,9 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
 import Logo from '../components/common/Logo';
 import './Login.css';
 
@@ -33,7 +30,15 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError('Error al iniciar sesión. Revisa tus credenciales.');
+      const messages = {
+        'auth/user-not-found': 'No existe una cuenta con ese email.',
+        'auth/wrong-password': 'Contraseña incorrecta.',
+        'auth/invalid-credential': 'Email o contraseña incorrectos.',
+        'auth/invalid-email': 'El formato del email no es válido.',
+        'auth/user-disabled': 'Esta cuenta ha sido deshabilitada.',
+        'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+      };
+      setError(messages[err.code] || 'Error al iniciar sesión. Revisa tus credenciales.');
     } finally {
       setLoading(false);
     }
@@ -48,7 +53,11 @@ const Login = () => {
       await resetPassword(email);
       setResetSent(true);
     } catch (err) {
-      setError('Error al enviar el correo. Verifica que el email sea correcto.');
+      const messages = {
+        'auth/user-not-found': 'No existe una cuenta con ese email.',
+        'auth/invalid-email': 'El formato del email no es válido.',
+      };
+      setError(messages[err.code] || 'Error al enviar el correo. Verifica que el email sea correcto.');
     } finally {
       setLoading(false);
     }
@@ -76,7 +85,7 @@ const Login = () => {
           {!showReset && (
             <div className="login-greeting animate-fade-in">
               <h2>¡Hola de nuevo! 👋</h2>
-              <p>Bienvenido al Portal IEA</p>
+              <p>Bienvenido a Portal IEA</p>
             </div>
           )}
 
@@ -183,7 +192,7 @@ const Login = () => {
         </div>
 
         <div className="login-footer">
-          <p className="login-copy">IEA PORTAL © 2026</p>
+          <p className="login-copy">PORTAL IEA © 2026</p>
         </div>
       </div>
     </div>

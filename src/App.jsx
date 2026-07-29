@@ -1,23 +1,30 @@
-import React from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
 import MainLayout from './components/layout/MainLayout';
-import Dashboard from './pages/Dashboard';
-import Members from './pages/Members';
-import MemberProfile from './pages/MemberProfile';
-import Events from './pages/Events';
-import News from './pages/News';
-import Live from './pages/Live';
-import Finances from './pages/Finances';
-import Groups from './pages/Groups';
-import GroupDetails from './pages/GroupDetails';
-import GrowthGroups from './pages/GrowthGroups';
-import Settings from './pages/Settings';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import ChangePassword from './pages/ChangePassword';
-import SessionExpired from './pages/SessionExpired';
 import InactivityTimer from './components/common/InactivityTimer';
 import { useAuth } from './context/AuthContext';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Members = lazy(() => import('./pages/Members'));
+const MemberProfile = lazy(() => import('./pages/MemberProfile'));
+const Events = lazy(() => import('./pages/Events'));
+const News = lazy(() => import('./pages/News'));
+const Live = lazy(() => import('./pages/Live'));
+const Finances = lazy(() => import('./pages/Finances'));
+const Groups = lazy(() => import('./pages/Groups'));
+const GroupDetails = lazy(() => import('./pages/GroupDetails'));
+const GrowthGroups = lazy(() => import('./pages/GrowthGroups'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const FollowUps = lazy(() => import('./pages/FollowUps'));
+
+const Visitors = lazy(() => import('./pages/Visitors'));
+const MemberPortal = lazy(() => import('./pages/MemberPortal'));
+const SessionExpired = lazy(() => import('./pages/SessionExpired'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, loading, userData, hasRole } = useAuth();
@@ -42,9 +49,24 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
 };
 
 function App() {
+  useEffect(() => {
+    if (typeof CapacitorApp?.addListener !== 'function') return;
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        CapacitorApp.exitApp();
+      }
+    });
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, []);
+
   return (
     <Router>
       <InactivityTimer>
+        <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -96,13 +118,19 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="change-password" element={<ChangePassword />} />
+            <Route path="cambio-clave" element={<ChangePassword />} />
+            <Route path="seguimientos" element={<FollowUps />} />
+            <Route path="visitantes" element={<Visitors />} />
+            <Route path="mi-perfil" element={<MemberPortal />} />
+            <Route path="reportes" element={<Reports />} />
           </Route>
         </Routes>
+        </Suspense>
       </InactivityTimer>
     </Router>
   );
 }
 
+const Loading = () => <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
 export default App;
 
