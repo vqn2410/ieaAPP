@@ -22,6 +22,17 @@ service cloud.firestore {
       return isAuth() && (getUserField('role')).hasAny(roles);
     }
 
+    function managesGroup(groupId) {
+      return isAuth()
+        && request.auth.token.email != null
+        && get(/databases/$(database)/documents/groups/$(groupId)).data.facilitatorEmails.hasAny([request.auth.token.email]);
+    }
+
+    function canManageMemberGroup(groupId) {
+      return hasAnyRole(['Admin', 'Pastor'])
+        || (hasAnyRole(['Facilitator', 'CoFacilitator']) && managesGroup(groupId));
+    }
+
     // === Colección: users ===
     // Cada usuario solo puede leer su propio documento
     // Los admins pueden leer/escribir cualquier documento de usuario
@@ -34,11 +45,11 @@ service cloud.firestore {
 
     // === Colección: members ===
     // Solo usuarios autenticados pueden leer
-    // Solo admins y pastores pueden escribir
+    // Admins y pastores gestionan cualquier miembro; facilitadores solo su grupo.
     match /members/{memberId} {
       allow read: if isAuth();
-      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
-      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
+      allow update: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
       allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 

@@ -5,12 +5,14 @@ import { updateMember } from '../../services/memberService';
 
 const GroupForm = ({ initialData, onSuccess, membersList }) => {
     const [groupName, setGroupName] = useState(initialData?.name || '');
-    const [groupType, setGroupType] = useState(initialData?.type || 'Grupo de Amistad');
+    const initialType = initialData?.type?.trim();
+    const [groupType, setGroupType] = useState(initialType === 'Grupo de Crecimiento' ? 'Grupo de Amistad' : (initialType || 'Grupo de Amistad'));
     const [groupDay, setGroupDay] = useState(initialData?.scheduleDay || '');
     const [groupTime, setGroupTime] = useState(initialData?.scheduleTime || '');
     const [facilitators, setFacilitators] = useState(Array.isArray(initialData?.facilitators) ? initialData.facilitators : (initialData?.facilitators ? [initialData.facilitators] : []));
     const [coFacilitators, setCoFacilitators] = useState(Array.isArray(initialData?.coFacilitators) ? initialData.coFacilitators : (initialData?.coFacilitators ? [initialData.coFacilitators] : []));
     const [saving, setSaving] = useState(false);
+    const isScheduledGroup = groupType === 'Grupo de Amistad' || Boolean(initialData?.scheduleDay || initialData?.scheduleTime);
 
 
     const resolveMemberName = (idOrName) => {
@@ -28,9 +30,13 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 name: groupName, 
                 type: groupType,
                 facilitators: facilitators,
-                coFacilitators: coFacilitators
+                coFacilitators: coFacilitators,
+                facilitatorEmails: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
+                    const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
+                    return member?.email?.trim().toLowerCase();
+                }).filter(Boolean))]
             };
-            if (groupType === 'Grupo de Amistad') {
+            if (isScheduledGroup) {
                 payload.scheduleDay = groupDay;
                 payload.scheduleTime = groupTime;
             }
@@ -110,7 +116,7 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 </select>
             </div>
             
-            {groupType === 'Grupo de Amistad' && (
+            {isScheduledGroup && (
                 <div className="grid grid-cols-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
                     <div className="form-group m-0">
                         <label className="form-label">Día de reunión *</label>

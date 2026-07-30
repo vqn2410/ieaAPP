@@ -5,7 +5,14 @@ import { getGroups } from '../../services/groupService';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../common/toastContext';
 
-const MemberForm = ({ onSuccess, initialData }) => {
+const emptyGrowthPath = {
+  Bautismo: { status: '' },
+  Discipulado: { status: '' },
+  IETE: { status: '', year: '', modality: 'Online' },
+  'Otros estudios teológicos': { status: '', detail: '' }
+};
+
+const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
   const { settings } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -18,8 +25,9 @@ const MemberForm = ({ onSuccess, initialData }) => {
     email: '',
     phone: '',
     address: '',
-    group: '',
+    group: fixedGroup || '',
     role: ['Member'],
+    growthPath: emptyGrowthPath,
   });
 
   useEffect(() => {
@@ -30,14 +38,15 @@ const MemberForm = ({ onSuccess, initialData }) => {
     if (initialData) {
       setFormData({
         ...initialData,
-        role: Array.isArray(initialData.role) ? initialData.role : (initialData.role ? [initialData.role] : ['Member'])
+        role: Array.isArray(initialData.role) ? initialData.role : (initialData.role ? [initialData.role] : ['Member']),
+        growthPath: { ...emptyGrowthPath, ...(initialData.growthPath || {}) }
       });
     } else {
       setFormData({
-        firstName: '', lastName: '', dni: '', email: '', phone: '', address: '', group: '', role: ['Member']
+        firstName: '', lastName: '', dni: '', email: '', phone: '', address: '', group: fixedGroup || '', role: ['Member'], growthPath: emptyGrowthPath
       });
     }
-  }, [initialData]);
+  }, [initialData, fixedGroup]);
 
   const toggleRole = (roleValue) => {
     setFormData(prev => {
@@ -52,6 +61,13 @@ const MemberForm = ({ onSuccess, initialData }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleGrowthPathChange = (path, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      growthPath: { ...prev.growthPath, [path]: { ...prev.growthPath?.[path], [field]: value } }
+    }));
   };
 
   const validate = () => {
@@ -80,7 +96,7 @@ const MemberForm = ({ onSuccess, initialData }) => {
         await updateMember(initialData.id, formData);
         toast('Miembro actualizado correctamente', 'success');
       } else {
-        await createMember({ ...formData, growthPath: {} });
+        await createMember({ ...formData, group: fixedGroup || formData.group, ...(fixedGroupId && { groupId: fixedGroupId }) });
         toast('Miembro creado correctamente', 'success');
       }
       if (onSuccess) onSuccess();
@@ -124,7 +140,13 @@ const MemberForm = ({ onSuccess, initialData }) => {
           <label className="form-label">Dirección (Opcional)</label>
           <input name="address" value={formData.address || ''} onChange={handleChange} className="form-input" placeholder="Domicilio" />
         </div>
-        <div className="form-group mb-2 sm:col-span-2">
+        {fixedGroup && <div className="form-group mb-2 sm:col-span-2">
+          <label className="form-label">Grupo asignado</label>
+          <div style={{ padding: '0.75rem 1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface-hover)', fontWeight: 600, color: 'var(--color-text)' }}>
+            {fixedGroup}
+          </div>
+        </div>}
+        {!fixedGroup && <div className="form-group mb-2 sm:col-span-2">
           <label className="form-label">Grupo / Ministerio (Opcional)</label>
           <select name="group" value={formData.group} onChange={handleChange} className="form-input" style={{ width: '100%', height: '42px', backgroundColor: 'var(--color-surface)' }}>
             <option value="">Sin Grupo / Se asignará luego</option>
@@ -132,8 +154,33 @@ const MemberForm = ({ onSuccess, initialData }) => {
               <option key={g.id} value={g.name}>{g.name}</option>
             ))}
           </select>
-        </div>
+        </div>}
         <div className="form-group mb-2 sm:col-span-2">
+          <label className="form-label">Ruta de crecimiento (Opcional)</label>
+          <div className="grid grid-cols-2" style={{ gap: '0.75rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
+            {Object.entries(formData.growthPath || emptyGrowthPath).map(([path, data]) => (
+              <div key={path} className="form-group m-0">
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{path}</label>
+                <select className="form-input" value={data.status || ''} onChange={event => handleGrowthPathChange(path, 'status', event.target.value)}>
+                  <option value="">Sin información</option>
+                  <option value="Cursando">Cursando</option>
+                  <option value="Completo">Completo</option>
+                  <option value="Pausado">Pausado</option>
+                </select>
+                {path === 'IETE' && ['Cursando', 'Completo'].includes(data.status) && <div className="d-flex gap-2 mt-2">
+                  <input type="number" min="1" className="form-input" value={data.year || ''} onChange={event => handleGrowthPathChange(path, 'year', event.target.value)} placeholder="Año" />
+                  <select className="form-input" value={data.modality || 'Online'} onChange={event => handleGrowthPathChange(path, 'modality', event.target.value)}>
+                    <option value="Online">Online</option>
+                    <option value="Presencial">Presencial</option>
+                    <option value="Híbrido">Híbrido</option>
+                  </select>
+                </div>}
+                {path === 'Otros estudios teológicos' && ['Cursando', 'Completo'].includes(data.status) && <input className="form-input mt-2" value={data.detail || ''} onChange={event => handleGrowthPathChange(path, 'detail', event.target.value)} placeholder="¿Cuáles estudios?" />}
+              </div>
+            ))}
+          </div>
+        </div>
+        {!fixedGroup && <div className="form-group mb-2 sm:col-span-2">
           <label className="form-label">Roles en la Iglesia</label>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
              {settings && settings.roles ? Object.entries(settings.roles).map(([key, label]) => (
@@ -158,7 +205,7 @@ const MemberForm = ({ onSuccess, initialData }) => {
                 ))
              )}
           </div>
-        </div>
+        </div>}
       </div>
       
       <Button type="submit" variant="primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>

@@ -15,11 +15,8 @@ import {
   X,
   Radio,
   DollarSign,
-  Activity,
-  ClipboardList,
    UserPlus,
    FileText,
-   BookOpen,
    Moon,
    Sun
 } from 'lucide-react';
@@ -63,15 +60,11 @@ const MainLayout = () => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
-    { name: 'Mi Perfil', path: '/dashboard/mi-perfil', icon: <User size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'] },
-    { name: 'Crecimiento', path: '/dashboard/crecimiento', icon: <Activity size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
-    { name: 'Clases', path: '/dashboard/clases', icon: <BookOpen size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Eventos', path: '/dashboard/eventos', icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
-    { name: 'Finanzas', path: '/dashboard/finanzas', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'] },
+    { name: 'Finanzas', path: 'https://iea-finanzas.vercel.app/', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'], external: true },
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
-    { name: 'Seguimientos', path: '/dashboard/seguimientos', icon: <ClipboardList size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Visitantes', path: '/dashboard/visitantes', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator'] },
     { name: 'Noticias', path: '/dashboard/noticias', icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor'] },
     { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
@@ -92,21 +85,24 @@ const MainLayout = () => {
           <ul>
             {menuItems.map((item) => (
               <li key={item.path}>
-                <NavLink 
-                  to={item.path} 
-                  end={item.path === '/dashboard'}
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  {item.icon}
-                  <span>{item.name}</span>
-                </NavLink>
+                {item.external ? (
+                  <a href={item.path} className="nav-item">
+                    {item.icon}
+                    <span>{item.name}</span>
+                  </a>
+                ) : (
+                  <NavLink to={item.path} end={item.path === '/dashboard'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    {item.icon}
+                    <span>{item.name}</span>
+                  </NavLink>
+                )}
               </li>
             ))}
           </ul>
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-info">
+          <button className="user-info" onClick={() => navigate('/dashboard/mi-perfil')} title="Mi perfil" style={{ width: '100%', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
             <div className="avatar">
               {userData?.name?.charAt(0) || currentUser?.email?.charAt(0)}
             </div>
@@ -114,7 +110,7 @@ const MainLayout = () => {
               <div className="user-name">{userData?.name || 'Usuario'}</div>
               <div className="badge badge-gray">{settings?.roles?.[userData?.role] || userData?.role}</div>
             </div>
-          </div>
+          </button>
           <button className="theme-toggle" onClick={() => setIsDarkMode(current => !current)}>
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             <span>{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
@@ -190,17 +186,19 @@ const MainLayout = () => {
              </div>
 
              <div className="mobile-menu-grid">
-                {menuItems.filter(item => item.path !== '/dashboard/mi-perfil').map((item) => (
-                 <NavLink 
-                   key={item.path} 
-                   to={item.path} 
-                   end={item.path === '/dashboard'}
-                   className={({ isActive }) => `nav-item mobile-nav-card ${isActive ? 'active' : ''}`}
-                 >
-                   {React.cloneElement(item.icon, { size: 24 })}
-                   <span>{item.name}</span>
-                 </NavLink>
-               ))}
+                 {menuItems.filter(item => item.path !== '/dashboard/mi-perfil').map((item) => (
+                  item.external ? (
+                    <a key={item.path} href={item.path} className="nav-item mobile-nav-card">
+                      {React.cloneElement(item.icon, { size: 24 })}
+                      <span>{item.name}</span>
+                    </a>
+                  ) : (
+                    <NavLink key={item.path} to={item.path} end={item.path === '/dashboard'} className={({ isActive }) => `nav-item mobile-nav-card ${isActive ? 'active' : ''}`}>
+                      {React.cloneElement(item.icon, { size: 24 })}
+                      <span>{item.name}</span>
+                    </NavLink>
+                  )
+                ))}
              </div>
           </div>
         )}

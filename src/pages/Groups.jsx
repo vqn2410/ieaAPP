@@ -19,8 +19,17 @@ const getArray = (val) => {
   return [];
 };
 
+const getFacilitatorEmails = (group, members) => {
+  const leaders = [...getArray(group.facilitators), ...getArray(group.coFacilitators)];
+  return [...new Set(leaders.map(value => {
+    const normalized = String(value).trim().toLowerCase();
+    const member = members.find(item => item.id === value || `${item.firstName} ${item.lastName}`.trim().toLowerCase() === normalized || `${item.lastName}, ${item.firstName}`.trim().toLowerCase() === normalized);
+    return member?.email?.trim().toLowerCase();
+  }).filter(Boolean))].sort();
+};
+
 const Groups = () => {
-  const { hasRole } = useAuth();
+  const { currentUser, hasRole } = useAuth();
   const isAdmin = hasRole(['Admin', 'Pastor']);
   const navigate = useNavigate();
 
@@ -47,6 +56,14 @@ const Groups = () => {
     return idOrName;
   };
 
+  const isGroupLeader = (group) => {
+    const currentMember = membersList.find(member => member.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase());
+    if (!currentMember) return false;
+    const leaders = [...getArray(group.facilitators), ...getArray(group.coFacilitators)];
+    const names = [`${currentMember.firstName} ${currentMember.lastName}`, `${currentMember.lastName}, ${currentMember.firstName}`].map(name => name.toLowerCase());
+    return leaders.some(leader => leader === currentMember.id || names.includes(String(leader).trim().toLowerCase()));
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -55,19 +72,23 @@ const Groups = () => {
       setMembersList(mems.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || '')));
 
       let madeChanges = false;
-      for (let g of data) {
-        const changes = {};
-        let newName = g.name;
-        if (g.name === '8. Perez, Pereira (La Tribu) - Viernes') newName = 'LA TRIBU';
-        if (typeof g.name === 'string' && g.name.includes('5. Quaresima')) newName = 'QUARESIMA';
-        if (typeof g.name === 'string' && g.name.includes('4. Ortiz')) newName = 'ORTIZ-HARDOY (MARTES)';
-        if (typeof g.name === 'string' && g.name.includes('3. T')) newName = 'TEVEZ-DIAZ';
-        if (typeof g.name === 'string' && g.name.includes('10. Sanchez')) newName = 'SANCHEZ';
-        if (newName !== g.name) changes.name = newName;
-        if (newName === 'TEVEZ-DIAZ' && g.scheduleDay !== 'Jueves') changes.scheduleDay = 'Jueves';
-        if (Object.keys(changes).length > 0) {
-          await updateGroup(g.id, changes);
-          madeChanges = true;
+      if (isAdmin) {
+        for (let g of data) {
+          const changes = {};
+          let newName = g.name;
+          if (g.name === '8. Perez, Pereira (La Tribu) - Viernes') newName = 'LA TRIBU';
+          if (typeof g.name === 'string' && g.name.includes('5. Quaresima')) newName = 'QUARESIMA';
+          if (typeof g.name === 'string' && g.name.includes('4. Ortiz')) newName = 'ORTIZ-HARDOY (MARTES)';
+          if (typeof g.name === 'string' && g.name.includes('3. T')) newName = 'TEVEZ-DIAZ';
+          if (typeof g.name === 'string' && g.name.includes('10. Sanchez')) newName = 'SANCHEZ';
+          if (newName !== g.name) changes.name = newName;
+          if (newName === 'TEVEZ-DIAZ' && g.scheduleDay !== 'Jueves') changes.scheduleDay = 'Jueves';
+          const facilitatorEmails = getFacilitatorEmails(g, mems);
+          if (JSON.stringify(g.facilitatorEmails || []) !== JSON.stringify(facilitatorEmails)) changes.facilitatorEmails = facilitatorEmails;
+          if (Object.keys(changes).length > 0) {
+            await updateGroup(g.id, changes);
+            madeChanges = true;
+          }
         }
       }
       if (madeChanges) {
@@ -79,7 +100,7 @@ const Groups = () => {
       setLoading(false);
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [isAdmin]);
 
   const refresh = async () => {
     const data = await getGroups();
@@ -94,6 +115,7 @@ const Groups = () => {
     const coFacils = getArray(g.coFacilitators).map(resolveMemberName).join(' ');
     return name.includes(q) || normalizeString(facils).toLowerCase().includes(q) || normalizeString(coFacils).toLowerCase().includes(q);
   });
+  const visibleGroups = isAdmin ? filtered : filtered.filter(isGroupLeader);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -103,7 +125,8 @@ const Groups = () => {
         name: groupName,
         type: groupType,
         facilitators,
-        coFacilitators
+        coFacilitators,
+        facilitatorEmails: getFacilitatorEmails({ facilitators, coFacilitators }, membersList)
       };
       if (groupType === 'Grupo de Amistad') {
         payload.scheduleDay = groupDay;
@@ -228,11 +251,11 @@ const Groups = () => {
 
       {loading ? (
         <Card><SkeletonTable rows={6} /></Card>
-      ) : filtered.length === 0 ? (
+      ) : visibleGroups.length === 0 ? (
         <Card><EmptyState icon={Users} title="Sin grupos" message="No se encontraron grupos con los filtros actuales." /></Card>
       ) : (
         <div className="groups-grid">
-          {filtered.map(group => {
+          {visibleGroups.map(group => {
             const groupMembers = membersList.filter(m => m.group === group.name);
             const count = groupMembers.length;
             return (

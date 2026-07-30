@@ -39,7 +39,9 @@ const Members = () => {
   const [memberToEdit, setMemberToEdit] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const canEdit = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
+  const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+  const canEdit = roles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
+  const canCreate = roles.some(role => ['Admin', 'Pastor'].includes(role));
 
   const loadMembers = async () => {
     setLoading(true);
@@ -126,9 +128,9 @@ const Members = () => {
         <h1>Miembros</h1>
         {canEdit && (
           <div className="d-flex gap-2" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <Button variant="outline" size="sm" icon={<Download size={14} />} onClick={handleExportCSV}>Exportar CSV</Button>
-            <Button variant="outline" size="sm" icon={<Upload size={14} />} onClick={() => setShowBulkUpload(true)}>Carga Masiva</Button>
-            <Button size="sm" icon={<Plus size={14} />} onClick={handleAddNew}>Nuevo</Button>
+            {canCreate && <Button variant="outline" size="sm" icon={<Download size={14} />} onClick={handleExportCSV}>Exportar CSV</Button>}
+            {canCreate && <Button variant="outline" size="sm" icon={<Upload size={14} />} onClick={() => setShowBulkUpload(true)}>Carga Masiva</Button>}
+            {canCreate && <Button size="sm" icon={<Plus size={14} />} onClick={handleAddNew}>Nuevo</Button>}
           </div>
         )}
       </div>

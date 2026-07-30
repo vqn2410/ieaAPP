@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, Search, UserPlus, Users } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
+import MemberForm from '../components/members/MemberForm';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { getGroup } from '../services/groupService';
-import { getMembers } from '../services/memberService';
+import { getMembers, updateMember } from '../services/memberService';
+import { useAuth } from '../context/AuthContext';
+import { useDebounce } from '../utils/useDebounce';
 
 const GroupDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { currentUser, hasRole } = useAuth();
     const [group, setGroup] = useState(null);
     const [membersList, setMembersList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [showCreateMember, setShowCreateMember] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearch = useDebounce(searchTerm, 200);
 
     useEffect(() => {
         const loadData = async () => {
@@ -53,6 +62,31 @@ const GroupDetails = () => {
     };
 
     const groupMembers = membersList.filter(m => m.group === group.name);
+    const currentMember = membersList.find(member => member.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase());
+    const isGroupLeader = currentMember && isLegacyMatch([...facilitatorsIds, ...coFacilitatorsIds], currentMember);
+    const canManage = hasRole(['Admin', 'Pastor']) || (hasRole(['Facilitator', 'CoFacilitator']) && isGroupLeader);
+    const availableMembers = membersList
+        .filter(member => member.group !== group.name)
+        .filter(member => `${member.firstName} ${member.lastName} ${member.dni || ''}`.toLowerCase().includes(debouncedSearch.toLowerCase()))
+        .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+
+    const refreshMembers = async () => {
+        const data = await getMembers();
+        setMembersList(data);
+    };
+
+    const handleAddMember = async (member) => {
+        if (member.group && !window.confirm(`${member.lastName}, ${member.firstName} pertenece a ${member.group}. ¿Moverlo a ${group.name}?`)) return;
+        try {
+            await updateMember(member.id, { group: group.name, groupId: group.id });
+            await refreshMembers();
+            setShowAddMember(false);
+            setSearchTerm('');
+        } catch (error) {
+            console.error('Error adding member to group', error);
+            alert('No se pudo asignar la persona al grupo.');
+        }
+    };
 
     let groupFacilitators = groupMembers.filter(m => isLegacyMatch(facilitatorsIds, m));
     let groupCoFacilitators = groupMembers.filter(m => !isLegacyMatch(facilitatorsIds, m) && isLegacyMatch(coFacilitatorsIds, m));
@@ -77,12 +111,14 @@ const GroupDetails = () => {
 
     return (
         <div className="animate-fade-in">
-            <div className="d-flex align-center gap-3 mb-4">
+            <div className="d-flex align-center gap-3 mb-4" style={{ flexWrap: 'wrap' }}>
                 <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/grupos')}>Volver</Button>
                 <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Users size={24} color="var(--color-primary)" />
                     Integrantes de {group.name}
                 </h1>
+                {canManage && <Button size="sm" icon={<UserPlus size={15} />} onClick={() => setShowAddMember(true)}>Agregar persona</Button>}
+                {canManage && <Button size="sm" variant="outline" icon={<UserPlus size={15} />} onClick={() => setShowCreateMember(true)}>Nuevo miembro</Button>}
             </div>
 
             <Card className="mb-4">
@@ -153,6 +189,31 @@ const GroupDetails = () => {
                     </table>
                 </div>
             </Card>
+
+            <Modal isOpen={showAddMember} onClose={() => setShowAddMember(false)} title={`Agregar a ${group.name}`}>
+                <div className="d-flex flex-column gap-3">
+                    <div style={{ position: 'relative' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                        <input className="form-input" style={{ width: '100%', paddingLeft: '2.5rem' }} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o DNI..." autoFocus />
+                    </div>
+                    <div style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                        {availableMembers.length === 0 ? (
+                            <p style={{ margin: 0, padding: '1rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>No hay personas disponibles.</p>
+                        ) : availableMembers.map(member => (
+                            <button key={member.id} onClick={() => handleAddMember(member)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.75rem 1rem', border: 'none', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', textAlign: 'left' }}>
+                                <span><strong>{member.lastName}, {member.firstName}</strong><br /><small style={{ color: 'var(--color-text-muted)' }}>{member.dni || 'Sin DNI'}</small></span>
+                                <small style={{ color: 'var(--color-text-muted)' }}>{member.group || 'Sin grupo'}</small>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
+            <Modal isOpen={showCreateMember} onClose={() => setShowCreateMember(false)} title={`Nuevo miembro para ${group.name}`}>
+                <MemberForm fixedGroup={group.name} fixedGroupId={group.id} onSuccess={async () => {
+                    await refreshMembers();
+                    setShowCreateMember(false);
+                }} />
+            </Modal>
         </div>
     );
 };

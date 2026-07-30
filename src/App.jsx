@@ -11,8 +11,6 @@ const MemberProfile = lazy(() => import('./pages/MemberProfile'));
 const Events = lazy(() => import('./pages/Events'));
 const News = lazy(() => import('./pages/News'));
 const Live = lazy(() => import('./pages/Live'));
-const Finances = lazy(() => import('./pages/Finances'));
-const Groups = lazy(() => import('./pages/Groups'));
 const GroupDetails = lazy(() => import('./pages/GroupDetails'));
 const GrowthGroups = lazy(() => import('./pages/GrowthGroups'));
 const Reports = lazy(() => import('./pages/Reports'));
@@ -20,8 +18,6 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
-const FollowUps = lazy(() => import('./pages/FollowUps'));
-const FriendshipClasses = lazy(() => import('./pages/FriendshipClasses'));
 
 const Visitors = lazy(() => import('./pages/Visitors'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
@@ -41,6 +37,13 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   }
 
   return children;
+};
+
+const FinanceRedirect = () => {
+  useEffect(() => {
+    window.location.assign('https://iea-finanzas.vercel.app/');
+  }, []);
+  return <Loading />;
 };
 
 function App() {
@@ -85,27 +88,27 @@ function App() {
               path="finanzas" 
               element={
                 <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                  <Finances />
+                  <FinanceRedirect />
                 </ProtectedRoute>
               } 
             />
             <Route 
               path="grupos" 
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                  <Groups />
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                  <GrowthGroups />
                 </ProtectedRoute>
               } 
             />
             <Route 
               path="grupos/:id" 
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'Facilitator', 'CoFacilitator']}>
                   <GroupDetails />
                 </ProtectedRoute>
               } 
             />
-            <Route path="crecimiento" element={<GrowthGroups />} />
+            <Route path="crecimiento" element={<Navigate to="/dashboard/grupos" replace />} />
             <Route path="configuracion" 
               element={
                 <ProtectedRoute requiredRoles={['Admin']}>
@@ -114,8 +117,8 @@ function App() {
               } 
             />
             <Route path="cambio-clave" element={<ChangePassword />} />
-            <Route path="seguimientos" element={<FollowUps />} />
-            <Route path="clases" element={<FriendshipClasses />} />
+            <Route path="seguimientos" element={<Navigate to="/dashboard/grupos?section=seguimientos" replace />} />
+            <Route path="clases" element={<Navigate to="/dashboard/grupos?section=clases" replace />} />
             <Route path="visitantes" element={<Visitors />} />
             <Route path="mi-perfil" element={<MemberPortal />} />
             <Route path="reportes" element={<Reports />} />

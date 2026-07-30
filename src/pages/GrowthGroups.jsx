@@ -5,7 +5,7 @@ import Button from '../components/common/Button';
 import GroupForm from '../components/groups/GroupForm';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { getGroups, deleteGroup } from '../services/groupService';
+import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
@@ -14,7 +14,9 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
 import { SkeletonCard } from '../components/common/Skeleton';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import FriendshipClasses from './FriendshipClasses';
+import FollowUps from './FollowUps';
 import './GrowthGroups.css';
 
 const getDayNumber = (dayStr) => {
@@ -75,11 +77,22 @@ const getAvailableDatesForDay = (scheduleDay, count = 12, holidayDates = []) => 
     return dates;
 };
 
+const getFacilitatorEmails = (group, members) => {
+    const leaders = [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators].filter(Boolean)), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators].filter(Boolean))];
+    return [...new Set(leaders.map(value => {
+        const normalized = String(value).trim().toLowerCase();
+        const member = members.find(item => item.id === value || `${item.firstName} ${item.lastName}`.trim().toLowerCase() === normalized || `${item.lastName}, ${item.firstName}`.trim().toLowerCase() === normalized);
+        return member?.email?.trim().toLowerCase();
+    }).filter(Boolean))].sort();
+};
+
 const GrowthGroups = () => {
     const { currentUser, hasRole } = useAuth();
     const isAdmin = hasRole(['Admin', 'Pastor']);
+    const canManageGroups = hasRole(['Admin', 'Pastor', 'Facilitator', 'CoFacilitator']);
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState(null);
+    const [searchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get('section'));
 
     const [myMemberProfile, setMyMemberProfile] = useState(null);
     const [myGroups, setMyGroups] = useState([]);
@@ -114,7 +127,19 @@ const GrowthGroups = () => {
         setLoading(true);
         const members = await getMembers();
         setAllMembers(members);
-        const groups = await getGroups();
+        let groups = await getGroups();
+
+        if (isAdmin) {
+            const updates = groups.map(async group => {
+                const facilitatorEmails = getFacilitatorEmails(group, members);
+                if (JSON.stringify(group.facilitatorEmails || []) !== JSON.stringify(facilitatorEmails)) {
+                    await updateGroup(group.id, { facilitatorEmails });
+                    return { ...group, facilitatorEmails };
+                }
+                return group;
+            });
+            groups = await Promise.all(updates);
+        }
 
         const me = members.find(m => m.email && currentUser?.email && m.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase());
         setMyMemberProfile(me);
@@ -156,7 +181,7 @@ const GrowthGroups = () => {
 
     if (loading) return <div className="p-4"><SkeletonCard /></div>;
 
-    if (!myMemberProfile && !isAdmin) {
+    if (!myMemberProfile && !isAdmin && !['clases', 'seguimientos'].includes(activeTab)) {
         return (
             <div className="animate-fade-in p-4 text-center mt-4">
                 <Card>
@@ -170,11 +195,13 @@ const GrowthGroups = () => {
     }
 
     const navigationCards = [
-        { id: 'grupos', title: 'Mis Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.' },
-        { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.' },
-        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.' },
-        { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.' }
-    ];
+        { id: 'grupos', title: 'Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.', visible: canManageGroups },
+        { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
+        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
+        { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
+        { id: 'clases', title: 'Clases', icon: <BookOpen size={32} color="var(--color-primary)" />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
+        { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
+    ].filter(card => card.visible !== false);
 
     const resolveMemberName = (idOrName) => {
         if (!idOrName) return '';
@@ -192,7 +219,7 @@ const GrowthGroups = () => {
                             <ArrowLeft size={18} />
                         </button>
                     )}
-                    <h1 style={{ margin: 0 }}>Grupos de Amistad {activeTab ? ` / ${navigationCards.find(c => c.id === activeTab)?.title}` : ''}</h1>
+                    <h1 style={{ margin: 0 }}>Grupos {activeTab ? ` / ${navigationCards.find(c => c.id === activeTab)?.title}` : ''}</h1>
                 </div>
                 {isAdmin && !activeTab && (
                     <Button icon={<Plus size={16} />} onClick={() => { setEditingGroup(null); setShowGroupModal(true); }}>Nuevo Grupo</Button>
@@ -273,7 +300,8 @@ const GrowthGroups = () => {
                                                 <div className="d-flex justify-between align-center">
                                                     <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>👥 {myMembers.filter(m => m.group === g.name).length} Miembros</div>
                                                     <div className="d-flex gap-2">
-                                                        <Button variant="outline" size="sm" icon={<Edit size={14} />} onClick={() => { setEditingGroup(g); setShowGroupModal(true); }}>Editar</Button>
+                                                        <Button variant="outline" size="sm" icon={<Users size={14} />} onClick={() => navigate(`/dashboard/grupos/${g.id}`)}>Miembros</Button>
+                                                        {isAdmin && <Button variant="outline" size="sm" icon={<Edit size={14} />} onClick={() => { setEditingGroup(g); setShowGroupModal(true); }}>Editar</Button>}
                                                         {isAdmin && (
                                                             <Button variant="outline" size="sm" icon={<Trash2 size={14} />} style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => handleDeleteGroup(g.id)}>Eliminar</Button>
                                                         )}
@@ -352,6 +380,8 @@ const GrowthGroups = () => {
                             currentUser={currentUser}
                         />
                     )}
+                    {activeTab === 'clases' && <FriendshipClasses />}
+                    {activeTab === 'seguimientos' && <FollowUps />}
                 </div>
             )}
             <Modal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} title={editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"}>
