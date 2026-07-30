@@ -362,6 +362,18 @@
   animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+:root[data-theme='dark'] .mobile-header,
+:root[data-theme='dark'] .bottom-nav,
+:root[data-theme='dark'] .mobile-menu-overlay {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+:root[data-theme='dark'] .bottom-nav-item.active::after {
+  background: var(--color-primary-light);
+  box-shadow: 0 0 10px var(--color-primary-light);
+}
+
 .mobile-menu-header {
   display: flex;
   justify-content: space-between;

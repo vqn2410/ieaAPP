@@ -56,14 +56,19 @@ const Groups = () => {
 
       let madeChanges = false;
       for (let g of data) {
-        let updated = false;
+        const changes = {};
         let newName = g.name;
-        if (g.name === '8. Perez, Pereira (La Tribu) - Viernes') { newName = 'LA TRIBU'; updated = true; }
-        if (typeof g.name === 'string' && g.name.includes('5. Quaresima')) { newName = 'QUARESIMA'; updated = true; }
-        if (typeof g.name === 'string' && g.name.includes('4. Ortiz')) { newName = 'ORTIZ-HARDOY (MARTES)'; updated = true; }
-        if (typeof g.name === 'string' && g.name.includes('3. T')) { newName = 'TEVEZ-DIAZ'; updated = true; }
-        if (typeof g.name === 'string' && g.name.includes('10. Sanchez')) { newName = 'SANCHEZ'; updated = true; }
-        if (updated) await updateGroup(g.id, { name: newName });
+        if (g.name === '8. Perez, Pereira (La Tribu) - Viernes') newName = 'LA TRIBU';
+        if (typeof g.name === 'string' && g.name.includes('5. Quaresima')) newName = 'QUARESIMA';
+        if (typeof g.name === 'string' && g.name.includes('4. Ortiz')) newName = 'ORTIZ-HARDOY (MARTES)';
+        if (typeof g.name === 'string' && g.name.includes('3. T')) newName = 'TEVEZ-DIAZ';
+        if (typeof g.name === 'string' && g.name.includes('10. Sanchez')) newName = 'SANCHEZ';
+        if (newName !== g.name) changes.name = newName;
+        if (newName === 'TEVEZ-DIAZ' && g.scheduleDay !== 'Jueves') changes.scheduleDay = 'Jueves';
+        if (Object.keys(changes).length > 0) {
+          await updateGroup(g.id, changes);
+          madeChanges = true;
+        }
       }
       if (madeChanges) {
         const freshData = await getGroups();

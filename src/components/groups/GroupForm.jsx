@@ -30,7 +30,7 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 facilitators: facilitators,
                 coFacilitators: coFacilitators
             };
-            if (groupType === 'Grupo de Crecimiento') {
+            if (groupType === 'Grupo de Amistad') {
                 payload.scheduleDay = groupDay;
                 payload.scheduleTime = groupTime;
             }
