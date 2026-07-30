@@ -365,8 +365,19 @@
 :root[data-theme='dark'] .mobile-header,
 :root[data-theme='dark'] .bottom-nav,
 :root[data-theme='dark'] .mobile-menu-overlay {
-  background-color: var(--color-surface);
+  background-color: #172033 !important;
   border-color: var(--color-border);
+}
+
+:root[data-theme='dark'] .bottom-nav-item {
+  color: #94a3b8;
+  background: transparent;
+}
+
+:root[data-theme='dark'] .bottom-nav-item.active {
+  color: #f1f5f9;
+  background: rgba(147, 197, 253, 0.12);
+  border-radius: 10px;
 }
 
 :root[data-theme='dark'] .bottom-nav-item.active::after {
