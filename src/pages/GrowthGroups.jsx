@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useEffectEvent } from 'react';
 import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
@@ -10,7 +10,8 @@ import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
 import { Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { useNavigate } from 'react-router-dom';
@@ -342,7 +343,7 @@ const GrowthGroups = () => {
                         <AttendanceTab
                             myGroups={myGroups}
                             myMembers={myMembers}
-                            isAdmin={isAdmin}
+                            currentUser={currentUser}
                         />
                     )}
                 </div>
@@ -361,7 +362,7 @@ const GrowthGroups = () => {
     );
 };
 
-const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
+const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     const { settings } = useSettings();
     const absenceReasonsPool = settings?.absenceReasons || ['Salud', 'Laboral', 'Estudios', 'Actividad de la Iglesia', 'Otros'];
 
@@ -387,6 +388,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
 
     const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
     const groupMembers = myMembers.filter(m => selectedGroup && m.group === selectedGroup.name).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+    const groupMemberIds = groupMembers.map(member => member.id).join(',');
 
     useEffect(() => {
         if (selectedGroup) {
@@ -399,28 +401,35 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedGroupId, selectedGroup?.scheduleDay, holidays]);
 
+    const fetchExistingAttendance = useEffectEvent(async () => {
+        if (!selectedGroupId || !attendanceDate) return;
+        setLoadingRecord(true);
+        const record = await getAttendance(selectedGroupId, attendanceDate);
+        if (record) {
+            setPresentIds(record.presentMembers || []);
+            setAbsentDetails(record.absentDetails || {});
+        } else {
+            // A new attendance list starts with the group present by default.
+            setPresentIds(groupMembers.map(member => member.id));
+            setAbsentDetails({});
+        }
+        setLoadingRecord(false);
+    });
+
     useEffect(() => {
-        const fetchExisting = async () => {
-            if (!selectedGroupId || !attendanceDate) return;
-            setLoadingRecord(true);
-            const record = await getAttendance(selectedGroupId, attendanceDate);
-            if (record) {
-                setPresentIds(record.presentMembers || []);
-                setAbsentDetails(record.absentDetails || {});
-            } else {
-                setPresentIds([]);
-                setAbsentDetails({});
-            }
-            setLoadingRecord(false);
-        };
-        fetchExisting();
-    }, [selectedGroupId, attendanceDate]);
+        fetchExistingAttendance();
+    }, [selectedGroupId, attendanceDate, groupMemberIds]);
 
     const toggleMember = (id) => {
         if (presentIds.includes(id)) {
-            setPresentIds(presentIds.filter(pid => pid !== id));
+            setPresentIds(current => current.filter(pid => pid !== id));
         } else {
-            setPresentIds([...presentIds, id]);
+            setPresentIds(current => [...current, id]);
+            setAbsentDetails(current => {
+                const updated = { ...current };
+                delete updated[id];
+                return updated;
+            });
         }
     };
 
@@ -430,7 +439,15 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
         presentIds.forEach(id => { delete cleanedAbsentDetails[id]; });
         setSaving(true);
         try {
-            await saveAttendance(selectedGroupId, attendanceDate, presentIds, cleanedAbsentDetails);
+            await saveAttendance({
+                groupId: selectedGroupId,
+                groupName: selectedGroup?.name || '',
+                date: attendanceDate,
+                presentMembers: presentIds,
+                absentDetails: cleanedAbsentDetails,
+                members: groupMembers.map(member => ({ id: member.id, firstName: member.firstName, lastName: member.lastName })),
+                takenBy: currentUser?.uid || '',
+            });
             alert('¡Asistencia guardada con éxito!');
         } catch {
             alert('Hubo un error al guardar la asistencia.');
@@ -448,9 +465,8 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
         if (reportPeriod === 'trimestral') start.setMonth(end.getMonth() - 3);
         const startStr = start.toISOString().split('T')[0];
         const endStr = end.toISOString().split('T')[0];
-        let groupsToFetch = [];
-        if (!isAdmin) groupsToFetch = myGroups.map(g => g.id);
-        const records = await getAttendanceForDateRange(groupsToFetch, startStr, endStr);
+        if (!selectedGroupId) return;
+        const records = await getAttendanceForDateRange([selectedGroupId], startStr, endStr);
         if (records.length === 0) {
             alert(`No se encontraron registros de asistencia para el período ${reportPeriod}.`);
             return;
@@ -462,103 +478,96 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
             recordsByGroup[r.groupId].push(r);
         });
 
-        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        const wb = XLSX.utils.book_new();
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        let logoDataUrl = null;
+        try {
+            const logoResponse = await fetch('/img/logo-iea.png');
+            const logoBlob = await logoResponse.blob();
+            logoDataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(logoBlob);
+            });
+        } catch {
+            // The report remains usable if the logo cannot be loaded.
+        }
 
+        let groupIndex = 0;
         Object.keys(recordsByGroup).forEach(gId => {
             const groupRecords = recordsByGroup[gId];
             const gDetails = myGroups.find(gr => gr.id === gId);
             const gName = gDetails ? gDetails.name : gId;
-            const members = myMembers.filter(m => m.group === gName).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+            const membersById = new Map();
+            groupRecords.forEach(record => {
+                (record.members || []).forEach(member => membersById.set(member.id, member));
+            });
+            const members = (membersById.size > 0 ? [...membersById.values()] : myMembers.filter(m => m.group === gName))
+                .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
             if (members.length === 0) return;
+            if (groupIndex > 0) pdf.addPage();
+            groupIndex++;
 
-            const uniqueDatesStrings = Array.from(new Set(groupRecords.map(r => r.date))).sort();
-            const datesByMonth = {};
-            uniqueDatesStrings.forEach(ds => {
-                const d = new Date(ds + "T12:00:00");
-                const mName = monthNames[d.getMonth()];
-                if (!datesByMonth[mName]) datesByMonth[mName] = [];
-                datesByMonth[mName].push({
-                    str: ds,
-                    label: d.getDate() + "-" + mName.substring(0, 3).toLowerCase()
+            if (logoDataUrl) pdf.addImage(logoDataUrl, 'PNG', 12, 8, 42, 12);
+            pdf.setDrawColor(148, 163, 184);
+            pdf.line(12, 25, 285, 25);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(12);
+            pdf.text(`Reporte de asistencia - ${gName}`, 12, 33);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.text(`Período: ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} | Emitido: ${new Date().toLocaleDateString('es-AR')}`, 12, 38);
+
+            const uniqueDates = Array.from(new Set(groupRecords.map(record => record.date))).sort();
+            const header = ['Miembro', ...uniqueDates.map(date => new Date(`${date}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })), '%'];
+            const absenceRows = [];
+            const body = members.map(member => {
+                let attended = 0;
+                const statuses = uniqueDates.map(date => {
+                    const record = groupRecords.find(item => item.date === date);
+                    if (!record) return '-';
+                    const present = record.presentMembers.includes(member.id);
+                    if (present) {
+                        attended++;
+                        return 'P';
+                    }
+                    const detail = record.absentDetails?.[member.id];
+                    if (detail?.reason) absenceRows.push([`${member.lastName}, ${member.firstName}`, date, `${detail.reason}${detail.detail ? `: ${detail.detail}` : ''}`]);
+                    return 'A';
                 });
+                const percentage = uniqueDates.length ? `${Math.round((attended / uniqueDates.length) * 100)}%` : '-';
+                return [`${member.lastName}, ${member.firstName}`, ...statuses, percentage];
             });
 
-            const monthSpan = {};
-            let col = 3;
-            Object.keys(datesByMonth).forEach(mStr => {
-                monthSpan[mStr] = { start: col, count: datesByMonth[mStr].length };
-                col += datesByMonth[mStr].length;
+            autoTable(pdf, {
+                startY: 43,
+                head: [header],
+                body,
+                margin: { left: 12, right: 12 },
+                styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
+                headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+                columnStyles: { 0: { halign: 'left', cellWidth: 55 } },
             });
-            const lastCol = col + 1;
 
-            const headerRow1 = Array(lastCol + 1).fill('');
-            headerRow1[0] = 'Nº';
-            headerRow1[1] = 'Apellido y Nombre';
-            Object.keys(datesByMonth).forEach(mStr => {
-                const span = monthSpan[mStr];
-                for (let c = span.start; c < span.start + span.count; c++) {
-                    headerRow1[c] = mStr;
-                }
-            });
-            headerRow1[lastCol] = 'Causas de Ausencia';
-
-            const headerRow2 = Array(lastCol + 1).fill('');
-            headerRow2[0] = '';
-            headerRow2[1] = '';
-            Object.keys(datesByMonth).forEach(mStr => {
-                const span = monthSpan[mStr];
-                datesByMonth[mStr].forEach((dObj, i) => {
-                    headerRow2[span.start + i] = dObj.label;
+            if (absenceRows.length > 0) {
+                const tableEnd = pdf.lastAutoTable.finalY + 8;
+                if (tableEnd > 180) pdf.addPage();
+                const reasonsY = tableEnd > 180 ? 20 : tableEnd;
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(9);
+                pdf.text('Motivos de ausencia', 12, reasonsY);
+                autoTable(pdf, {
+                    startY: reasonsY + 3,
+                    head: [['Miembro', 'Fecha', 'Motivo']],
+                    body: absenceRows,
+                    margin: { left: 12, right: 12 },
+                    styles: { fontSize: 7, cellPadding: 2 },
+                    headStyles: { fillColor: [71, 85, 105], textColor: 255 },
                 });
-            });
-            headerRow2[lastCol] = '';
-
-            const titleRow = [`Informe de Asistencia [${gName}]`, '', `Rendición ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)}`];
-
-            const sheetData = [titleRow, [], headerRow1, headerRow2];
-
-            members.forEach((m, idx) => {
-                const row = Array(lastCol + 1).fill('');
-                row[0] = idx + 1;
-                row[1] = `${m.lastName}, ${m.firstName}`;
-                const causes = [];
-                Object.keys(datesByMonth).forEach(mStr => {
-                    datesByMonth[mStr].forEach((dObj, i) => {
-                        const span = monthSpan[mStr];
-                        const rec = groupRecords.find(r => r.date === dObj.str);
-                        if (rec) {
-                            const isPresent = rec.presentMembers.includes(m.id);
-                            row[span.start + i] = isPresent ? 'P' : 'A';
-                            if (!isPresent) {
-                                const causeObj = rec.absentDetails && rec.absentDetails[m.id];
-                                if (causeObj && causeObj.reason) {
-                                    let str = dObj.label + " " + causeObj.reason;
-                                    if (causeObj.detail) str += " (" + causeObj.detail + ")";
-                                    causes.push(str);
-                                }
-                            }
-                        } else {
-                            row[span.start + i] = '-';
-                        }
-                    });
-                });
-                row[lastCol] = causes.join('; ');
-                sheetData.push(row);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!cols'] = [
-                { wch: 5 },
-                { wch: 35 },
-                ...Object.keys(datesByMonth).flatMap(mStr => datesByMonth[mStr].map(() => ({ wch: 6 }))),
-                { wch: 40 }
-            ];
-            const sheetName = gName.substring(0, 31);
-            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
         });
 
-        XLSX.writeFile(wb, `Reporte_Asistencia_${reportPeriod}_${endStr}.xlsx`);
+        pdf.save(`Reporte_Asistencia_${reportPeriod}_${endStr}.pdf`);
     };
 
     if (myGroups.length === 0) {
@@ -621,62 +630,44 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
 
                     {selectedGroup && (
                         <div>
-                            <div className="d-flex justify-between align-center mb-3">
-                                <div>
-                                    <span style={{ fontWeight: 600 }}>Miembros Totales: {groupMembers.length}</span>
-                                    <br />
-                                    <span style={{ color: '#16a34a', marginTop: '2rem', marginBottom: '2rem', fontWeight: 600 }}>Presentes: {presentIds.length}</span>
-                                    <br />
-                                    <span style={{ color: '#dc2626', marginTop: '2rem', marginBottom: '2rem', fontWeight: 600 }}>Ausentes: {groupMembers.length - presentIds.length}</span>
-                                </div>
-                                <button className="btn btn-sm" onClick={() => setPresentIds(groupMembers.map(m => m.id))} style={{ backgroundColor: '#16a34a', color: 'white', border: 'none', marginBottom: '1rem' }}>
-                                    Marcar todos
+                            <div className="attendance-summary-cards">
+                                <div><span>Total</span><strong>{groupMembers.length}</strong></div>
+                                <div className="attendance-summary-present"><span>Presentes</span><strong>{groupMembers.filter(member => presentIds.includes(member.id)).length}</strong></div>
+                                <div className="attendance-summary-absent"><span>Ausentes</span><strong>{groupMembers.filter(member => !presentIds.includes(member.id)).length}</strong></div>
+                                <button className="btn btn-outline btn-sm" onClick={() => { setPresentIds(groupMembers.map(member => member.id)); setAbsentDetails({}); }}>
+                                    Marcar todos presentes
                                 </button>
                             </div>
 
                             {loadingRecord ? (
                                 <p style={{ color: 'var(--color-text-muted)' }}>Buscando registros...</p>
                             ) : (
-                                <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflowX: 'auto' }}>
+                                <div className="attendance-list">
                                     {groupMembers.length === 0 ? (
                                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No hay integrantes en este grupo.</div>
                                     ) : (
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '1rem' }}>
-                                            <tbody>
-                                                {groupMembers.map(m => {
-                                                    const isPresent = presentIds.includes(m.id);
-                                                    return (
-                                                        <tr key={m.id} className="table-row-hover" style={{ borderBottom: '5px solid var(--color-border)', backgroundColor: isPresent ? 'rgba(76, 175, 80, 0.05)' : 'transparent' }}>
-                                                            <td style={{ padding: '0.75rem 1rem', width: '40px' }}>
-                                                                <input type="checkbox" checked={isPresent} onChange={() => toggleMember(m.id)} style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                                                            </td>
-                                                            <td style={{ padding: '0.75rem 1rem' }}>
-                                                                <div style={{ fontWeight: isPresent ? 600 : 500, cursor: 'pointer' }} onClick={() => toggleMember(m.id)}>{m.lastName}, {m.firstName}</div>
-                                                                {!isPresent && (
-                                                                    <div className="attendance-absence-fields" style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                                        <select
-                                                                            value={absentDetails[m.id]?.reason || ''}
-                                                                            onChange={e => setAbsentDetails(prev => ({ ...prev, [m.id]: { ...prev[m.id], reason: e.target.value } }))}
-                                                                            style={{ padding: '0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', flex: 1, minWidth: '120px', backgroundColor: 'var(--color-surface)' }}
-                                                                        >
-                                                                            <option value="">-- Indicar Motivo --</option>
-                                                                            {absenceReasonsPool.map(r => <option key={r} value={r}>{r}</option>)}
-                                                                        </select>
-                                                                        {absentDetails[m.id]?.reason === 'Otros' && (
-                                                                            <input
-                                                                                type="text" placeholder="¿Cuál?" value={absentDetails[m.id]?.detail || ''}
-                                                                                onChange={e => setAbsentDetails(prev => ({ ...prev, [m.id]: { ...prev[m.id], detail: e.target.value } }))}
-                                                                                style={{ padding: '0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', flex: 1, minWidth: '100px', backgroundColor: 'var(--color-surface)' }}
-                                                                            />
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                        groupMembers.map(member => {
+                                            const isPresent = presentIds.includes(member.id);
+                                            return (
+                                                <div key={member.id} className={`attendance-member ${isPresent ? 'is-present' : 'is-absent'}`}>
+                                                    <div className="attendance-member-name">{member.lastName}, {member.firstName}</div>
+                                                    <button className="attendance-status-toggle" onClick={() => toggleMember(member.id)}>
+                                                        {isPresent ? 'Presente' : 'Ausente'}
+                                                    </button>
+                                                    {!isPresent && (
+                                                        <div className="attendance-absence-fields">
+                                                            <select className="form-input" value={absentDetails[member.id]?.reason || ''} onChange={event => setAbsentDetails(current => ({ ...current, [member.id]: { ...current[member.id], reason: event.target.value } }))}>
+                                                                <option value="">Indicar motivo</option>
+                                                                {absenceReasonsPool.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+                                                            </select>
+                                                            {absentDetails[member.id]?.reason === 'Otros' && (
+                                                                <input className="form-input" type="text" placeholder="¿Cuál?" value={absentDetails[member.id]?.detail || ''} onChange={event => setAbsentDetails(current => ({ ...current, [member.id]: { ...current[member.id], detail: event.target.value } }))} />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
                                     )}
                                 </div>
                             )}
@@ -694,7 +685,7 @@ const AttendanceTab = ({ myGroups, myMembers, isAdmin }) => {
             <div className="lg:col-span-1">
                 <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} color="var(--color-primary-light)" /> Reportes y Exportación</div>}>
                     <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                        Descarga el consolidado de asistencia de {isAdmin ? 'todos los grupos de amistad de la iglesia' : 'tus grupos asignados'} en formato Excel/CSV.
+                        Descarga el reporte PDF del grupo seleccionado con membrete institucional.
                     </p>
                     <div className="form-group mb-4">
                         <label className="form-label">Período de extracción</label>

@@ -50,11 +50,10 @@ service cloud.firestore {
       allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 
-    // === Colección: attendance ===
-    match /attendance/{recordId} {
+    // === Colección: group_attendance ===
+    match /group_attendance/{recordId} {
       allow read: if isAuth();
-      allow create: if isAuth();
-      allow update: if isAuth();
+      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'Facilitator', 'CoFacilitator']);
       allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 

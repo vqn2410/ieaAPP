@@ -1,33 +1,23 @@
 import { db } from './firebase';
-import { collection, doc, getDocs, addDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'group_attendance';
 
-export const saveAttendance = async (groupId, date, presentMembers, absentDetails = {}) => {
+export const saveAttendance = async ({ groupId, groupName, date, presentMembers, absentDetails = {}, members, takenBy }) => {
     try {
-        const q = query(
-            collection(db, COLLECTION_NAME), 
-            where('groupId', '==', groupId), 
-            where('date', '==', date)
-        );
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-            const docId = snapshot.docs[0].id;
-            await updateDoc(doc(db, COLLECTION_NAME, docId), { 
-                presentMembers, 
-                absentDetails,
-                updatedAt: new Date().toISOString() 
-            });
-        } else {
-            await addDoc(collection(db, COLLECTION_NAME), {
-                groupId,
-                date,
-                presentMembers,
-                absentDetails,
-                createdAt: new Date().toISOString()
-            });
-        }
+        const recordRef = doc(db, COLLECTION_NAME, `${groupId}_${date}`);
+        const record = await getDoc(recordRef);
+        await setDoc(recordRef, {
+            groupId,
+            groupName,
+            date,
+            presentMembers,
+            absentDetails,
+            members,
+            takenBy,
+            ...(record.exists() ? {} : { createdAt: serverTimestamp() }),
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
         return true;
     } catch (e) {
         console.error("Error saving attendance", e);
@@ -37,6 +27,11 @@ export const saveAttendance = async (groupId, date, presentMembers, absentDetail
 
 export const getAttendance = async (groupId, date) => {
     try {
+        const recordRef = doc(db, COLLECTION_NAME, `${groupId}_${date}`);
+        const record = await getDoc(recordRef);
+        if (record.exists()) return { id: record.id, ...record.data() };
+
+        // Backward compatibility for records created before deterministic IDs.
         const q = query(
             collection(db, COLLECTION_NAME), 
             where('groupId', '==', groupId), 
@@ -55,16 +50,23 @@ export const getAttendance = async (groupId, date) => {
 
 export const getAttendanceForDateRange = async (groupIds, startDate, endDate) => {
     try {
-        // Querying all and filtering in memory to avoid complex compound index setup for users
-        const q = query(collection(db, COLLECTION_NAME));
-        const snapshot = await getDocs(q);
-        const allRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        return allRecords.filter(record => {
-            const isGroupMatch = groupIds.length === 0 || groupIds.includes(record.groupId);
-            const isDateMatch = record.date >= startDate && record.date <= endDate;
-            return isGroupMatch && isDateMatch;
-        }).sort((a,b) => b.date.localeCompare(a.date));
+        if (groupIds.length === 0) {
+            const snapshot = await getDocs(query(
+                collection(db, COLLECTION_NAME),
+                where('date', '>=', startDate),
+                where('date', '<=', endDate)
+            ));
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.date.localeCompare(a.date));
+        }
+
+        const recordsByGroup = await Promise.all(groupIds.map(async groupId => {
+            const snapshot = await getDocs(query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId)));
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        }));
+
+        return recordsByGroup.flat()
+            .filter(record => record.date >= startDate && record.date <= endDate)
+            .sort((a, b) => b.date.localeCompare(a.date));
     } catch (e) {
         console.error("Error fetching attendance records", e);
         return [];

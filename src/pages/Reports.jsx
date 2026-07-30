@@ -7,7 +7,8 @@ import { isBaptised } from '../utils/helpers';
 import { getGroups } from '../services/groupService';
 import { getVisitors } from '../services/visitorService';
 import { getAllFollowUps } from '../services/followUpService';
-import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import './Reports.css';
 
 const Reports = () => {
@@ -61,65 +62,82 @@ const Reports = () => {
     membersByGroup[g]++;
   });
 
-  const exportCensus = () => {
-    setExporting('censo');
-    const data = members.map(m => ({
-      Apellido: m.lastName || '',
-      Nombre: m.firstName || '',
-      Email: m.email || '',
-      Teléfono: m.phone || '',
-      Grupo: m.group || '',
-      Bautizado: m.extraData?.baptism || '',
-      'Caminos de crecimiento': m.growthPath ? Object.keys(m.growthPath).join(', ') : ''
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Censo');
-    XLSX.writeFile(wb, `Censo_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    setExporting(null);
+  const exportPdf = async (title, headers, rows, filename) => {
+    const pdf = new jsPDF({ orientation: headers.length > 5 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    try {
+      const response = await fetch('/img/logo-iea.png');
+      const blob = await response.blob();
+      const logo = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      pdf.addImage(logo, 'PNG', 12, 8, 42, 12);
+    } catch {
+      // The report remains valid when the logo cannot be loaded.
+    }
+
+    pdf.setDrawColor(148, 163, 184);
+    pdf.line(12, 25, pdf.internal.pageSize.getWidth() - 12, 25);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(12);
+    pdf.text(title, 12, 33);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.text(`Emitido: ${new Date().toLocaleDateString('es-AR')}`, 12, 38);
+
+    autoTable(pdf, {
+      startY: 43,
+      head: [headers],
+      body: rows,
+      margin: { left: 12, right: 12 },
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+    });
+    pdf.save(filename);
   };
 
-  const exportGrowthPaths = () => {
+  const exportCensus = async () => {
+    setExporting('censo');
+    try {
+      await exportPdf('Censo general', ['Apellido', 'Nombre', 'Email', 'Teléfono', 'Grupo', 'Bautizado', 'Crecimiento'], members.map(m => [
+        m.lastName || '', m.firstName || '', m.email || '', m.phone || '', m.group || '', isBaptised(m) ? 'Sí' : 'No', m.growthPath ? Object.keys(m.growthPath).join(', ') : ''
+      ]), `Censo_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportGrowthPaths = async () => {
     setExporting('crecimiento');
     const rows = [];
     members.forEach(m => {
       if (m.growthPath) {
         Object.entries(m.growthPath).forEach(([path, data]) => {
-          rows.push({
-            Apellido: m.lastName || '',
-            Nombre: m.firstName || '',
-            Camino: path,
-            Estado: data.status || '',
-            Año: data.year || '',
-            Modalidad: data.modality || '',
-            Detalle: data.detail || ''
-          });
+          rows.push([m.lastName || '', m.firstName || '', path, data.status || '', data.year || '', data.modality || '', data.detail || '']);
         });
       }
     });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Crecimiento');
-    XLSX.writeFile(wb, `Crecimiento_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    setExporting(null);
+    try {
+      await exportPdf('Caminos de crecimiento', ['Apellido', 'Nombre', 'Camino', 'Estado', 'Año', 'Modalidad', 'Detalle'], rows, `Crecimiento_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setExporting(null);
+    }
   };
 
-  const exportGroups = () => {
+  const exportGroups = async () => {
     setExporting('grupos');
-    const rows = groups.map(g => ({
-      Grupo: g.name,
-      Tipo: g.type || '',
-      Día: g.scheduleDay || '',
-      Horario: g.scheduleTime || '',
-      Miembros: members.filter(m => m.group === g.name).length,
-      Facilitadores: Array.isArray(g.facilitators) ? g.facilitators.join(', ') : (g.facilitators || ''),
-      'Co-facilitadores': Array.isArray(g.coFacilitators) ? g.coFacilitators.join(', ') : (g.coFacilitators || '')
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Grupos');
-    XLSX.writeFile(wb, `Grupos_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    setExporting(null);
+    const rows = groups.map(g => [
+      g.name, g.type || '', g.scheduleDay || '', g.scheduleTime || '', members.filter(m => m.group === g.name).length,
+      Array.isArray(g.facilitators) ? g.facilitators.join(', ') : (g.facilitators || ''),
+      Array.isArray(g.coFacilitators) ? g.coFacilitators.join(', ') : (g.coFacilitators || '')
+    ]);
+    try {
+      await exportPdf('Grupos de amistad', ['Grupo', 'Tipo', 'Día', 'Horario', 'Miembros', 'Facilitadores', 'Co-facilitadores'], rows, `Grupos_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setExporting(null);
+    }
   };
 
   if (loading) {
@@ -161,7 +179,7 @@ const Reports = () => {
               disabled={exporting === 'censo'}
               icon={<Download size={14} />}
             >
-              {exporting === 'censo' ? 'Exportando...' : 'Exportar XLSX'}
+              {exporting === 'censo' ? 'Exportando...' : 'Exportar PDF'}
             </Button>
           </div>
         </Card>
@@ -186,7 +204,7 @@ const Reports = () => {
               disabled={exporting === 'crecimiento'}
               icon={<Download size={14} />}
             >
-              {exporting === 'crecimiento' ? 'Exportando...' : 'Exportar XLSX'}
+              {exporting === 'crecimiento' ? 'Exportando...' : 'Exportar PDF'}
             </Button>
           </div>
         </Card>
@@ -213,7 +231,7 @@ const Reports = () => {
               disabled={exporting === 'grupos'}
               icon={<Download size={14} />}
             >
-              {exporting === 'grupos' ? 'Exportando...' : 'Exportar XLSX'}
+              {exporting === 'grupos' ? 'Exportando...' : 'Exportar PDF'}
             </Button>
           </div>
         </Card>

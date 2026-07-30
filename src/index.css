@@ -537,6 +537,100 @@ h1, h2, h3, h4, h5, h6 {
 .d-flex-nowrap { display: flex; flex-wrap: nowrap; }
 .input-error { border-color: var(--color-danger) !important; }
 
+.attendance-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.attendance-summary-cards > div {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+}
+
+.attendance-summary-cards span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+}
+
+.attendance-summary-cards strong {
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.attendance-summary-present strong { color: var(--color-success); }
+.attendance-summary-absent strong { color: var(--color-danger); }
+
+.attendance-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.attendance-member {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.attendance-member:last-child { border-bottom: none; }
+.attendance-member.is-present { background: rgba(34, 197, 94, 0.05); }
+
+.attendance-member-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.attendance-status-toggle {
+  min-width: 76px;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.is-present .attendance-status-toggle {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-success);
+}
+
+.attendance-absence-fields {
+  display: flex;
+  flex: 0 0 100%;
+  width: 100%;
+  gap: 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.attendance-absence-fields .form-input { min-width: 0; }
+
+@media (max-width: 640px) {
+  .attendance-summary-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendance-summary-cards .btn { grid-column: span 3; }
+
+  .attendance-member { flex-wrap: wrap; }
+
+  .attendance-absence-fields { flex-direction: column; }
+}
+
 @keyframes skeleton-pulse {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
