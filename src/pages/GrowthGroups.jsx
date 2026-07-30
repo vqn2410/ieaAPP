@@ -9,12 +9,13 @@ import { getGroups, deleteGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
+import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { useNavigate } from 'react-router-dom';
+import './GrowthGroups.css';
 
 const getDayNumber = (dayStr) => {
     if (!dayStr) return null;
@@ -171,7 +172,8 @@ const GrowthGroups = () => {
     const navigationCards = [
         { id: 'grupos', title: 'Mis Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.' },
         { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.' },
-        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.' }
+        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.' },
+        { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.' }
     ];
 
     const resolveMemberName = (idOrName) => {
@@ -198,7 +200,7 @@ const GrowthGroups = () => {
             </div>
 
             {!activeTab ? (
-                <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '1.5rem', marginTop: '1rem' }}>
+                <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem', marginTop: '1rem' }}>
                     {navigationCards.map(card => (
                         <div
                             key={card.id}
@@ -285,6 +287,10 @@ const GrowthGroups = () => {
                         </div>
                     )}
 
+                    {activeTab === 'calendario' && (
+                        <WeeklySchedule groups={myGroups} />
+                    )}
+
                     {activeTab === 'miembros' && (
                         /* (rest of the members tab code remains the same as before my latest change, effectively kept in-sync) */
                         <div className="d-flex flex-column gap-4">
@@ -358,6 +364,45 @@ const GrowthGroups = () => {
                     }}
                 />
             </Modal>
+        </div>
+    );
+};
+
+const WeeklySchedule = ({ groups }) => {
+    const weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const scheduledGroups = groups.filter(group => group.scheduleDay && group.scheduleTime);
+
+    if (scheduledGroups.length === 0) {
+        return <Card><EmptyState icon={CalendarDays} title="Sin horarios" message="No hay grupos con día y horario registrados." /></Card>;
+    }
+
+    return (
+        <div className="weekly-schedule">
+            {weekDays.map(day => {
+                const dayGroups = scheduledGroups
+                    .filter(group => group.scheduleDay.toLowerCase() === day.toLowerCase())
+                    .sort((a, b) => (a.scheduleTime || '').localeCompare(b.scheduleTime || ''));
+                return (
+                    <section key={day} className={`weekly-schedule-day ${dayGroups.length > 0 ? 'has-groups' : ''}`}>
+                        <h3>{day}</h3>
+                        {dayGroups.length === 0 ? (
+                            <span className="weekly-schedule-empty">Sin grupos</span>
+                        ) : (
+                            <div className="weekly-schedule-items">
+                                {dayGroups.map(group => (
+                                    <div key={group.id} className="weekly-schedule-item">
+                                        <time>{group.scheduleTime} hs</time>
+                                        <div>
+                                            <strong>{group.name}</strong>
+                                            <span>{group.type || 'Grupo de Amistad'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                );
+            })}
         </div>
     );
 };
