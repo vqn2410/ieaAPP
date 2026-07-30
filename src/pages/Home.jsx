@@ -132,7 +132,6 @@ const Home = () => {
             className="meet-image"
           />
           <div className="meet-badge">
-                <p className="meet-badge-title">PORTAL IEA</p>
             <p className="meet-badge-subtitle">Vení a conocernos</p>
           </div>
         </div>
