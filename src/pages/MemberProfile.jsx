@@ -7,11 +7,12 @@ import Badge from '../components/common/Badge';
 import MemberForm from '../components/members/MemberForm';
 import { getMember, deleteMember, updateMember } from '../services/memberService';
 import { getMembers } from '../services/memberService';
-import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { useSettings } from '../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../services/followUpService';
+import { getMemberAttendanceStats } from '../services/attendanceService';
 import './MemberProfile.css';
 
 const initialAvatar = (firstName, lastName) => {
@@ -44,6 +45,7 @@ const MemberProfile = () => {
   const [followUpText, setFollowUpText] = useState('');
   const [followUpType, setFollowUpType] = useState('note');
   const [showFollowUpForm, setShowFollowUpForm] = useState(false);
+  const [attendanceStats, setAttendanceStats] = useState(null);
 
   const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
   const isAdmin = userData?.role?.includes('Admin');
@@ -51,11 +53,12 @@ const MemberProfile = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [m, members, fups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id)]);
+        const [m, members, fups, attendance] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id)]);
         setMember(m);
         setNewGroup(m?.group || '');
         setAllMembers(members.filter(other => other.id !== id));
         setFollowUps(fups);
+        setAttendanceStats(attendance);
       } catch {
         navigate('/dashboard/miembros');
       } finally {
@@ -211,6 +214,44 @@ const MemberProfile = () => {
                 <Button variant="outline" size="sm" style={{ width: '100%' }} onClick={handleAutoAssign}>
                   Eliminar duplicados por email
                 </Button>
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div className="profile-section-header">
+              <Flame size={16} strokeWidth={1.5} />
+              <span>Asistencia y constancia</span>
+            </div>
+            {attendanceStats === null ? (
+              <div style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem 0' }}>
+                <div className="skeleton" style={{ flex: 1, height: '48px' }}></div>
+                <div className="skeleton" style={{ flex: 1, height: '48px' }}></div>
+              </div>
+            ) : attendanceStats.total === 0 ? (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', padding: '0.5rem 0', margin: 0 }}>
+                Sin registros de asistencia todavía.
+              </p>
+            ) : (
+              <div className="profile-attendance-grid">
+                <div className="profile-att-card">
+                  <span className="profile-att-value">
+                    <Flame size={13} /> {attendanceStats.currentStreak}
+                  </span>
+                  <span className="profile-att-label">Racha actual</span>
+                </div>
+                <div className="profile-att-card">
+                  <span className="profile-att-value">{attendanceStats.bestStreak}</span>
+                  <span className="profile-att-label">Mejor racha</span>
+                </div>
+                <div className="profile-att-card">
+                  <span className="profile-att-value">{attendanceStats.percentage}%</span>
+                  <span className="profile-att-label">Asistencia</span>
+                </div>
+                <div className="profile-att-card">
+                  <span className="profile-att-value">{attendanceStats.present}<small>/{attendanceStats.total}</small></span>
+                  <span className="profile-att-label">Encuentros</span>
+                </div>
               </div>
             )}
           </Card>

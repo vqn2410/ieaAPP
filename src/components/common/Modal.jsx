@@ -3,8 +3,14 @@ import { createPortal } from 'react-dom';
 import Card from './Card';
 import Button from './Button';
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   if (!isOpen) return null;
+
+  const sizeStyles = {
+    sm: 'min(94vw, 400px)',
+    md: 'min(94vw, 500px)',
+    lg: 'min(94vw, 860px)',
+  };
 
   return createPortal(
     <div className="modal-overlay" style={{
@@ -13,7 +19,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1rem', boxSizing: 'border-box'
     }}>
-      <Card title={title} className="modal-content" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', margin: 0 }}>
+      <Card title={title} className="modal-content" style={{ width: '100%', maxWidth: sizeStyles[size] || sizeStyles.md, maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', margin: 0 }}>
         {children}
         <div className="d-flex justify-end mt-4 pt-4 border-top" style={{ borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={onClose} style={{ marginRight: '0.5rem' }}>Cerrar</Button>

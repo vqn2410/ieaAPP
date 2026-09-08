@@ -73,6 +73,20 @@
   font-weight: 600;
 }
 
+/* === Modo oscuro: hover de la barra lateral con mayor contraste === */
+:root[data-theme='dark'] .nav-item:hover {
+  background: #17171b;
+  color: #ffffff;
+}
+:root[data-theme='dark'] .nav-item {
+  color: #9ca3af;
+}
+:root[data-theme='dark'] .nav-item.active {
+  background: rgba(231, 231, 234, 0.14);
+  color: #ffffff;
+  border-left-color: #ffffff;
+}
+
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid var(--color-border);

@@ -22,6 +22,9 @@ const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const Visitors = lazy(() => import('./pages/Visitors'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const SessionExpired = lazy(() => import('./pages/SessionExpired'));
+const Notes = lazy(() => import('./pages/Notes'));
+const FocusTimer = lazy(() => import('./pages/FocusTimer'));
+const Assistant = lazy(() => import('./pages/Assistant'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, loading, hasRole } = useAuth();
@@ -122,6 +125,30 @@ function App() {
             <Route path="visitantes" element={<Visitors />} />
             <Route path="mi-perfil" element={<MemberPortal />} />
             <Route path="reportes" element={<Reports />} />
+            <Route
+              path="notas"
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                  <Notes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="enfoque"
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                  <FocusTimer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="asistente"
+              element={
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']}>
+                  <Assistant />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
         </Suspense>

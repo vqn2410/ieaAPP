@@ -122,6 +122,20 @@ service cloud.firestore {
       allow create, update, delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 
+    // === Colección: notes ===
+    match /notes/{noteId} {
+      allow read: if isAuth() && (resource.data.visibility == 'public' || resource.data.authorId == request.auth.uid);
+      allow create: if isAuth();
+      allow update, delete: if isAuth() && (resource.data.authorId == request.auth.uid || hasAnyRole(['Admin', 'Pastor']));
+    }
+
+    // === Colección: groupEvaluations ===
+    match /groupEvaluations/{docId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
     // === Denegar todo lo demás ===
     match /{document=**} {
       allow read, write: if false;

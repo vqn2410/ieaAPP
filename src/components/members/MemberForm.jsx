@@ -110,7 +110,7 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4" style={{ gap: '1rem' }}>
         <div className="form-group mb-2">
           <label className="form-label">Nombre</label>
           <input required name="firstName" value={formData.firstName} onChange={handleChange} className={`form-input ${errors.firstName ? 'input-error' : ''}`} placeholder="Nombre completo" />
@@ -155,9 +155,9 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
             ))}
           </select>
         </div>}
-        <div className="form-group mb-2 sm:col-span-2">
+        <div className="form-group mb-2 lg:col-span-4">
           <label className="form-label">Ruta de crecimiento (Opcional)</label>
-          <div className="grid grid-cols-2" style={{ gap: '0.75rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
+          <div className="grid grid-cols-2 lg:grid-cols-4" style={{ gap: '0.75rem', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
             {Object.entries(formData.growthPath || emptyGrowthPath).map(([path, data]) => (
               <div key={path} className="form-group m-0">
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>{path}</label>
@@ -180,7 +180,7 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
             ))}
           </div>
         </div>
-        {!fixedGroup && <div className="form-group mb-2 sm:col-span-2">
+        {!fixedGroup && <div className="form-group mb-2 lg:col-span-4">
           <label className="form-label">Roles en la Iglesia</label>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
              {settings && settings.roles ? Object.entries(settings.roles).map(([key, label]) => (

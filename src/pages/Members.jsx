@@ -253,7 +253,7 @@ const Members = () => {
         )}
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={memberToEdit ? 'Editar Miembro' : 'Registrar Miembro'}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={memberToEdit ? 'Editar Miembro' : 'Registrar Miembro'} size="lg">
         <MemberForm onSuccess={handleMemberAdded} initialData={memberToEdit} />
       </Modal>
 

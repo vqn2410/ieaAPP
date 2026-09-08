@@ -150,6 +150,49 @@
 }
 
 /* Roles */
+.profile-attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.profile-att-card {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+  background: var(--color-surface);
+}
+
+.profile-att-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.profile-att-value small {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.profile-att-card:first-child .profile-att-value {
+  color: var(--color-warning);
+}
+
+.profile-att-label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
 .profile-roles {
   display: flex;
   flex-wrap: wrap;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Card from '../components/common/Card';
+import { iaUrl } from '../services/iaClient';
 import { CalendarDays, Clock, MonitorPlay, Radio, Youtube } from 'lucide-react';
 import './Live.css';
 
@@ -22,7 +23,7 @@ const getCountdown = (target, now) => {
   };
 };
 
-const weekendVideos = [
+const fallbackVideos = [
   {
     id: 'aRQz0oKHHXc',
     title: 'Formando el carácter',
@@ -49,15 +50,47 @@ const weekendVideos = [
   },
 ];
 
+const formatDate = (iso) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+const toCard = (v) => {
+  let id = v.videoId;
+  if (!id && v.href) {
+    try { id = new URL(v.href).searchParams.get('v'); } catch { id = null; }
+  }
+  id = id || v.id || null;
+  return {
+    id,
+    title: v.title,
+    date: v.published ? formatDate(v.published) : v.date,
+    href: v.href || (id ? `https://www.youtube.com/watch?v=${id}` : ''),
+  };
+};
+
 const Live = () => {
   const [now, setNow] = useState(() => new Date());
+  const [videos, setVideos] = useState(fallbackVideos);
   const nextTransmission = getNextTransmission(now);
   const countdown = getCountdown(nextTransmission, now);
-  const latestVideo = weekendVideos[0];
+  const latestVideo = videos[0] || {};
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch(iaUrl('/api/youtube'))
+      .then(res => { if (!res.ok) throw new Error('YouTube API no disponible'); return res.json(); })
+      .then(data => {
+        if (active && Array.isArray(data.videos) && data.videos.length) setVideos(data.videos.map(toCard));
+      })
+      .catch(() => {});
+    return () => { active = false; };
   }, []);
 
   return (
@@ -96,32 +129,36 @@ const Live = () => {
           <div>
             <span>Fin de semana anterior</span>
             <h2>{latestVideo.title}</h2>
-            <p className="live-featured-reflection">{latestVideo.reflection}</p>
+            {latestVideo.reflection && <p className="live-featured-reflection">{latestVideo.reflection}</p>}
           </div>
         </div>
         <div className="live-video-frame">
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${latestVideo.id}`}
-            title={latestVideo.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          {latestVideo.id ? (
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${latestVideo.id}`}
+              title={latestVideo.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : (
+            <div className="live-featured-reflection">No hay video disponible todavía.</div>
+          )}
         </div>
       </Card>
 
       <section className="live-weekends">
         <div className="live-weekends-heading">
-          <h2>Últimos cuatro fines de semana</h2>
-          <p>El más reciente está destacado arriba; estos son los tres anteriores.</p>
+          <h2>Últimos fines de semana</h2>
+          <p>El más reciente está destacado arriba; estos son los anteriores.</p>
         </div>
         <div className="live-weekends-grid">
-          {weekendVideos.slice(1).map(video => (
-            <a key={video.id} className="live-weekend-card" href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noreferrer">
-              <img src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`} alt={video.title} />
+          {videos.slice(1, 4).map(video => (
+            <a key={video.id || video.href} className="live-weekend-card" href={video.href} target="_blank" rel="noreferrer">
+              {video.id && <img src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`} alt={video.title} />}
               <div>
                 <span>{video.date}</span>
                 <h3>{video.title}</h3>
-                <p>{video.reflection}</p>
+                {video.reflection && <p>{video.reflection}</p>}
               </div>
             </a>
           ))}

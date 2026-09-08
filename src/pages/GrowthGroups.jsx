@@ -7,16 +7,18 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
-import { saveAttendance, getAttendance, getAttendanceForDateRange } from '../services/attendanceService';
+import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy } from 'lucide-react';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
+import RadarChart from '../components/common/RadarChart';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import FriendshipClasses from './FriendshipClasses';
 import FollowUps from './FollowUps';
+import { getGroupEvaluations, saveGroupEvaluation, deleteGroupEvaluation, DEFAULT_DIMENSIONS, getCurrentMonth } from '../services/groupEvaluationService';
 import './GrowthGroups.css';
 
 const getDayNumber = (dayStr) => {
@@ -199,6 +201,7 @@ const GrowthGroups = () => {
         { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
         { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
         { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
+        { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} color="var(--color-primary)" />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
         { id: 'clases', title: 'Clases', icon: <BookOpen size={32} color="var(--color-primary)" />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
         { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
     ].filter(card => card.visible !== false);
@@ -380,6 +383,14 @@ const GrowthGroups = () => {
                             currentUser={currentUser}
                         />
                     )}
+                    {activeTab === 'rueda' && (
+                        <WheelOfLifeTab
+                            myGroups={myGroups}
+                            myMembers={myMembers}
+                            currentUser={currentUser}
+                            isAdmin={isAdmin}
+                        />
+                    )}
                     {activeTab === 'clases' && <FriendshipClasses />}
                     {activeTab === 'seguimientos' && <FollowUps />}
                 </div>
@@ -460,6 +471,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     const [loadingRecord, setLoadingRecord] = useState(false);
     const [saving, setSaving] = useState(false);
     const [reportPeriod, setReportPeriod] = useState('mensual');
+    const [groupStats, setGroupStats] = useState({ records: [], memberStats: {} });
 
     const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
     const groupMembers = myMembers.filter(m => selectedGroup && m.group === selectedGroup.name).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
@@ -475,6 +487,12 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedGroupId, selectedGroup?.scheduleDay, holidays]);
+
+    useEffect(() => {
+        if (selectedGroupId) {
+            getGroupAttendanceStats(selectedGroupId).then(setGroupStats);
+        }
+    }, [selectedGroupId]);
 
     const fetchExistingAttendance = useEffectEvent(async () => {
         if (!selectedGroupId || !attendanceDate) return;
@@ -775,9 +793,220 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                         <Download size={18} /> Generar y Descargar Reporte
                     </button>
                 </Card>
+
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Flame size={20} color="var(--color-warning)" /> Rachas y constancia</div>}>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                        Miembros con mejor continuidad en {selectedGroup?.name || 'el grupo'}.
+                    </p>
+                    {Object.keys(groupStats.memberStats).length === 0 ? (
+                        <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                            Aún no hay registros para calcular rachas.
+                        </div>
+                    ) : (
+                        <div className="streak-ranking">
+                            {Object.entries(groupStats.memberStats)
+                                .map(([memberId, stats]) => ({
+                                    memberId,
+                                    ...stats,
+                                    member: myMembers.find(m => m.id === memberId)
+                                }))
+                                .filter(item => item.member)
+                                .sort((a, b) => b.bestStreak - a.bestStreak || b.percentage - a.percentage)
+                                .slice(0, 5)
+                                .map((item, index) => (
+                                    <div key={item.memberId} className="streak-row">
+                                        <span className={`streak-rank ${index < 3 ? `streak-rank-${index + 1}` : ''}`}>{index + 1}</span>
+                                        <span className="streak-name">
+                                            {item.member.lastName}, {item.member.firstName}
+                                        </span>
+                                        <span className="streak-best">{item.bestStreak} <Flame size={12} /></span>
+                                        <span className="streak-pct">{item.percentage}%</span>
+                                    </div>
+                                ))}
+                            <div className="streak-legend">
+                                <span><Flame size={11} /> = mejor racha (encuentros seguidos)</span>
+                                <span>% = constancia</span>
+                            </div>
+                        </div>
+                    )}
+                </Card>
             </div>
         </div>
     );
 };
+
+const WheelOfLifeTab = ({ myGroups, currentUser, isAdmin }) => {
+    const [selectedGroupId, setSelectedGroupId] = useState(myGroups.length > 0 ? myGroups[0].id : '');
+    const [evaluations, setEvaluations] = useState([]);
+    const [formValues, setFormValues] = useState({});
+    const [saving, setSaving] = useState(false);
+    const [viewingMonth, setViewingMonth] = useState(null);
+    const currentMonth = getCurrentMonth();
+
+    const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
+
+    useEffect(() => {
+        if (!selectedGroupId) return;
+        let mounted = true;
+        getGroupEvaluations(selectedGroupId).then(data => {
+            if (!mounted) return;
+            setEvaluations(data);
+            const current = data.find(e => e.month === currentMonth);
+            const initial = {};
+            DEFAULT_DIMENSIONS.forEach(d => {
+                initial[d.key] = current?.dimensions?.[d.key] != null ? current.dimensions[d.key] : 5;
+            });
+            setFormValues(initial);
+            setViewingMonth(currentMonth);
+        });
+        return () => { mounted = false; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedGroupId]);
+
+    const handleSave = async () => {
+        if (!selectedGroupId) return;
+        setSaving(true);
+        try {
+            await saveGroupEvaluation({
+                groupId: selectedGroupId,
+                groupName: selectedGroup?.name || '',
+                month: currentMonth,
+                dimensions: formValues,
+                evaluatedBy: currentUser?.uid || '',
+            });
+            const data = await getGroupEvaluations(selectedGroupId);
+            setEvaluations(data);
+            setViewingMonth(currentMonth);
+            alert('¡Rueda de vida guardada!');
+        } catch {
+            alert('Error al guardar la evaluación.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const monthLabel = (m) => {
+        if (!m) return '';
+        const [y, mon] = m.split('-');
+        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const name = months[Number(mon) - 1] || mon;
+        const current = m === currentMonth ? ' (actual)' : '';
+        return `${name} ${y}${current}`;
+    };
+
+    const average = (dim) => {
+        const vals = Object.values(dim || {});
+        return vals.length ? Math.round((vals.reduce((a, b) => a + Number(b || 0), 0) / vals.length) * 10) / 10 : 0;
+    };
+
+    if (myGroups.length === 0) {
+        return <Card><p style={{ color: 'var(--color-text-muted)' }}>No tienes grupos para evaluar.</p></Card>;
+    }
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1.5rem' }}>
+            <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LifeBuoy size={20} color="var(--color-primary)" /> Evaluación del mes</div>}>
+                <div className="form-group mb-4">
+                    <label className="form-label">Grupo</label>
+                    <select
+                        className="form-input"
+                        value={selectedGroupId}
+                        onChange={e => setSelectedGroupId(e.target.value)}
+                        style={{ width: '100%', height: '50px', backgroundColor: 'var(--color-surface)' }}
+                    >
+                        {myGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                    Calificá del 1 al 10 cómo está cada área de <strong>{selectedGroup?.name}</strong> hoy.
+                </p>
+
+                <div className="wheel-dimensions">
+                    {DEFAULT_DIMENSIONS.map(d => (
+                        <div key={d.key} className="wheel-dim-row">
+                            <div className="wheel-dim-info">
+                                <span className="wheel-dim-label">{d.label}</span>
+                                <span className="wheel-dim-desc">{d.description}</span>
+                            </div>
+                            <div className="wheel-dim-control">
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="10"
+                                    value={formValues[d.key] ?? 5}
+                                    onChange={e => setFormValues(prev => ({ ...prev, [d.key]: Number(e.target.value) }))}
+                                    className="wheel-slider"
+                                    style={{ '--value': `${(formValues[d.key] ?? 5) * 10}%` }}
+                                />
+                                <span className="wheel-dim-score">{formValues[d.key] ?? 5}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <button className="btn btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem' }} onClick={handleSave} disabled={saving}>
+                    <Save size={18} /> {saving ? 'Guardando...' : `Guardar evaluación · ${monthLabel(currentMonth)}`}
+                </button>
+            </Card>
+
+            <div className="d-flex flex-column gap-4">
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><RadarChartMini /> Rueda de vida · {viewingMonth ? monthLabel(viewingMonth) : ''}</div>}>
+                    <div className="wheel-radar-wrap">
+                        <RadarChart dimensions={DEFAULT_DIMENSIONS} values={formValues} size={300} />
+                    </div>
+                    <div className="wheel-avg">
+                        Promedio general: <strong>{average(formValues)}</strong> / 10
+                    </div>
+                </Card>
+
+                <Card title="Historial del grupo">
+                    {evaluations.length === 0 ? (
+                        <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                            Sin evaluaciones guardadas todavía.
+                        </div>
+                    ) : (
+                        <div className="wheel-history">
+                            {evaluations.map(ev => (
+                                <div
+                                    key={ev.id}
+                                    className={`wheel-history-item ${viewingMonth === ev.month ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setViewingMonth(ev.month);
+                                        setFormValues({ ...formValues, ...ev.dimensions });
+                                    }}
+                                >
+                                    <span className="wheel-history-month">{monthLabel(ev.month)}</span>
+                                    <span className="wheel-history-avg">{average(ev.dimensions)} / 10</span>
+                                    {isAdmin && (
+                                        <button
+                                            className="wheel-history-delete"
+                                            title="Eliminar evaluación"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!window.confirm('¿Eliminar esta evaluación?')) return;
+                                                await deleteGroupEvaluation(ev.id);
+                                                const data = await getGroupEvaluations(selectedGroupId);
+                                                setEvaluations(data);
+                                            }}
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            </div>
+        </div>
+    );
+};
+
+const RadarChartMini = () => (
+    <svg width="15" height="15" viewBox="0 0 300 300" style={{ display: 'inline-block' }}>
+        <polygon points="150,30 255,90 255,210 150,270 45,210 45,90" fill="rgba(var(--color-primary-rgb), 0.35)" stroke="var(--color-primary)" strokeWidth="6" />
+    </svg>
+);
 
 export default GrowthGroups;

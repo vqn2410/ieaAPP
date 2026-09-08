@@ -21,12 +21,12 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <SettingsProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <SettingsProvider>
         <ToastProvider>
           <App />
         </ToastProvider>
-      </AuthProvider>
-    </SettingsProvider>
+      </SettingsProvider>
+    </AuthProvider>
   </React.StrictMode>,
 );

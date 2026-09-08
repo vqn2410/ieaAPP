@@ -18,20 +18,27 @@ import {
    UserPlus,
    FileText,
    Moon,
-   Sun
+   Sun,
+   StickyNote,
+   Timer,
+   Bot
 } from 'lucide-react';
 import Logo from '../common/Logo';
+import Onboarding, { HelpButton } from '../common/Onboarding';
+import FloatingAssistant from '../common/FloatingAssistant';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import './MainLayout.css';
 
 const MainLayout = () => {
   const { currentUser, userData, logout, hasRole } = useAuth();
-  const { settings } = useSettings();
+  const { settings, userPreferences, updateUserPreference } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('portal-iea-theme') === 'dark');
+  const isDarkMode = userPreferences
+    ? userPreferences.theme === 'dark'
+    : (localStorage.getItem('portal-iea-theme') === 'dark');
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -44,10 +51,7 @@ const MainLayout = () => {
     return () => { document.body.style.overflow = ''; };
   }, [showMobileMenu]);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
-    localStorage.setItem('portal-iea-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
+  const toggleTheme = () => updateUserPreference({ theme: isDarkMode ? 'light' : 'dark' });
 
   const handleLogout = async () => {
     try {
@@ -67,6 +71,9 @@ const MainLayout = () => {
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Visitantes', path: '/dashboard/visitantes', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator'] },
     { name: 'Noticias', path: '/dashboard/noticias', icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor'] },
+    { name: 'Anotaciones', path: '/dashboard/notas', icon: <StickyNote size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
+    { name: 'Enfoque', path: '/dashboard/enfoque', icon: <Timer size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
+    { name: 'Asistente', path: '/dashboard/asistente', icon: <Bot size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin'] },
   ].filter(item => hasRole(item.roles));
@@ -111,10 +118,11 @@ const MainLayout = () => {
               <div className="badge badge-gray">{settings?.roles?.[userData?.role] || userData?.role}</div>
             </div>
           </button>
-          <button className="theme-toggle" onClick={() => setIsDarkMode(current => !current)}>
+          <button className="theme-toggle" onClick={toggleTheme}>
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             <span>{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
           </button>
+          <HelpButton style={{ width: '100%', justifyContent: 'flex-start', padding: '0.7rem 1rem' }} />
           <button onClick={handleLogout} className="btn-logout">
             <LogOut size={18} />
             <span>Cerrar Sesión</span>
@@ -141,7 +149,7 @@ const MainLayout = () => {
 
              {/* Right side: User Profile */}
              <div className="mobile-header-right">
-               <button className="mobile-theme-toggle" onClick={() => setIsDarkMode(current => !current)} aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}>
+               <button className="mobile-theme-toggle" onClick={toggleTheme} aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}>
                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                </button>
                <button className="mobile-user-avatar" onClick={() => navigate('/dashboard/mi-perfil')} aria-label="Ir a mi perfil">
@@ -207,6 +215,8 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </main>
+      <Onboarding />
+      <FloatingAssistant />
     </div>
   );
 };

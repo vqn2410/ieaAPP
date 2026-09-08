@@ -1,0 +1,163 @@
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.notes-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.notes-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.notes-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.notes-search-icon {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.notes-search-input {
+  padding-left: 2.5rem;
+}
+
+.notes-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.notes-chip {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notes-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.notes-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.notes-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  min-height: 160px;
+}
+
+.notes-card-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.notes-category {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+}
+
+.notes-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+}
+
+.notes-action {
+  border: none;
+  background: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.notes-action:hover {
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.notes-action.pinned {
+  color: var(--color-primary);
+}
+
+.notes-card-title {
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.notes-card-body {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+}
+
+.notes-card-ft {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.notes-pinned-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.notes-form .textarea,
+.notes-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
