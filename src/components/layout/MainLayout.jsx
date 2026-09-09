@@ -7,7 +7,8 @@ import {
   Settings, 
   LogOut, 
   User, 
-  ChevronRight,
+   ChevronRight,
+   ChevronDown,
   TrendingUp,
   MessageSquare,
   ArrowLeft,
@@ -21,7 +22,8 @@ import {
    Sun,
    StickyNote,
    Timer,
-   Bot
+   Bot,
+   Search, SlidersHorizontal, Bell
 } from 'lucide-react';
 import Logo from '../common/Logo';
 import Onboarding, { HelpButton } from '../common/Onboarding';
@@ -36,6 +38,9 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [openMenu, setOpenMenu] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
   const isDarkMode = userPreferences
     ? userPreferences.theme === 'dark'
     : (localStorage.getItem('portal-iea-theme') === 'dark');
@@ -62,10 +67,21 @@ const MainLayout = () => {
     }
   };
 
+  const submitGlobalSearch = (event) => {
+    event.preventDefault();
+    const term = globalSearch.trim();
+    navigate(term ? `/dashboard/miembros?search=${encodeURIComponent(term)}` : '/dashboard/miembros');
+  };
+
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
-    { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+    { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'], children: [
+      { name: 'Listado de Miembros', path: '/dashboard/miembros', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+      { name: 'Agregar Miembros', path: '/dashboard/miembros?nuevo=1', roles: ['Admin', 'Pastor'] },
+      { name: 'Kids', path: '/dashboard/kids', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'] },
+    ] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'] },
+    { name: 'Asignados IBRP', path: '/dashboard/ibrp', icon: <img className="ibrp-menu-icon" src="/img/ibrp-logo.svg" alt="" />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader'] },
     { name: 'Eventos', path: '/dashboard/eventos', icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Finanzas', path: 'https://iea-finanzas.vercel.app/', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'], external: true },
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
@@ -92,7 +108,16 @@ const MainLayout = () => {
           <ul>
             {menuItems.map((item) => (
               <li key={item.path}>
-                {item.external ? (
+                {item.children ? (
+                  <>
+                    <button className={`nav-item nav-dropdown-trigger ${openMenu === item.name ? 'active' : ''}`} onClick={() => setOpenMenu(openMenu === item.name ? '' : item.name)}>
+                      {item.icon}
+                      <span>{item.name}</span>
+                      <ChevronDown size={15} className={`nav-dropdown-chevron ${openMenu === item.name ? 'open' : ''}`} />
+                    </button>
+                    {openMenu === item.name && <div className="nav-submenu">{item.children.filter(child => !child.roles || hasRole(child.roles)).map(child => <NavLink key={child.path} to={child.path} className="nav-subitem">{child.name}</NavLink>)}</div>}
+                  </>
+                ) : item.external ? (
                   <a href={item.path} className="nav-item">
                     {item.icon}
                     <span>{item.name}</span>
@@ -131,6 +156,10 @@ const MainLayout = () => {
       </aside>
 
       <main className="main-content">
+        <header className="desktop-topbar">
+          <form className="desktop-search" onSubmit={submitGlobalSearch}><Search size={15} /><input aria-label="Buscar" value={globalSearch} onChange={event => setGlobalSearch(event.target.value)} placeholder="Buscar miembros, grupos, reuniones" /><button type="button" onClick={() => navigate('/dashboard/miembros')}><SlidersHorizontal size={13} /> Filtros</button><kbd>⌘K</kbd></form>
+          <div className="desktop-account"><div className="desktop-notification-wrap"><button type="button" className="desktop-bell" aria-label="Notificaciones" onClick={() => setShowNotifications(value => !value)}><Bell size={16} /></button>{showNotifications && <div className="desktop-notification-panel"><strong>Notificaciones</strong><p>No hay notificaciones nuevas.</p></div>}</div><button type="button" className="desktop-profile-trigger" onClick={() => navigate('/dashboard/mi-perfil')}><div className="desktop-account-avatar">{userData?.name?.slice(0, 1) || 'N'}</div><div><strong>{userData?.name || 'Nicolás'}</strong><small>{settings?.roles?.[userData?.role] || 'Administrador de la cuenta'}</small></div><ChevronDown size={14} /></button></div>
+        </header>
         {/* Top Header for Mobile */}
         <header className="mobile-header">
            {/* Left side: Back Button */}
@@ -195,7 +224,12 @@ const MainLayout = () => {
 
              <div className="mobile-menu-grid">
                  {menuItems.filter(item => item.path !== '/dashboard/mi-perfil').map((item) => (
-                  item.external ? (
+                   item.children ? (
+                     <div key={item.path} className="mobile-nav-group">
+                       <div className="nav-item mobile-nav-card mobile-nav-heading">{React.cloneElement(item.icon, { size: 24 })}<span>{item.name}</span></div>
+                       {item.children.filter(child => !child.roles || hasRole(child.roles)).map(child => <NavLink key={child.path} to={child.path} className="nav-item mobile-nav-card mobile-nav-subitem">{child.name}</NavLink>)}
+                     </div>
+                   ) : item.external ? (
                     <a key={item.path} href={item.path} className="nav-item mobile-nav-card">
                       {React.cloneElement(item.icon, { size: 24 })}
                       <span>{item.name}</span>

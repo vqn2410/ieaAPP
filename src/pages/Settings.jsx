@@ -10,6 +10,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../services/firebase';
 import { getHolidays, addHoliday, deleteHoliday } from '../services/holidayService';
 import { auth } from '../services/firebase';
+import './Settings.css';
 
 const Settings = () => {
   const { currentUser, userData } = useAuth();
@@ -28,6 +29,7 @@ const Settings = () => {
     email: userData?.email || ''
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [newArea, setNewArea] = useState('');
   
   // Holidays state
   const [holidays, setHolidays] = useState([]);
@@ -98,10 +100,11 @@ const Settings = () => {
 
   useEffect(() => {
     if (userData) {
-      setProfileData({
+     setProfileData({
         name: userData.name || '',
         phone: userData.phone || '',
-        email: userData.email || ''
+        email: userData.email || '',
+        serviceAreas: userData.serviceAreas || []
       });
     }
   }, [userData]);
@@ -113,6 +116,7 @@ const Settings = () => {
       await setDoc(doc(db, 'users', currentUser.uid), {
         name: profileData.name,
         phone: profileData.phone
+        ,serviceAreas: profileData.serviceAreas || []
       }, { merge: true });
       alert('Perfil actualizado correctamente.');
     } catch (e) {
@@ -143,6 +147,21 @@ const Settings = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveAreas = async (areas) => {
+    const next = { ...formData, serviceAreas: areas };
+    setFormData(next);
+    await updateSettings(next);
+  };
+
+  const handleCreateArea = async () => {
+    const area = newArea.trim();
+    if (!area) return;
+    const areas = formData.serviceAreas || [];
+    if (areas.some(item => item.toLowerCase() === area.toLowerCase())) return;
+    await saveAreas([...areas, area]);
+    setNewArea('');
   };
 
   const handleToggleRole = async (userId, currentRoles, roleToggled) => {
@@ -251,6 +270,7 @@ const Settings = () => {
         <div onClick={() => setActiveTab('system')} style={tabStyle('system')}>Configuración del Sistema</div>
         <div onClick={() => setActiveTab('roles')} style={tabStyle('roles')}>Administrar Roles</div>
         <div onClick={() => setActiveTab('groups')} style={tabStyle('groups')}>Configuración de Grupos</div>
+        <div onClick={() => setActiveTab('areas')} style={tabStyle('areas')}>Configuración de Áreas</div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1.5rem' }}>
@@ -263,7 +283,7 @@ const Settings = () => {
               </div>
           } className="lg:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '1.5rem' }}>
-                  <div className="form-group">
+                   <div className="form-group">
                       <label className="form-label">Tu Nombre</label>
                       <input className="form-input" value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} />
                   </div>
@@ -274,13 +294,26 @@ const Settings = () => {
                   <div className="form-group">
                       <label className="form-label">E-mail (No editable)</label>
                       <input className="form-input" value={profileData.email} disabled style={{ backgroundColor: 'var(--color-surface-hover)', cursor: 'not-allowed' }} />
-                  </div>
-              </div>
+                   </div>
+               </div>
+               <div className="form-group mt-4">
+                 <label className="form-label">Áreas de servicio asignadas</label>
+                 <div className="settings-area-checks">{(formData.serviceAreas || []).map(area => <label key={area}><input type="checkbox" checked={(profileData.serviceAreas || []).includes(area)} onChange={() => setProfileData(prev => ({ ...prev, serviceAreas: (prev.serviceAreas || []).includes(area) ? prev.serviceAreas.filter(item => item !== area) : [...(prev.serviceAreas || []), area] }))} /> {area}</label>)}</div>
+               </div>
               <div className="d-flex justify-end mt-2">
                   <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile}>
                       {savingProfile ? 'Actualizando...' : 'Actualizar mis datos'}
                   </Button>
               </div>
+          </Card>
+        )}
+
+        {activeTab === 'areas' && (
+          <Card title={<div className="d-flex align-center gap-2"><ClipboardList size={20} color="var(--color-primary-light)" /> CONFIGURACIÓN DE ÁREAS</div>} className="lg:col-span-2">
+            <p style={{ color: 'var(--color-text-muted)' }}>Administrá las áreas de servicio disponibles para los perfiles de IEA.</p>
+            <div className="settings-area-create"><input className="form-input" value={newArea} onChange={event => setNewArea(event.target.value)} onKeyDown={event => event.key === 'Enter' && handleCreateArea()} placeholder="Nombre de la nueva área" /><Button onClick={handleCreateArea}>Crear</Button></div>
+            <div className="settings-area-list">{(formData.serviceAreas || []).map(area => <div key={area}><span>{area}</span><button onClick={() => saveAreas((formData.serviceAreas || []).filter(item => item !== area))} title={`Eliminar ${area}`}><Trash2 size={15} /></button></div>)}</div>
+            <div className="settings-area-save"><Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</Button></div>
           </Card>
         )}
 

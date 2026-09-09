@@ -25,6 +25,9 @@ const SessionExpired = lazy(() => import('./pages/SessionExpired'));
 const Notes = lazy(() => import('./pages/Notes'));
 const FocusTimer = lazy(() => import('./pages/FocusTimer'));
 const Assistant = lazy(() => import('./pages/Assistant'));
+const Kids = lazy(() => import('./pages/Kids'));
+const IbrpAssigned = lazy(() => import('./pages/IbrpAssigned'));
+const IeaMockup = lazy(() => import('./pages/IeaMockup'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, loading, hasRole } = useAuth();
@@ -72,6 +75,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/session-expired" element={<SessionExpired />} />
+          <Route path="/maqueta-iea" element={<IeaMockup />} />
           
           <Route 
             path="/dashboard" 
@@ -83,6 +87,8 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="miembros" element={<Members />} />
+            <Route path="kids" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro']}><Kids /></ProtectedRoute>} />
+            <Route path="ibrp" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader']}><IbrpAssigned /></ProtectedRoute>} />
             <Route path="miembros/:id" element={<MemberProfile />} />
             <Route path="eventos" element={<Events />} />
             <Route path="noticias" element={<News />} />

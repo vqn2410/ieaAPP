@@ -1,7 +1,16 @@
 .profile {
-  max-width: 1000px;
+  max-width: 1180px;
   margin: 0 auto;
 }
+
+.profile-modern-header { padding: .4rem 0 1.35rem; border-bottom: 1px solid #e6e2da; }
+.profile-modern-identity, .profile-modern-actions, .profile-modern-meta, .profile-modern-card-title h2, .profile-subtitle, .profile-contact-person { display: flex; align-items: center; }
+.profile-modern-identity { gap: .8rem; }.profile-modern-identity h1 { margin: 0; font-size: 1.6rem; font-weight: 600; }.profile-modern-meta { gap: .75rem; margin-top: .25rem; color: var(--color-text-muted); font-size: .68rem; }.profile-active-pill { padding: .16rem .5rem; border-radius: 999px; color: #1f7a49; background: #ddf6e6; }.profile-modern-avatar { width: 46px; height: 46px; margin: 0; color: #fff; background: #3445d8; border: 0; }.profile-modern-actions { gap: .45rem; }.profile-more-button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-text-muted); background: var(--color-surface); }
+.profile-personal-card, .profile-family-card, .profile-tab-card { border-radius: 2px; box-shadow: none; }.profile-modern-card-title { padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }.profile-modern-card-title h2 { gap: .45rem; margin: 0; font-size: .95rem; }.profile-modern-card-title p { margin: .35rem 0 0; color: var(--color-text-muted); font-size: .75rem; }.profile-personal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; padding-top: 1.1rem; }.profile-subtitle { gap: .35rem; margin-bottom: .8rem; font-size: .72rem; font-weight: 700; }.profile-qr-block { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }.profile-qr-block img { width: 92px; height: 92px; padding: .25rem; border: 1px solid var(--color-border); }.profile-qr-block small { color: var(--color-text-muted); font-size: .68rem; }.profile-contact-person { gap: .65rem; margin-bottom: .7rem; }.profile-contact-person .profile-avatar { width: 48px; height: 48px; margin: 0; color: #fff; background: #3445d8; border: 0; }.profile-contact-block .profile-field { padding: .28rem 0; }.profile-contact-block .profile-field-icon { width: 20px; height: 20px; border: 0; background: transparent; }.profile-contact-block .profile-field-label { display: none; }.profile-contact-block .profile-field-value { color: #334bd8; font-size: .73rem; }.profile-growth-label { margin: 0 0 .65rem; font-size: .72rem; }.profile-growth-stages { display: grid; gap: .42rem; }.profile-growth-stage { display: flex; align-items: center; gap: .55rem; color: var(--color-text-muted); font-size: .72rem; }.profile-growth-stage span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; color: #8f897e; background: #f2eee5; font-size: .65rem; }.profile-growth-stage.active span { color: #3445d8; background: #e8eaff; }.profile-growth-stage.active { color: var(--color-text); }.profile-active-roles { margin-top: 1rem; display: grid; gap: .25rem; }.profile-active-roles small { color: var(--color-text-muted); font-size: .65rem; }.profile-active-roles strong { font-size: .72rem; font-weight: 500; }
+.profile-family-card { margin-top: 1rem; }.profile-family-label { display: grid; gap: .35rem; margin: .9rem 0; font-size: .72rem; font-weight: 600; }.profile-family-label input { background: #faf8f2; }
+.profile-tabs { display: flex; gap: 1.4rem; margin-top: 1.25rem; padding: 0 .2rem; border-bottom: 1px solid var(--color-border); }.profile-tabs button { display: flex; align-items: center; gap: .35rem; padding: .7rem .1rem; border: 0; border-bottom: 2px solid transparent; color: var(--color-text-muted); background: transparent; font: inherit; font-size: .72rem; cursor: pointer; }.profile-tabs button.active { color: #3445d8; border-bottom-color: #3445d8; }.profile-tab-card { min-height: 210px; margin-top: 0; }.profile-tab-heading { display: flex; align-items: center; gap: .45rem; padding-bottom: .85rem; border-bottom: 1px solid var(--color-border); font-size: .8rem; }.profile-tab-item { display: flex; flex-direction: column; gap: .25rem; width: min(360px, 100%); margin-top: 1rem; border: 1px solid var(--color-border); border-radius: 8px; padding: .9rem; }.profile-tab-item span, .profile-tab-empty span { color: var(--color-text-muted); font-size: .72rem; }.profile-tab-empty { display: flex; flex-direction: column; align-items: center; gap: .4rem; padding: 3rem 1rem; color: var(--color-text-muted); text-align: center; }.profile-tab-empty svg { color: #737780; }.profile-tab-empty strong { color: var(--color-text); font-size: .8rem; }.profile-legacy-grid { display: none; }
+
+:root[data-theme='dark'] .profile-modern-header { border-color: var(--color-border); }.profile-family-label input { background: var(--color-surface); }
 
 .profile-header {
   display: flex;
@@ -40,6 +49,10 @@
 }
 
 @media (max-width: 768px) {
+  .profile-personal-grid { grid-template-columns: 1fr; gap: 1.25rem; }
+  .profile-modern-header { align-items: flex-start; flex-direction: column; gap: .9rem; }
+  .profile-modern-actions { width: 100%; }
+  .profile-modern-actions .btn { flex: 1; }
   .profile-grid {
     grid-template-columns: 1fr;
   }
@@ -458,3 +471,9 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* La vista moderna reemplaza la ficha lateral anterior para evitar duplicar datos. */
+.profile .profile-legacy-grid { display: none; }
+.profile .profile-personal-card:hover,
+.profile .profile-family-card:hover,
+.profile .profile-tab-card:hover { transform: none; box-shadow: none; }

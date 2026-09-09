@@ -53,6 +53,30 @@ service cloud.firestore {
       allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 
+    // === Colección: kids ===
+    // Los roles pastorales pueden acompañar y mantener actualizada la información de niños.
+    match /kids/{kidId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    match /kidsAttendance/{attendanceId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección privada: asignados IBRP ===
+    // Solo los encargados pastorales pueden consultar o modificar estos registros.
+    match /ibrpAssigned/{assignedId} {
+      allow read, write: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader']);
+    }
+
+    match /ibrpEvaluations/{evaluationId} {
+      allow read, write: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader']);
+    }
+
     // === Colección: events ===
     match /events/{eventId} {
       allow read: if isAuth();

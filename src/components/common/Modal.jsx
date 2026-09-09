@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Card from './Card';
 import Button from './Button';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', className = '' }) => {
   if (!isOpen) return null;
 
   const sizeStyles = {
@@ -19,7 +19,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1rem', boxSizing: 'border-box'
     }}>
-      <Card title={title} className="modal-content" style={{ width: '100%', maxWidth: sizeStyles[size] || sizeStyles.md, maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', margin: 0 }}>
+       <Card title={title} className={`modal-content ${className}`} style={{ width: '100%', maxWidth: sizeStyles[size] || sizeStyles.md, maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', margin: 0 }}>
         {children}
         <div className="d-flex justify-end mt-4 pt-4 border-top" style={{ borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={onClose} style={{ marginRight: '0.5rem' }}>Cerrar</Button>

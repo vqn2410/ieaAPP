@@ -7,12 +7,13 @@ import Badge from '../components/common/Badge';
 import MemberForm from '../components/members/MemberForm';
 import { getMember, deleteMember, updateMember } from '../services/memberService';
 import { getMembers } from '../services/memberService';
-import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SkeletonCard } from '../components/common/Skeleton';
 import { useSettings } from '../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../services/followUpService';
 import { getMemberAttendanceStats } from '../services/attendanceService';
+import { isBaptised } from '../utils/helpers';
 import './MemberProfile.css';
 
 const initialAvatar = (firstName, lastName) => {
@@ -46,6 +47,7 @@ const MemberProfile = () => {
   const [followUpType, setFollowUpType] = useState('note');
   const [showFollowUpForm, setShowFollowUpForm] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState(null);
+  const [profileTab, setProfileTab] = useState('groups');
 
   const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
   const isAdmin = userData?.role?.includes('Admin');
@@ -151,21 +153,39 @@ const MemberProfile = () => {
   const roles = Array.isArray(member.role) ? member.role : [member.role || 'Member'];
   const growthPaths = member.growthPath || {};
   const availablePaths = ['Bautismo', 'Discipulado', 'IETE', 'Otros estudios teológicos'];
+  const qrValue = encodeURIComponent(`${window.location.origin}/dashboard/miembros/${id}`);
+  const memberRoles = roles.map(role => settings?.roles?.[role] || role);
+  const growthStages = [
+    { label: 'Nuevo', active: true },
+    { label: 'Conectado', active: Boolean(member.email || member.phone) },
+    { label: 'Bautizado', active: isBaptised(member) },
+    { label: 'En Grupo', active: Boolean(member.group) },
+    { label: 'Servidor', active: roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role)) },
+    { label: 'Líder', active: roles.some(role => ['Admin', 'Pastor', 'MinistryLeader'].includes(role)) },
+  ];
 
   return (
     <div className="profile animate-fade-in">
-      <div className="profile-header">
-        <Button variant="outline" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/miembros')}>
-          Volver
-        </Button>
-        {canTransfer && (
-          <div className="profile-header-actions">
-            <Button size="sm" icon={<Edit size={14} />} onClick={() => setShowEditModal(true)}>Editar</Button>
-          </div>
-        )}
+      <div className="profile-header profile-modern-header">
+        <div className="profile-modern-identity"><div className="profile-avatar profile-modern-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div><h1>{member.firstName} {member.lastName}</h1><div className="profile-modern-meta"><span className="profile-active-pill">Activo</span>{memberRoles.map(role => <span key={role}>{role}</span>)}</div></div></div>
+        <div className="profile-modern-actions"><Button variant="outline" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/miembros')}>Volver</Button>{canTransfer && <Button size="sm" icon={<Edit size={14} />} onClick={() => setShowEditModal(true)}>Editar</Button>}<button className="profile-more-button" aria-label="Más opciones"><MoreHorizontal size={18} /></button></div>
       </div>
 
-      <div className="profile-grid">
+      <Card className="profile-personal-card">
+        <div className="profile-modern-card-title"><div><h2><User size={17} /> Información personal</h2><p>Carnet con QR, datos de contacto y crecimiento espiritual</p></div></div>
+        <div className="profile-personal-grid">
+          <div className="profile-qr-block"><div className="profile-subtitle"><QrCode size={14} /> Carnet QR</div><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrValue}`} alt="Código QR del miembro" /><small>Escaneá en grupos o eventos.</small><Button variant="outline" size="sm">Imprimir / Guardar PDF</Button></div>
+          <div className="profile-contact-block"><div className="profile-subtitle">Datos y contacto</div><div className="profile-contact-person"><div className="profile-avatar">{initialAvatar(member.firstName, member.lastName)}</div><strong>{member.firstName} {member.lastName}</strong></div><ProfileField icon={Mail} label="Email" value={member.email} /><ProfileField icon={Phone} label="Teléfono" value={member.phone} /><ProfileField icon={MapPin} label="Dirección" value={member.address} /><ProfileField icon={Hash} label="DNI" value={member.dni} /></div>
+          <div className="profile-growth-block"><div className="profile-subtitle"><HeartHandshake size={14} /> Crecimiento espiritual</div><p className="profile-growth-label">Etapas de crecimiento</p><div className="profile-growth-stages">{growthStages.map((stage, index) => <div className={`profile-growth-stage ${stage.active ? 'active' : ''}`} key={stage.label}><span>{index + 1}</span>{stage.label}</div>)}</div><div className="profile-active-roles"><small>Perfiles activos</small><strong>{memberRoles.join(' · ')}</strong></div></div>
+        </div>
+      </Card>
+
+      <Card className="profile-family-card"><div className="profile-modern-card-title"><div><h2><Users size={17} /> Gestión familiar</h2><p>Menores a tu cargo (hijos, nietos, etc.). Si ya fueron registrados buscálos por documento y vinculalos.</p></div></div><label className="profile-family-label">Buscar menor por nombre o documento<input className="form-input" placeholder="Nombre o número de documento..." /></label><Button variant="outline" size="sm">Registrar menor y vincularlo a mi familia</Button></Card>
+
+      <div className="profile-tabs"><button className={profileTab === 'groups' ? 'active' : ''} onClick={() => setProfileTab('groups')}><Users size={14} /> Grupos ({member.group ? 1 : 0})</button><button className={profileTab === 'ministries' ? 'active' : ''} onClick={() => setProfileTab('ministries')}><HeartHandshake size={14} /> Ministerios ({roles.includes('MinistryLeader') ? 1 : 0})</button><button className={profileTab === 'schools' ? 'active' : ''} onClick={() => setProfileTab('schools')}><GraduationCap size={14} /> Escuelas ({growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? 1 : 0})</button></div>
+      <Card className="profile-tab-card">{profileTab === 'groups' && <><div className="profile-tab-heading"><Users size={16} /><strong>Grupos</strong></div>{member.group ? <div className="profile-tab-item"><strong>{member.group}</strong><span>Grupo de pertenencia</span></div> : <div className="profile-tab-empty"><Users size={32} /><strong>Sin grupos</strong><span>No estás en ningún grupo actualmente.</span></div>}</>}{profileTab === 'ministries' && <><div className="profile-tab-heading"><HeartHandshake size={16} /><strong>Ministerios</strong></div>{roles.includes('MinistryLeader') ? <div className="profile-tab-item"><strong>Liderazgo de ministerio</strong><span>{memberRoles.join(', ')}</span></div> : <div className="profile-tab-empty"><HeartHandshake size={32} /><strong>Sin ministerios</strong><span>No hay ministerios registrados para esta persona.</span></div>}</>}{profileTab === 'schools' && <><div className="profile-tab-heading"><GraduationCap size={16} /><strong>Escuelas</strong></div>{growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? <div className="profile-tab-item"><strong>IETE</strong><span>{growthPaths.IETE.status}</span></div> : <div className="profile-tab-empty"><GraduationCap size={32} /><strong>Sin escuelas</strong><span>No hay escuelas registradas para esta persona.</span></div>}</>}</Card>
+
+      <div className="profile-grid profile-legacy-grid">
         <div className="profile-sidebar">
           <Card>
             <div className="profile-avatar-section">

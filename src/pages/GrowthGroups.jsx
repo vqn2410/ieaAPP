@@ -9,7 +9,7 @@ import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy } from 'lucide-react';
+import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
@@ -214,7 +214,7 @@ const GrowthGroups = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div className="growth-groups-page animate-fade-in">
             <div className="d-flex justify-between align-center mb-4">
                 <div className="d-flex align-center gap-3">
                     {activeTab && (
@@ -261,7 +261,7 @@ const GrowthGroups = () => {
                 </div>
             ) : (
                 <div className="animate-slide-up">
-                    {activeTab === 'grupos' && (
+                            {activeTab === 'grupos' && (
                         <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1rem' }}>
                             {myGroups.length === 0 ? (
                                 <EmptyState icon={Users} title="Sin grupos" message="No tienes grupos asignados a tu cargo actualmente." />
@@ -271,7 +271,7 @@ const GrowthGroups = () => {
                                     const coFacils = getArray(g.coFacilitators);
 
                                     return (
-                                        <Card key={g.id}>
+                                        <Card key={g.id} className="growth-group-card">
                                             <div className="d-flex justify-between align-start mb-3">
                                                 <div>
                                                     <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-primary)' }}>{g.name}</h3>
@@ -395,7 +395,7 @@ const GrowthGroups = () => {
                     {activeTab === 'seguimientos' && <FollowUps />}
                 </div>
             )}
-            <Modal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} title={editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"}>
+            <Modal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} title={editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"} size="lg" className="group-modal-content">
                 <GroupForm
                     initialData={editingGroup}
                     membersList={allMembers}
@@ -455,8 +455,15 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     const [selectedGroupId, setSelectedGroupId] = useState(myGroups.length > 0 ? myGroups[0].id : '');
     const [availableDates, setAvailableDates] = useState([]);
     const [attendanceDate, setAttendanceDate] = useState('');
+    const [topic, setTopic] = useState('');
     const [presentIds, setPresentIds] = useState([]);
     const [absentDetails, setAbsentDetails] = useState({});
+    const [guests, setGuests] = useState([]);
+    const [guestName, setGuestName] = useState('');
+    const [guestContact, setGuestContact] = useState('');
+    const [offering, setOffering] = useState('');
+    const [attendanceNotes, setAttendanceNotes] = useState('');
+    const [groupPhoto, setGroupPhoto] = useState('');
     const [holidays, setHolidays] = useState([]);
     const [isManualDate, setIsManualDate] = useState(false);
 
@@ -501,10 +508,20 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
         if (record) {
             setPresentIds(record.presentMembers || []);
             setAbsentDetails(record.absentDetails || {});
+            setGuests(record.guests || []);
+            setOffering(record.offering ?? '');
+            setAttendanceNotes(record.notes || '');
+            setGroupPhoto(record.groupPhoto || '');
+            setTopic(record.topic || '');
         } else {
             // A new attendance list starts with the group present by default.
             setPresentIds(groupMembers.map(member => member.id));
             setAbsentDetails({});
+            setGuests([]);
+            setOffering('');
+            setAttendanceNotes('');
+            setGroupPhoto('');
+            setTopic('');
         }
         setLoadingRecord(false);
     });
@@ -536,8 +553,13 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                 groupId: selectedGroupId,
                 groupName: selectedGroup?.name || '',
                 date: attendanceDate,
+                topic: topic.trim(),
                 presentMembers: presentIds,
                 absentDetails: cleanedAbsentDetails,
+                guests,
+                offering: offering ? Number(offering) : 0,
+                notes: attendanceNotes,
+                groupPhoto,
                 members: groupMembers.map(member => ({ id: member.id, firstName: member.firstName, lastName: member.lastName })),
                 takenBy: currentUser?.uid || '',
             });
@@ -547,6 +569,25 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const addGuest = () => {
+        if (!guestName.trim()) return;
+        setGuests(current => [...current, { name: guestName.trim(), contact: guestContact.trim() }]);
+        setGuestName('');
+        setGuestContact('');
+    };
+
+    const handleGroupPhoto = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (file.size > 600000) {
+            alert('La foto debe pesar menos de 600 KB.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => setGroupPhoto(String(reader.result));
+        reader.readAsDataURL(file);
     };
 
     const exportReport = async () => {
@@ -610,6 +651,8 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(8);
             pdf.text(`Período: ${reportPeriod.charAt(0).toUpperCase() + reportPeriod.slice(1)} | Emitido: ${new Date().toLocaleDateString('es-AR')}`, 12, 38);
+            const topics = [...new Set(groupRecords.map(record => record.topic).filter(Boolean))];
+            if (topics.length > 0) pdf.text(`Temas vistos: ${topics.join(' · ')}`, 12, 43);
 
             const uniqueDates = Array.from(new Set(groupRecords.map(record => record.date))).sort();
             const header = ['Miembro', ...uniqueDates.map(date => new Date(`${date}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })), '%'];
@@ -671,7 +714,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: '1rem' }}>
             <div className="lg:col-span-2">
                 <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckSquare size={20} color="var(--color-primary)" /> Cargar Asistencia</div>}>
-                    <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div className="attendance-header-fields" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group m-0">
                             <label className="form-label">Seleccione Grupo de Amistad</label>
                             <select
@@ -719,6 +762,10 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                                 />
                             )}
                         </div>
+                        <div className="form-group m-0">
+                            <label className="form-label">Tema visto</label>
+                            <input className="form-input" value={topic} onChange={event => setTopic(event.target.value)} placeholder="Ej. La fe que mueve montañas" style={{ width: '100%', height: '50px', backgroundColor: 'var(--color-surface)' }} />
+                        </div>
                     </div>
 
                     {selectedGroup && (
@@ -764,6 +811,13 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                                     )}
                                 </div>
                             )}
+
+                            <section className="attendance-additional">
+                                <div className="attendance-additional-header"><div><h3><UserPlus size={16} /> Información adicional</h3><p>Visitantes, ofrenda y notas del encuentro.</p></div></div>
+                                <div className="attendance-guests-box"><div className="d-flex justify-between align-center"><div><strong>Invitados</strong><small>Registrá datos solo cuando exista autorización de contacto.</small></div><button type="button" className="btn btn-primary btn-sm" onClick={addGuest}><UserPlus size={14} /> Agregar invitado</button></div><div className="attendance-guest-fields"><input className="form-input" placeholder="Nombre del invitado" value={guestName} onChange={event => setGuestName(event.target.value)} /><input className="form-input" placeholder="Contacto (opcional)" value={guestContact} onChange={event => setGuestContact(event.target.value)} /></div>{guests.length > 0 && <div className="attendance-guest-list">{guests.map((guest, index) => <div key={`${guest.name}-${index}`}><span>{guest.name}</span><small>{guest.contact || 'Sin contacto'}</small><button type="button" onClick={() => setGuests(current => current.filter((_, guestIndex) => guestIndex !== index))}>×</button></div>)}</div>}</div>
+                                <div className="attendance-additional-grid"><label>Ofrenda<input className="form-input" type="number" min="0" step="0.01" placeholder="$ 0" value={offering} onChange={event => setOffering(event.target.value)} /></label><label className="attendance-notes-field">Notas / Observaciones<textarea className="form-input" rows={3} placeholder="Testimonios, peticiones de oración, observaciones importantes..." value={attendanceNotes} onChange={event => setAttendanceNotes(event.target.value)} /></label></div>
+                                <div className="attendance-photo"><label>Foto del grupo</label><div className="attendance-photo-actions"><label className="btn btn-outline btn-sm"><Camera size={14} /> Cámara<input type="file" accept="image/*" capture="environment" onChange={handleGroupPhoto} /></label><label className="btn btn-outline btn-sm"><Image size={14} /> Galería<input type="file" accept="image/*" onChange={handleGroupPhoto} /></label></div>{groupPhoto && <img src={groupPhoto} alt="Grupo" />}</div>
+                            </section>
 
                             <div className="mt-4">
                                 <button className="btn btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem' }} onClick={handleSave} disabled={saving || loadingRecord}>

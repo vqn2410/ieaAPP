@@ -10,6 +10,7 @@ import { getGroup } from '../services/groupService';
 import { getMembers, updateMember } from '../services/memberService';
 import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../utils/useDebounce';
+import './GroupDetails.css';
 
 const GroupDetails = () => {
     const { id } = useParams();
@@ -110,7 +111,7 @@ const GroupDetails = () => {
     );
 
     return (
-        <div className="animate-fade-in">
+        <div className="group-details-page animate-fade-in">
             <div className="d-flex align-center gap-3 mb-4" style={{ flexWrap: 'wrap' }}>
                 <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/grupos')}>Volver</Button>
                 <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -122,8 +123,9 @@ const GroupDetails = () => {
             </div>
 
             <Card className="mb-4">
-               <div className="d-flex gap-4" style={{ flexWrap: 'wrap' }}>
-                   <div>
+                <div className="d-flex gap-4" style={{ flexWrap: 'wrap' }}>
+                    {group.description && <div className="group-detail-description">{group.description}</div>}
+                    <div>
                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tipo de grupo</span>
                        <span className="badge badge-gray">{group.type}</span>
                    </div>
@@ -196,6 +198,8 @@ const GroupDetails = () => {
                         <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                         <input className="form-input" style={{ width: '100%', paddingLeft: '2.5rem' }} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o DNI..." autoFocus />
                     </div>
+                    {group.zone && <div><span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Zona / Sector</span><span>{group.zone}</span></div>}
+                    {group.capacity && <div><span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Capacidad</span><span>{group.capacity} personas</span></div>}
                     <div style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
                         {availableMembers.length === 0 ? (
                             <p style={{ margin: 0, padding: '1rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>No hay personas disponibles.</p>

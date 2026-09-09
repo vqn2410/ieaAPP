@@ -10,11 +10,13 @@ import { getGroups } from '../services/groupService';
 import { getEvents } from '../services/eventService';
 import { getPendingFollowUps } from '../services/followUpService';
 import { isBaptised } from '../utils/helpers';
-import { Users, Calendar, Activity, ListTodo, ArrowRight, ChevronLeft, ChevronRight, UserPlus, BookOpen, Target, Clock, MessageSquare } from 'lucide-react';
+import { Users, Calendar, Activity, ListTodo, ArrowRight, ChevronLeft, ChevronRight, UserPlus, BookOpen, Target, Clock, MessageSquare, Cake } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
 import './Dashboard.css';
 
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const fullMonths = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const announcements = [
   { title: 'Reunión de oración', image: '/anuncios/ORACI%C3%93N.jpg' },
   { title: 'Generosidad', image: '/anuncios/OFRENDA.jpg' },
@@ -112,12 +114,118 @@ const timeAgo = (date) => {
   return `hace ${days} días`;
 };
 
+const getBirthDate = (member) => member?.birthDate || member?.birthday || member?.birthdate || member?.dateOfBirth || '';
+
+const getBirthdayParts = (member) => {
+  const value = getBirthDate(member);
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const iso = value.match(/^\d{4}[-/](\d{1,2})[-/](\d{1,2})/);
+    if (iso) return { month: Number(iso[1]), day: Number(iso[2]) };
+    const local = value.match(/^(\d{1,2})[-/](\d{1,2})/);
+    if (local) return { month: Number(local[2]), day: Number(local[1]) };
+  }
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return { month: date.getMonth() + 1, day: date.getDate() };
+};
+
+const birthdayKey = (member) => {
+  const parts = getBirthdayParts(member);
+  return parts ? `${parts.month}-${parts.day}` : null;
+};
+
+const birthdayLabel = (member) => {
+  const parts = getBirthdayParts(member);
+  return parts ? `${parts.day} de ${fullMonths[parts.month - 1]}` : '';
+};
+
+const getWeekStart = (date) => {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = (result.getDay() + 6) % 7;
+  result.setDate(result.getDate() - day);
+  return result;
+};
+
+const BirthdayWeek = ({ members, loading, onMemberClick }) => {
+  const today = new Date();
+  const weekStart = getWeekStart(today);
+  const weekKeys = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + index);
+    return `${day.getMonth() + 1}-${day.getDate()}`;
+  });
+  const birthdays = members
+    .map(member => ({ member, key: birthdayKey(member) }))
+    .filter(item => item.key && weekKeys.includes(item.key))
+    .sort((a, b) => weekKeys.indexOf(a.key) - weekKeys.indexOf(b.key));
+
+  return (
+    <Card>
+      <div className="dash-side-card-hd">
+        <Cake size={16} className="birthday-icon" />
+        <span>Cumpleaños de la semana</span>
+        {birthdays.length > 0 && <Badge variant="secondary" style={{ marginLeft: 'auto' }}>{birthdays.length}</Badge>}
+      </div>
+      <div className="dash-card-bd dash-birthday-week">
+        {loading ? [1, 2].map(item => <div className="dash-birthday-row" key={item}><div className="skeleton" style={{ width: '30px', height: '30px', borderRadius: '50%' }} /><div style={{ flex: 1 }}><div className="skeleton" style={{ width: '65%', height: '12px', marginBottom: '4px' }} /><div className="skeleton" style={{ width: '35%', height: '10px' }} /></div></div>) : birthdays.length === 0 ? (
+          <EmptyState icon={Cake} title="Sin cumpleaños" message="No hay cumpleaños registrados esta semana." compact />
+        ) : birthdays.map(({ member }) => (
+          <button className="dash-birthday-row" key={member.id} onClick={() => onMemberClick(member.id)}>
+            <span className="dash-birthday-avatar">{`${(member.firstName || '?')[0]}${(member.lastName || '?')[0]}`}</span>
+            <span className="dash-birthday-person"><strong>{member.firstName} {member.lastName}</strong><small>{birthdayLabel(member)}</small></span>
+            <span className="dash-birthday-cake">🎂</span>
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+const BirthdayCalendar = ({ members, onMemberClick }) => {
+  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const firstDay = (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cells = Array.from({ length: Math.ceil((firstDay + daysInMonth) / 7) * 7 }, (_, index) => {
+    const day = index - firstDay + 1;
+    return day > 0 && day <= daysInMonth ? day : null;
+  });
+  const birthdayMap = members.reduce((map, member) => {
+    const parts = getBirthdayParts(member);
+    if (parts?.month === monthIndex + 1) {
+      map[parts.day] = [...(map[parts.day] || []), member];
+    }
+    return map;
+  }, {});
+  const today = new Date();
+
+  return (
+    <Card className="dash-birthday-calendar-card">
+      <div className="dash-card-hd">
+        <div className="dash-card-title"><Cake size={16} strokeWidth={1.5} /><span>Calendario de cumpleaños</span></div>
+        <div className="dash-calendar-controls"><button onClick={() => setMonth(new Date(year, monthIndex - 1, 1))} aria-label="Mes anterior"><ChevronLeft size={15} /></button><strong>{fullMonths[monthIndex]} {year}</strong><button onClick={() => setMonth(new Date(year, monthIndex + 1, 1))} aria-label="Mes siguiente"><ChevronRight size={15} /></button></div>
+      </div>
+      <div className="dash-birthday-calendar">
+        <div className="dash-calendar-weekdays">{weekDays.map(day => <span key={day}>{day}</span>)}</div>
+        <div className="dash-calendar-grid">{cells.map((day, index) => {
+          const people = day ? birthdayMap[day] || [] : [];
+          const isToday = day === today.getDate() && monthIndex === today.getMonth() && year === today.getFullYear();
+          return <div className={`dash-calendar-day ${!day ? 'empty' : ''} ${isToday ? 'today' : ''}`} key={`${year}-${monthIndex}-${index}`}><span className="dash-calendar-number">{day}</span>{people.map(person => <button className="dash-calendar-person" key={person.id} title={`${person.firstName} ${person.lastName}`} onClick={() => onMemberClick(person.id)}>{`${(person.firstName || '?')[0]}${(person.lastName || '?')[0]}`}</button>)}</div>;
+        })}</div>
+      </div>
+      <div className="dash-calendar-legend"><span className="dash-calendar-dot" /> Hay cumpleaños registrados. Seleccioná las iniciales para ver el perfil.</div>
+    </Card>
+  );
+};
+
 const Dashboard = () => {
   const { userData, hasRole } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: []
+     members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: [], allMembers: []
   });
   const [loading, setLoading] = useState(true);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
@@ -151,6 +259,7 @@ const Dashboard = () => {
           baptised,
           upcomingEvents: upcoming,
           recentMembers: recent,
+          allMembers: members,
           pendingFollowUps: pendingFups.map(f => ({ ...f, memberName: memberMap[f.memberId] ? `${memberMap[f.memberId].firstName} ${memberMap[f.memberId].lastName}` : '?' }))
         });
       } catch {
@@ -224,6 +333,9 @@ const Dashboard = () => {
         <StatWidget title="Bautizados" value={stats.baptised} icon={BookOpen} loading={loading} subtitle={`${baptisedPct}% del censo`} />
       </div>
 
+      <div className="dash-featured-row">
+        <BirthdayWeek members={stats.allMembers || []} loading={loading} onMemberClick={id => navigate(`/dashboard/miembros/${id}`)} />
+
       <section className="dash-announcements" aria-label="Anuncios">
         <div className="dash-announcements-header">
           <div className="dash-card-title">
@@ -261,6 +373,7 @@ const Dashboard = () => {
           ))}
         </div>
       </section>
+      </div>
 
       <div className="dash-grid">
         <div className="dash-col-main">
@@ -314,6 +427,8 @@ const Dashboard = () => {
               )}
             </div>
           </Card>
+
+          <BirthdayCalendar members={stats.allMembers} onMemberClick={id => navigate(`/dashboard/miembros/${id}`)} />
         </div>
 
         <div className="dash-col-side">

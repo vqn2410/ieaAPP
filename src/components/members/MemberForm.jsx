@@ -4,6 +4,7 @@ import { createMember, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../common/toastContext';
+import './MemberForm.css';
 
 const emptyGrowthPath = {
   Bautismo: { status: '' },
@@ -12,19 +13,33 @@ const emptyGrowthPath = {
   'Otros estudios teológicos': { status: '', detail: '' }
 };
 
+const dateInputValue = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value.slice(0, 10);
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
   const { settings } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [groups, setGroups] = useState([]);
-  const [formData, setFormData] = useState(initialData || {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState(initialData ? {
+    ...initialData,
+    serviceAreas: Array.isArray(initialData.serviceAreas) ? initialData.serviceAreas : (initialData.serviceArea ? [initialData.serviceArea] : []),
+  } : {
     firstName: '',
     lastName: '',
     dni: '',
     email: '',
     phone: '',
     address: '',
+    birthDate: '',
+    serviceAreas: [],
     group: fixedGroup || '',
     role: ['Member'],
     growthPath: emptyGrowthPath,
@@ -38,12 +53,14 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
     if (initialData) {
       setFormData({
         ...initialData,
+        birthDate: dateInputValue(initialData.birthDate || initialData.birthday || initialData.birthdate || initialData.dateOfBirth),
+        serviceAreas: Array.isArray(initialData.serviceAreas) ? initialData.serviceAreas : (initialData.serviceArea ? [initialData.serviceArea] : []),
         role: Array.isArray(initialData.role) ? initialData.role : (initialData.role ? [initialData.role] : ['Member']),
         growthPath: { ...emptyGrowthPath, ...(initialData.growthPath || {}) }
       });
     } else {
       setFormData({
-        firstName: '', lastName: '', dni: '', email: '', phone: '', address: '', group: fixedGroup || '', role: ['Member'], growthPath: emptyGrowthPath
+        firstName: '', lastName: '', dni: '', email: '', phone: '', address: '', birthDate: '', serviceAreas: [], group: fixedGroup || '', role: ['Member'], growthPath: emptyGrowthPath
       });
     }
   }, [initialData, fixedGroup]);
@@ -90,6 +107,10 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
     setLoading(true);
     try {
       if (initialData && initialData.id) {
@@ -109,7 +130,9 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className={`member-editor-form member-editor-step-${step}`} onSubmit={handleSubmit}>
+      <div className="member-editor-stepper"><div className={`member-editor-step-marker ${step >= 1 ? 'active' : ''}`}><span>1</span><strong>Datos Personales</strong><small>Información básica</small></div><div className="member-editor-step-line" /><div className={`member-editor-step-marker ${step >= 2 ? 'active' : ''}`}><span>2</span><strong>Perfil Congregacional</strong><small>Rol y grupos</small></div></div>
+      <div className="member-editor-personal">
       <div className="grid grid-cols-2 lg:grid-cols-4" style={{ gap: '1rem' }}>
         <div className="form-group mb-2">
           <label className="form-label">Nombre</label>
@@ -131,6 +154,16 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
           <input name="phone" value={formData.phone || ''} onChange={handleChange} className={`form-input ${errors.phone ? 'input-error' : ''}`} placeholder="+54 9 11..." />
           {errors.phone && <small style={{ color: 'var(--color-danger)', fontSize: '0.75rem' }}>{errors.phone}</small>}
         </div>
+        <div className="form-group mb-2">
+          <label className="form-label">Cumpleaños (Opcional)</label>
+          <input type="date" name="birthDate" value={formData.birthDate || ''} onChange={handleChange} className="form-input" />
+        </div>
+        <div className="form-group mb-2">
+          <label className="form-label">Área de servicio (Opcional)</label>
+          <div className="member-area-picker">{(settings?.serviceAreas || []).map(area => <label key={area}><input type="checkbox" checked={(formData.serviceAreas || []).includes(area)} onChange={() => setFormData(prev => ({ ...prev, serviceAreas: (prev.serviceAreas || []).includes(area) ? prev.serviceAreas.filter(item => item !== area) : [...(prev.serviceAreas || []), area] }))} /> <span>{area}</span></label>)}</div>
+          <small style={{ color: 'var(--color-text-muted)', fontSize: '0.68rem' }}>Podés seleccionar más de un área.</small>
+          <div className="member-selected-areas">{(formData.serviceAreas || []).map(area => <span key={area}>{area}<button type="button" onClick={() => setFormData(prev => ({ ...prev, serviceAreas: (prev.serviceAreas || []).filter(item => item !== area) }))}>×</button></span>)}</div>
+        </div>
         <div className="form-group mb-2 sm:col-span-2">
           <label className="form-label">Email</label>
           <input type="email" name="email" value={formData.email} onChange={handleChange} className={`form-input ${errors.email ? 'input-error' : ''}`} placeholder="correo@ejemplo.com" />
@@ -140,6 +173,9 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
           <label className="form-label">Dirección (Opcional)</label>
           <input name="address" value={formData.address || ''} onChange={handleChange} className="form-input" placeholder="Domicilio" />
         </div>
+      </div>
+      </div>
+      <div className="member-editor-congregational">
         {fixedGroup && <div className="form-group mb-2 sm:col-span-2">
           <label className="form-label">Grupo asignado</label>
           <div style={{ padding: '0.75rem 1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface-hover)', fontWeight: 600, color: 'var(--color-text)' }}>
@@ -207,10 +243,7 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId }) => {
           </div>
         </div>}
       </div>
-      
-      <Button type="submit" variant="primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loading}>
-        {loading ? 'Guardando...' : (initialData?.id ? 'Actualizar Datos' : 'Crear Miembro')}
-      </Button>
+      <div className="member-editor-actions"><Button type="button" variant="outline" onClick={() => step === 1 ? onSuccess?.() : setStep(1)}>← {step === 1 ? 'Cancelar' : 'Anterior'}</Button><Button type="submit" variant="primary" disabled={loading}>{step === 1 ? 'Siguiente →' : (loading ? 'Guardando...' : (initialData?.id ? 'Guardar Cambios' : 'Crear Miembro'))}</Button></div>
     </form>
   );
 };

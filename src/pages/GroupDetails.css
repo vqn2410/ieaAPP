@@ -1,0 +1,2 @@
+.group-details-page { max-width: 1180px; margin: 0 auto; }.group-details-page .card { border-radius: 14px; box-shadow: 0 1px 2px rgba(30, 30, 20, .04); }.group-detail-description { width: 100%; padding-bottom: .75rem; color: var(--color-text-muted); font-size: .82rem; border-bottom: 1px solid var(--color-border); }.group-details-page table { min-width: 560px; }
+@media (max-width: 640px) { .group-details-page h1 { font-size: 1.35rem; }.group-details-page .d-flex.gap-4 { gap: 1rem; }.group-details-page .btn { flex: 1; } }

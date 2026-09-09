@@ -65,15 +65,18 @@ const initialSettings = {
     Admin: 'Administrador',
     Pastor: 'Pastor',
     MinistryLeader: 'Líder de ministerio',
+    AreaLeader: 'Encargado de área',
     Member: 'Miembro',
     Facilitator: 'Facilitador',
-    CoFacilitator: 'Co-facilitador'
+    CoFacilitator: 'Co-facilitador',
+    Maestro: 'Maestro'
   },
   modules: {
     finances: true,
     news: true,
     live: true
   },
+  serviceAreas: ['IEA Fem', 'IEA Alfa', 'IEA Kids', 'IEA Worships', 'Mantenimiento', 'Cafetería', 'Consolidación', 'Multimedia', 'Creativa'],
   followUpTypes: [
     { id: 'note', label: 'Nota' },
     { id: 'contact', label: 'Contacto' },
@@ -95,7 +98,9 @@ const initialSettings = {
     MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'noticias'],
     Facilitator: ['miembros', 'eventos', 'crecimiento'],
     CoFacilitator: ['miembros', 'crecimiento'],
-    Member: ['dashboard']
+    Member: ['dashboard'],
+    Maestro: ['kids', 'kids-attendance', 'kids-reports'],
+    AreaLeader: ['ibrp', 'miembros', 'grupos']
   }
 };
 

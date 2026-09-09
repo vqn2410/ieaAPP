@@ -22,6 +22,16 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
     'Firmo_Mem', 'Grupo_de_Amistad_r.Name', 'Observaciones'
   ];
 
+  const normalizeBirthDate = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const iso = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+    const local = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (local) return `${local[3]}-${local[2].padStart(2, '0')}-${local[1].padStart(2, '0')}`;
+    return '';
+  };
+
   const handleDownloadTemplate = () => {
     const csvContent = "data:text/csv;charset=utf-8," + EXPECTED_COLUMNS.join(";") + '\n';
     const encodedUri = encodeURI(csvContent);
@@ -114,6 +124,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
             const emailKey = getKey('Email');
             const groupKey = getKey('Grupo_de_Amistad');
             const addressKey = getKey('Domicilio');
+            const birthDateKey = getKey('Fecha_de_Nacimiento') || getKey('Nacimiento') || getKey('Cumple');
             const ageKey = getKey('Edad');
             const activeKey = getKey('Activo');
             const observationsKey = getKey('Observacio');
@@ -127,6 +138,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
             const email = emailKey ? row[emailKey] : '';
             const group = groupKey ? migrateGroupName(row[groupKey]) : '';
             const address = addressKey ? row[addressKey] : '';
+            const birthDate = birthDateKey ? normalizeBirthDate(row[birthDateKey]) : '';
 
             if (!firstName && !lastName) {
                addLogMessage(`Fila ${i + 1}: Omitida - Falta nombre y apellido.`, 'warning');
@@ -150,6 +162,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
                email,
                group,
                address,
+               birthDate,
                extraData: {
                    age: ageKey ? row[ageKey] : '',
                    active: activeKey ? row[activeKey] : '',
