@@ -9,7 +9,8 @@ import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2, User
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getMembers, deleteMember, updateMember } from '../services/memberService';
-import { useNavigate } from 'react-router-dom';
+import { getGroups } from '../services/groupService';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { normalizeString, isBaptised } from '../utils/helpers';
 import { useDebounce } from '../utils/useDebounce';
 import EmptyState from '../components/common/EmptyState';
@@ -27,6 +28,7 @@ const Members = () => {
   const { userData } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [filterGroup, setFilterGroup] = useState('');
@@ -48,7 +50,20 @@ const Members = () => {
   const loadMembers = async () => {
     setLoading(true);
     const data = await getMembers();
-    setMembers(data);
+    const isAdminOrPastor = roles.some(role => ['Admin', 'Pastor'].includes(role));
+    if (isAdminOrPastor) {
+      setMembers(data);
+    } else {
+      const groups = await getGroups();
+      const currentEmail = userData?.email?.trim().toLowerCase();
+      const currentMember = data.find(member => member.email?.trim().toLowerCase() === currentEmail);
+      const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
+      const isLeader = group => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
+        .filter(Boolean)
+        .some(value => value === currentMember?.id || normalize(value) === normalize(`${currentMember?.lastName}, ${currentMember?.firstName}`) || normalize(value) === normalize(`${currentMember?.firstName} ${currentMember?.lastName}`));
+      const groupNames = groups.filter(isLeader).map(group => normalize(group.name));
+      setMembers(data.filter(member => groupNames.some(groupName => normalize(member.group) === groupName || groupName.includes(normalize(member.group)))));
+    }
     setLoading(false);
   };
 
@@ -61,15 +76,16 @@ const Members = () => {
   }, [userData]);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('nuevo') === '1' && canCreate) {
+    const params = new URLSearchParams(location.search);
+    if (params.get('nuevo') === '1' && canCreate) {
+      setMemberToEdit(null);
       setShowModal(true);
+      navigate('/dashboard/miembros', { replace: true });
+      return;
     }
-  }, [canCreate]);
-
-  useEffect(() => {
-    const initialSearch = new URLSearchParams(window.location.search).get('search');
+    const initialSearch = params.get('search');
     if (initialSearch) setSearchTerm(initialSearch);
-  }, []);
+  }, [location.search, canCreate, navigate]);
 
   const handleMemberAdded = () => {
     setShowModal(false);

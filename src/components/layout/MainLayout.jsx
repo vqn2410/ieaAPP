@@ -78,18 +78,18 @@ const MainLayout = () => {
     { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'], children: [
       { name: 'Listado de Miembros', path: '/dashboard/miembros', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
       { name: 'Agregar Miembros', path: '/dashboard/miembros?nuevo=1', roles: ['Admin', 'Pastor'] },
-      { name: 'Kids', path: '/dashboard/kids', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'] },
+      { name: 'Kids', path: '/dashboard/kids', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Maestro'] },
     ] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'] },
     { name: 'Asignados IBRP', path: '/dashboard/ibrp', icon: <img className="ibrp-menu-icon" src="/img/ibrp-logo.svg" alt="" />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader'] },
     { name: 'Eventos', path: '/dashboard/eventos', icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Finanzas', path: 'https://iea-finanzas.vercel.app/', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'], external: true },
     { name: 'Transmisiones', path: '/dashboard/transmisiones', icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
-    { name: 'Visitantes', path: '/dashboard/visitantes', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator'] },
+    { name: 'Visitantes', path: '/dashboard/visitantes', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
     { name: 'Noticias', path: '/dashboard/noticias', icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor'] },
     { name: 'Anotaciones', path: '/dashboard/notas', icon: <StickyNote size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
-    { name: 'Enfoque', path: '/dashboard/enfoque', icon: <Timer size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
-    { name: 'Asistente', path: '/dashboard/asistente', icon: <Bot size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+    { name: 'Enfoque', path: '/dashboard/enfoque', icon: <Timer size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Member'] },
+    { name: 'Asistente', path: '/dashboard/asistente', icon: <Bot size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin'] },
   ].filter(item => hasRole(item.roles));
@@ -147,7 +147,7 @@ const MainLayout = () => {
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             <span>{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
           </button>
-          <HelpButton style={{ width: '100%', justifyContent: 'flex-start', padding: '0.7rem 1rem' }} />
+          <HelpButton style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.7rem', fontSize: '0.78rem' }} />
           <button onClick={handleLogout} className="btn-logout">
             <LogOut size={18} />
             <span>Cerrar Sesión</span>

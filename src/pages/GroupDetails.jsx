@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Clock3, Search, Star, UserPlus, Users } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -66,6 +66,9 @@ const GroupDetails = () => {
     const currentMember = membersList.find(member => member.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase());
     const isGroupLeader = currentMember && isLegacyMatch([...facilitatorsIds, ...coFacilitatorsIds], currentMember);
     const canManage = hasRole(['Admin', 'Pastor']) || (hasRole(['Facilitator', 'CoFacilitator']) && isGroupLeader);
+    if (!hasRole(['Admin', 'Pastor']) && !isGroupLeader) {
+        return <Navigate to="/dashboard/grupos" replace />;
+    }
     const availableMembers = membersList
         .filter(member => member.group !== group.name)
         .filter(member => `${member.firstName} ${member.lastName} ${member.dni || ''}`.toLowerCase().includes(debouncedSearch.toLowerCase()))

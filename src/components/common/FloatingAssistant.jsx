@@ -12,13 +12,16 @@ const FloatingAssistant = () => {
   const { currentUser, hasRole } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [showHint, setShowHint] = useState(true);
   const [messages, setMessages] = useState([{ role: 'assistant', content: greeting }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [learnMode, setLearnMode] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const canUse = hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+  const canUse = hasRole(['Admin', 'Pastor', 'MinistryLeader']);
   const isAdmin = hasRole(['Admin']);
   const authenticated = Boolean(currentUser) && canUse;
 
@@ -26,11 +29,21 @@ const FloatingAssistant = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, open]);
 
+  useEffect(() => {
+    if (open) setShowHint(false);
+  }, [open]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowHint(false), 9000);
+    return () => clearTimeout(t);
+  }, []);
+
   const send = async (text) => {
     const question = (text || input).trim();
     if (!question || loading) return;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: question }]);
+    setSuggestions([]);
     setLoading(true);
     try {
       let res;
@@ -45,12 +58,22 @@ const FloatingAssistant = () => {
         res = await fetch(iaUrl('/api/public-assistant'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question }),
+          body: JSON.stringify({ question, history: messages.slice(-6) }),
         });
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Error del servidor');
       setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+
+      const lower = question.toLowerCase();
+      const aboutGroups = /grupo(s)? de amistad/.test(lower);
+      const aboutWhen = /(horario|cronograma|cu[aá]ndo|qu[eé] d[ií]as|a qu[eé] hora)/.test(lower);
+      if (aboutGroups && !aboutWhen) {
+        setSuggestions([
+          { label: 'Sí, decime los horarios', value: '¿Cuáles son los horarios de los Grupos de Amistad?' },
+          { label: 'Preguntar otra cosa', focus: true },
+        ]);
+      }
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', content: `No pude responder: ${e.message}` }]);
     } finally {
@@ -108,8 +131,27 @@ const FloatingAssistant = () => {
             )}
             <div ref={bottomRef} />
           </div>
+          {suggestions.length > 0 && !loading && (
+            <div className="fa-suggestions">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="fa-chip"
+                  onClick={() => {
+                    setSuggestions([]);
+                    if (s.focus) inputRef.current?.focus();
+                    else send(s.value);
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
           <form className="fa-input-row" onSubmit={e => { e.preventDefault(); send(); }}>
             <input
+              ref={inputRef}
               className="form-input"
               placeholder={learnMode ? 'Contáme algo sobre IEA...' : 'Escribí tu pregunta...'}
               value={input}
@@ -119,6 +161,9 @@ const FloatingAssistant = () => {
             <button type="submit" className="fa-send" disabled={loading || !input.trim()} aria-label="Enviar"><Send size={16} /></button>
           </form>
         </div>
+      )}
+      {!open && showHint && (
+        <button className="fa-hint" onClick={() => setOpen(true)}>Habla con IEA</button>
       )}
       <button
         className={`fa-bubble ${open ? 'open' : ''}`}

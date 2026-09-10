@@ -92,7 +92,7 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="miembros" element={<Members />} />
-            <Route path="kids" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro']}><Kids /></ProtectedRoute>} />
+            <Route path="kids" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Maestro']}><Kids /></ProtectedRoute>} />
             <Route path="ibrp" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader']}><IbrpAssigned /></ProtectedRoute>} />
             <Route path="miembros/:id" element={<MemberProfile />} />
             <Route path="eventos" element={<Events />} />
@@ -147,7 +147,7 @@ function App() {
             <Route
               path="enfoque"
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Member']}>
                   <FocusTimer />
                 </ProtectedRoute>
               }
@@ -155,7 +155,7 @@ function App() {
             <Route
               path="asistente"
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader']}>
                   <Assistant />
                 </ProtectedRoute>
               }
