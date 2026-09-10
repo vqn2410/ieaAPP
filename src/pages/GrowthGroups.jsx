@@ -244,7 +244,7 @@ const GrowthGroups = () => {
                             onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                         >
                             <Card style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-                                <div style={{
+                                <div className="nav-card-icon" style={{
                                     backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)',
                                     width: '80px',
                                     height: '80px',
