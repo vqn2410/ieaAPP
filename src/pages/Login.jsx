@@ -186,9 +186,10 @@ const Login = () => {
         </div>
 
         <div className="social-links">
-          <a href="#" className="social-icon"><i className="ri-instagram-line"></i></a>
-          <a href="#" className="social-icon"><i className="ri-facebook-box-line"></i></a>
-          <a href="#" className="social-icon"><i className="ri-twitter-x-line"></i></a>
+          <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Instagram"><i className="ri-instagram-line"></i></a>
+          <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Facebook"><i className="ri-facebook-box-line"></i></a>
+          <a href="#" className="social-icon" aria-label="X"><i className="ri-twitter-x-line"></i></a>
+          <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="YouTube"><i className="ri-youtube-line"></i></a>
         </div>
 
         <div className="login-footer">
