@@ -5,6 +5,7 @@ import Badge from '../components/common/Badge';
 import { Search, MessageSquare, Check, Trash2, Filter, User } from 'lucide-react';
 import { getAllFollowUps, updateFollowUp, deleteFollowUp } from '../services/followUpService';
 import { getMembers } from '../services/memberService';
+import { getGroups } from '../services/groupService';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { normalizeString } from '../utils/helpers';
@@ -39,14 +40,32 @@ const FollowUps = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [fups, mems] = await Promise.all([getAllFollowUps(), getMembers()]);
+      const [fups, mems, allGroups] = await Promise.all([getAllFollowUps(), getMembers(), getGroups()]);
       if (!mounted) return;
-      setFollowUps(fups);
-      setMembers(mems);
+      const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+      const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
+      if (!isPrivileged && userData?.email) {
+        const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
+        const self = mems.find(m => m.email?.trim().toLowerCase() === userData.email.trim().toLowerCase());
+        const leaderNames = (allGroups || []).filter(g => {
+          if (!self) return false;
+          const vals = [...(Array.isArray(g.facilitators) ? g.facilitators : [g.facilitators]), ...(Array.isArray(g.coFacilitators) ? g.coFacilitators : [g.coFacilitators])].filter(Boolean);
+          return vals.some(v => v === self.id || norm(v) === norm(`${self.lastName}, ${self.firstName}`) || norm(v) === norm(`${self.firstName} ${self.lastName}`));
+        }).map(g => norm(g.name));
+        const allowedIds = new Set(mems.filter(m => {
+          const mg = norm(m.group);
+          return mg && leaderNames.some(n => mg === n || n.includes(mg));
+        }).map(m => m.id));
+        setFollowUps(fups.filter(f => allowedIds.has(f.memberId)));
+        setMembers(mems.filter(m => allowedIds.has(m.id)));
+      } else {
+        setFollowUps(fups);
+        setMembers(mems);
+      }
       setLoading(false);
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [userData]);
 
   const memberMap = {};
   members.forEach(m => { memberMap[m.id] = m; });

@@ -6,7 +6,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import MemberForm from '../components/members/MemberForm';
 import { SkeletonCard } from '../components/common/Skeleton';
-import { getGroup } from '../services/groupService';
+import { getGroup, getGroups } from '../services/groupService';
 import { getMembers, updateMember } from '../services/memberService';
 import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../utils/useDebounce';
@@ -18,6 +18,7 @@ const GroupDetails = () => {
     const { currentUser, hasRole } = useAuth();
     const [group, setGroup] = useState(null);
     const [membersList, setMembersList] = useState([]);
+    const [allGroups, setAllGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddMember, setShowAddMember] = useState(false);
     const [showCreateMember, setShowCreateMember] = useState(false);
@@ -27,12 +28,14 @@ const GroupDetails = () => {
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
-            const [gData, mData] = await Promise.all([
+            const [gData, mData, gList] = await Promise.all([
                 getGroup(id),
-                getMembers()
+                getMembers(),
+                getGroups()
             ]);
             setGroup(gData);
             setMembersList(mData);
+            setAllGroups(gList || []);
             setLoading(false);
         };
         loadData();
@@ -69,8 +72,16 @@ const GroupDetails = () => {
     if (!hasRole(['Admin', 'Pastor']) && !isGroupLeader) {
         return <Navigate to="/dashboard/grupos" replace />;
     }
+    const normName = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
+    const leaderGroupNames = hasRole(['Admin', 'Pastor']) || !currentMember ? null : allGroups
+        .filter(g => {
+            const vals = [...getArray(g.facilitators), ...getArray(g.coFacilitators)].filter(Boolean);
+            return vals.some(v => v === currentMember.id || normName(v) === normName(`${currentMember.lastName}, ${currentMember.firstName}`) || normName(v) === normName(`${currentMember.firstName} ${currentMember.lastName}`));
+        })
+        .map(g => normName(g.name));
     const availableMembers = membersList
         .filter(member => member.group !== group.name)
+        .filter(member => !leaderGroupNames || !member.group)
         .filter(member => `${member.firstName} ${member.lastName} ${member.dni || ''}`.toLowerCase().includes(debouncedSearch.toLowerCase()))
         .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
 
@@ -201,6 +212,12 @@ const GroupDetails = () => {
                         <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                         <input className="form-input" style={{ width: '100%', paddingLeft: '2.5rem' }} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o DNI..." autoFocus />
                     </div>
+                    {!hasRole(['Admin', 'Pastor']) && (
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                            Solo ves personas sin grupo. Si la persona está en otro grupo, pedí el traslado en{' '}
+                            <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate('/dashboard/grupos?section=solicitudes')}>Solicitudes</button>
+                        </p>
+                    )}
                     {group.zone && <div><span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Zona / Sector</span><span>{group.zone}</span></div>}
                     {group.capacity && <div><span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Capacidad</span><span>{group.capacity} personas</span></div>}
                     <div style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>

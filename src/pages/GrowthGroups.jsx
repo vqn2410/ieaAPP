@@ -4,13 +4,14 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import GroupForm from '../components/groups/GroupForm';
 import MinistryChart from '../components/groups/MinistryChart';
+import TransferRequests from '../components/groups/TransferRequests';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network } from 'lucide-react';
+import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
@@ -204,6 +205,7 @@ const GrowthGroups = () => {
         { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
         { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
         { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} color="var(--color-primary)" />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
+        { id: 'solicitudes', title: 'Solicitudes', icon: <ArrowLeftRight size={32} color="var(--color-primary)" />, description: 'Pedí y respondé traslados de personas entre grupos.', visible: canManageGroups },
         { id: 'clases', title: 'Clases', icon: <BookOpen size={32} color="var(--color-primary)" />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
         { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
     ].filter(card => card.visible !== false);
@@ -400,6 +402,15 @@ const GrowthGroups = () => {
                     )}
                     {activeTab === 'clases' && <FriendshipClasses />}
                     {activeTab === 'seguimientos' && <FollowUps />}
+                    {activeTab === 'solicitudes' && (
+                        <TransferRequests
+                            myGroups={myGroups}
+                            allMembers={allMembers}
+                            currentUser={currentUser}
+                            myMemberProfile={myMemberProfile}
+                            isAdmin={isAdmin}
+                        />
+                    )}
                     {activeTab === 'grafico' && (
                         <MinistryChart
                             groups={myGroups}

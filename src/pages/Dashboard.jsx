@@ -270,7 +270,7 @@ const Dashboard = () => {
           : members.filter(member => visibleGroups.some(group => {
               const memberGroup = normDashboard(member.group);
               const groupName = normDashboard(group.name);
-              return memberGroup === groupName || groupName.includes(memberGroup);
+              return memberGroup && (memberGroup === groupName || groupName.includes(memberGroup));
             }));
         const visibleEvents = isAdminOrPastor || !currentMember
           ? events

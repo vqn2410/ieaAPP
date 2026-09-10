@@ -34,7 +34,7 @@ const Members = () => {
   const [filterGroup, setFilterGroup] = useState('');
   const [filterActive, setFilterActive] = useState('');
   const [filterBaptism, setFilterBaptism] = useState('');
-  const [viewStatus, setViewStatus] = useState('active');
+  const [viewStatus, setViewStatus] = useState('all');
   const [openActionId, setOpenActionId] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,10 @@ const Members = () => {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [bajaMember, setBajaMember] = useState(null);
+  const [bajaMotivo, setBajaMotivo] = useState('');
+  const [bajaDescripcion, setBajaDescripcion] = useState('');
+  const [bajaSaving, setBajaSaving] = useState(false);
 
   const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
   const canEdit = roles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
@@ -62,7 +66,11 @@ const Members = () => {
         .filter(Boolean)
         .some(value => value === currentMember?.id || normalize(value) === normalize(`${currentMember?.lastName}, ${currentMember?.firstName}`) || normalize(value) === normalize(`${currentMember?.firstName} ${currentMember?.lastName}`));
       const groupNames = groups.filter(isLeader).map(group => normalize(group.name));
-      setMembers(data.filter(member => groupNames.some(groupName => normalize(member.group) === groupName || groupName.includes(normalize(member.group)))));
+      setMembers(data.filter(member => {
+        const mg = normalize(member.group);
+        if (!mg) return false;
+        return groupNames.some(groupName => mg === groupName || groupName.includes(mg));
+      }));
     }
     setLoading(false);
   };
@@ -111,11 +119,49 @@ const Members = () => {
 
   const handleStatusChange = async (member) => {
     const current = member.extraData?.active;
-    const next = current === 'Inactivo' ? 'Activo' : 'Inactivo';
-    const action = next === 'Inactivo' ? 'dar de baja' : 'reactivar';
-    if (!window.confirm(`¿Querés ${action} a ${member.firstName} ${member.lastName}?`)) return;
-    await updateMember(member.id, { extraData: { ...(member.extraData || {}), active: next } });
+    const isInactive = current === 'Inactivo' || current === 'Baja';
+    if (!isInactive) {
+      setBajaMember(member);
+      setBajaMotivo('');
+      setBajaDescripcion('');
+      return;
+    }
+    if (!window.confirm(`¿Querés reactivar a ${member.firstName} ${member.lastName}?`)) return;
+    await updateMember(member.id, { extraData: { ...(member.extraData || {}), active: 'Activo', bajaMotivo: '', bajaDescripcion: '', bajaFecha: '' } });
     loadMembers();
+  };
+
+  const handleConfirmBaja = async () => {
+    if (!bajaMember || bajaSaving) return;
+    if (!bajaMotivo) {
+      alert('Seleccioná el motivo de baja.');
+      return;
+    }
+    if (!bajaDescripcion.trim()) {
+      alert('Ingresá una descripción del motivo de baja.');
+      return;
+    }
+    setBajaSaving(true);
+    try {
+      await updateMember(bajaMember.id, {
+        extraData: {
+          ...(bajaMember.extraData || {}),
+          active: 'Inactivo',
+          bajaMotivo,
+          bajaDescripcion: bajaDescripcion.trim(),
+          bajaFecha: new Date().toISOString(),
+        },
+      });
+      setBajaMember(null);
+      setBajaMotivo('');
+      setBajaDescripcion('');
+      loadMembers();
+    } catch (e) {
+      console.error('Error al dar de baja', e);
+      alert('No se pudo registrar la baja.');
+    } finally {
+      setBajaSaving(false);
+    }
   };
 
   const handleExportCSV = () => {
@@ -323,6 +369,46 @@ const Members = () => {
         onClose={() => setShowBulkUpload(false)}
         onSuccess={() => { setShowBulkUpload(false); loadMembers(); }}
       />
+
+      <Modal isOpen={!!bajaMember} onClose={() => { if (!bajaSaving) setBajaMember(null); }} title={bajaMember ? `Dar de baja a ${bajaMember.firstName} ${bajaMember.lastName}` : 'Dar de baja'}>
+        <div className="d-flex flex-column gap-3">
+          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+            El miembro pasará a estado <strong>Inactivo</strong>. Indicá el motivo y una descripción para dejar registro.
+          </p>
+          <label className="form-group" style={{ display: 'grid', gap: '0.35rem' }}>
+            <span className="form-label">Motivo de baja *</span>
+            <select
+              className="form-input"
+              value={bajaMotivo}
+              onChange={(e) => setBajaMotivo(e.target.value)}
+            >
+              <option value="">Seleccionar motivo...</option>
+              <option value="Cambio de iglesia">Cambio de iglesia</option>
+              <option value="Mudanza">Mudanza</option>
+              <option value="Inasistencias reiteradas">Inasistencias reiteradas</option>
+              <option value="Decisión personal">Decisión personal</option>
+              <option value="Fallecimiento">Fallecimiento</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </label>
+          <label className="form-group" style={{ display: 'grid', gap: '0.35rem' }}>
+            <span className="form-label">Descripción *</span>
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder="Ej: se mudó a otra ciudad, pidió la baja el..."
+              value={bajaDescripcion}
+              onChange={(e) => setBajaDescripcion(e.target.value)}
+            />
+          </label>
+          <div className="d-flex gap-2" style={{ justifyContent: 'flex-end' }}>
+            <Button variant="outline" size="sm" onClick={() => { if (!bajaSaving) setBajaMember(null); }}>Cancelar</Button>
+            <Button size="sm" onClick={handleConfirmBaja} disabled={bajaSaving || !bajaMotivo || !bajaDescripcion.trim()}>
+              {bajaSaving ? 'Guardando...' : 'Confirmar baja'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

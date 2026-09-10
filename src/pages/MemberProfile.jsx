@@ -7,6 +7,7 @@ import Badge from '../components/common/Badge';
 import MemberForm from '../components/members/MemberForm';
 import { getMember, deleteMember, updateMember } from '../services/memberService';
 import { getMembers } from '../services/memberService';
+import { getGroups } from '../services/groupService';
 import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SkeletonCard } from '../components/common/Skeleton';
@@ -14,6 +15,8 @@ import { useSettings } from '../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../services/followUpService';
 import { getMemberAttendanceStats } from '../services/attendanceService';
 import { isBaptised } from '../utils/helpers';
+import { collection, getDocs, query, where, updateDoc, doc as firestoreDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import './MemberProfile.css';
 
 const initialAvatar = (firstName, lastName) => {
@@ -55,7 +58,26 @@ const MemberProfile = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [m, members, fups, attendance] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id)]);
+        const [m, members, fups, attendance, allGroups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id), getGroups()]);
+        const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+        const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
+        if (userData?.email && !isPrivileged && m) {
+          const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
+          const selfEmail = userData?.email?.trim().toLowerCase();
+          const self = members.find(x => x.email?.trim().toLowerCase() === selfEmail);
+          const isSelf = self && self.id === m.id;
+          const leaderNames = (allGroups || []).filter(g => {
+            if (!self) return false;
+            const vals = [...(Array.isArray(g.facilitators) ? g.facilitators : [g.facilitators]), ...(Array.isArray(g.coFacilitators) ? g.coFacilitators : [g.coFacilitators])].filter(Boolean);
+            return vals.some(v => v === self.id || norm(v) === norm(`${self.lastName}, ${self.firstName}`) || norm(v) === norm(`${self.firstName} ${self.lastName}`));
+          }).map(g => norm(g.name));
+          const targetGroup = norm(m.group);
+          const allowed = isSelf || leaderNames.some(n => targetGroup && (targetGroup === n || n.includes(targetGroup)));
+          if (!allowed) {
+            navigate('/dashboard/miembros', { replace: true });
+            return;
+          }
+        }
         setMember(m);
         setNewGroup(m?.group || '');
         setAllMembers(members.filter(other => other.id !== id));
@@ -151,6 +173,10 @@ const MemberProfile = () => {
   }
 
   const roles = Array.isArray(member.role) ? member.role : [member.role || 'Member'];
+  const isAreaLeader = roles.some(r => {
+    const label = settings?.roles?.[r] || r;
+    return /arealeader|encargado/i.test(String(r)) || /encargado|área|area/i.test(String(label));
+  });
   const growthPaths = member.growthPath || {};
   const availablePaths = ['Bautismo', 'Discipulado', 'IETE', 'Otros estudios teológicos'];
   const qrValue = encodeURIComponent(`${window.location.origin}/dashboard/miembros/${id}`);
@@ -283,7 +309,7 @@ const MemberProfile = () => {
                 <span>Roles y permisos</span>
               </div>
               <div className="profile-roles">
-                {['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'].map(role => {
+                {(settings?.roles ? Object.keys(settings.roles) : ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'AreaLeader', 'Maestro', 'Member']).map(role => {
                   const active = roles.includes(role);
                   return (
                     <button
@@ -303,6 +329,41 @@ const MemberProfile = () => {
                   );
                 })}
               </div>
+
+              {isAreaLeader && (
+                <div className="profile-area-picker">
+                  <span className="profile-area-picker-label">Áreas a cargo (Encargado de área)</span>
+                  <div className="member-area-picker">
+                    {(settings?.serviceAreas || []).map(area => {
+                      const checked = (member.managedAreas || []).includes(area);
+                      return (
+                        <label key={area}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={async () => {
+                              const next = checked
+                                ? (member.managedAreas || []).filter(a => a !== area)
+                                : [...(member.managedAreas || []), area];
+                              await updateMember(id, { managedAreas: next });
+                              setMember(prev => ({ ...prev, managedAreas: next }));
+                              if (member.email) {
+                                try {
+                                  const snap = await getDocs(query(collection(db, 'users'), where('email', '==', member.email.toLowerCase())));
+                                  await Promise.all(snap.docs.map(d => updateDoc(firestoreDoc(db, 'users', d.id), { managedAreas: next })));
+                                } catch (e) {
+                                  console.error('No se pudo sincronizar el área con el usuario', e);
+                                }
+                              }
+                            }}
+                          />
+                          <span>{area}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </div>
