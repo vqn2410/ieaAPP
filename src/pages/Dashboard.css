@@ -828,6 +828,54 @@
   transform: scale(1.08);
 }
 
+.dash-calendar-list {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.25rem 1.25rem 0.75rem;
+}
+.dash-calendar-list-hd {
+  padding: 0.35rem 0 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dash-calendar-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.dash-calendar-list-item:hover {
+  border-color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+.dash-calendar-list-day {
+  min-width: 1.6rem;
+  text-align: center;
+  font-weight: 800;
+}
+.dash-calendar-list-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-calendar-list-item svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
 .dash-calendar-legend {
   display: flex;
   align-items: center;
