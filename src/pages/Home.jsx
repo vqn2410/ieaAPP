@@ -1,194 +1,189 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-import Button from '../components/common/Button';
-import Card from '../components/common/Card';
-import Logo from '../components/common/Logo';
 import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-
-  const slides = [
-    {
-      image: '/img/slider-hero.jpg',
-      title: (
-        <>
-          IGLESIA<br />
-          <span className="highlight-text animate-glow home-title-accent">
-            EXTREMO AMOR
-          </span>
-        </>
-      ),
-      subtitle: (
-        <>
-          Un lugar de <strong className="meet-highlight">ENCUENTRO</strong>.<br />
-          Un lugar para la <strong className="meet-highlight">FAMILIA</strong>, un lugar para <strong className="meet-highlight">VOS</strong>.
-        </>
-      ),
-      cta: 'CONTACTARNOS',
-      meta: 'SÁBADOS 19:30HS - R. DE ESCALADA'
-    }
-  ];
-
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const goPortal = () => navigate(currentUser ? '/dashboard' : '/login');
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [slides.length]);
+    const els = Array.from(document.querySelectorAll('.iea-reveal'));
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div className="home-container">
-      {/* Navbar Minimalist */}
-      <nav className="home-nav">
-        <div className="home-nav-logo">
-          <Logo size="small" inverted />
+    <div className="iea-home">
+      <header className="iea-nav">
+        <div className="iea-nav-brand" onClick={() => scrollTo('top')} role="button" tabIndex={0}>
+          <img src="/img/icon-500x500.png" alt="IEA" className="iea-nav-logo" />
+          <span>IGLESIA EXTREMO AMOR</span>
         </div>
-        <div className="home-nav-links">
-          <span className="d-none lg-d-block home-contact-link">CONTACTO</span>
-          {currentUser ? (
-            <Button variant="primary" className="home-nav-btn" onClick={() => navigate('/dashboard')}>IR AL PANEL</Button>
-          ) : (
-            <Button variant="primary" className="home-nav-btn" onClick={() => navigate('/login')}>INICIAR SESIÓN</Button>
-          )}
+        <nav className="iea-nav-links">
+          <button onClick={() => scrollTo('somos')}>Somos</button>
+          <button onClick={() => scrollTo('comunidad')}>Comunidad</button>
+          <button onClick={() => scrollTo('visitanos')}>Visitanos</button>
+          <button className="iea-nav-cta" onClick={goPortal}>
+            {currentUser ? 'IR AL PANEL' : 'INICIAR SESIÓN'}
+          </button>
+        </nav>
+      </header>
+
+      <section className="iea-hero" id="top">
+        <div className="iea-hero-media" aria-hidden="true" />
+        <div className="iea-hero-ellipse" aria-hidden="true" />
+        <h1 className="iea-hero-title">
+          <span className="iea-word iea-word-left">IGLESIA</span>
+          <span className="iea-word iea-word-right iea-outline">EXTREMO</span>
+          <span className="iea-word iea-word-left iea-outline">AMOR</span>
+        </h1>
+        <div className="iea-hero-bottom">
+          <p className="iea-hero-tagline">Un lugar de encuentro.<br />Un lugar para la familia.<br />Un lugar para vos.</p>
+          <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>CONOCÉ IEA <span>↗</span></button>
         </div>
-      </nav>
+      </section>
 
-      {/* Hero Section */}
-      <section className="hero-wrapper">
-        {slides.map((slide, index) => (
-          <div
-            key={index}
-            className="hero-slide"
-            style={{
-              opacity: currentSlide === index ? 1 : 0,
-              backgroundImage: `url(${slide.image})`
-            }}
-          >
-            <div className="hero-overlay" />
+      <div className="iea-strip">
+        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 20:00</strong></p>
+        <p><span>ESTAMOS EN</span><strong>Remedios de Escalada · Lanús</strong></p>
+      </div>
 
-            <div className="hero-content animate-fade-in">
-              <span className="hero-meta">
-                {slide.meta}
-              </span>
-              <h1 className="hero-title">
-                {slide.title}
-              </h1>
-              <p className="hero-subtitle">
-                {slide.subtitle}
-              </p>
-              <div className="hero-btns">
-                <Button size="lg" className="hero-btn-primary" onClick={() => document.getElementById('meet-section')?.scrollIntoView({ behavior: 'smooth' })}>
-                  {slide.cta}
-                </Button>
-                <Button size="lg" variant="outline" className="hero-btn-outline" onClick={() => document.getElementById('location-section')?.scrollIntoView({ behavior: 'smooth' })}>
-                  UBICACIÓN
-                </Button>
+      <section className="iea-section iea-light" id="somos">
+        <div className="iea-section-label iea-reveal"><span>01</span>QUIÉNES SOMOS</div>
+        <div className="iea-split">
+          <h2 className="iea-display iea-reveal">UNA COMUNIDAD DONDE LA FE SE VUELVE VIDA COMPARTIDA.</h2>
+          <div className="iea-body iea-reveal">
+            <p><strong>Somos una iglesia en Remedios de Escalada. Creemos en el amor radical de Dios: un amor que nos encuentra, nos transforma y nos mueve a servir.</strong></p>
+            <p>Jesús es el centro. Caminamos en amistad, crecemos en la fe y abrimos lugar para que cada persona pueda compartir su historia.</p>
+            <button className="iea-inline-link" onClick={() => scrollTo('comunidad')}>Conocé nuestra comunidad <span>↗</span></button>
+          </div>
+        </div>
+
+        <figure className="iea-meet-figure iea-reveal">
+          <img src="/img/img-home.jpg" alt="Comunidad de Iglesia Extremo Amor" className="iea-meet-image" />
+          <figcaption className="iea-meet-badge">
+            <span>VIVÍ IEA</span>
+            <strong>Vení a conocernos</strong>
+          </figcaption>
+        </figure>
+
+        <div className="iea-values">
+          <article className="iea-reveal"><span>01</span><h3>Jesús en el centro</h3><p>Todo lo que somos nace de Su amor y gira alrededor de Él.</p></article>
+          <article className="iea-reveal"><span>02</span><h3>Vínculos reales</h3><p>Nadie fue hecho para caminar solo: crecemos en familia.</p></article>
+          <article className="iea-reveal"><span>03</span><h3>Amor en acción</h3><p>Servimos con lo que tenemos para bendecir a otros.</p></article>
+        </div>
+      </section>
+
+      <section className="iea-section iea-dark" id="comunidad">
+        <div className="iea-section-label iea-reveal"><span>02</span>VIDA EN COMUNIDAD</div>
+        <div className="iea-split">
+          <h2 className="iea-display iea-reveal">NOS ENCONTRAMOS PARA CRECER JUNTOS.</h2>
+          <div className="iea-body iea-reveal"><p>La iglesia no ocurre solamente durante una reunión. Se construye cuando compartimos la vida, nos cuidamos y aprendemos a seguir a Jesús con otros.</p></div>
+        </div>
+        <div className="iea-cards">
+          <article className="iea-reveal">
+            <span className="iea-card-eyebrow">CADA SÁBADO</span>
+            <h3>Reunión general</h3>
+            <p>Adoración, Palabra y un espacio para encontrarnos con Dios y con las personas.</p>
+            <strong>20:00</strong>
+          </article>
+          <article className="iea-reveal">
+            <span className="iea-card-eyebrow">DURANTE LA SEMANA</span>
+            <h3>Grupos de amistad</h3>
+            <p>Encuentros cercanos para conversar, orar, hacer preguntas y caminar acompañados.</p>
+            <strong>JUNTOS</strong>
+          </article>
+          <article className="iea-reveal">
+            <span className="iea-card-eyebrow">PARA CADA ETAPA</span>
+            <h3>Nuevas generaciones y familias</h3>
+            <p>Espacios para niños, adolescentes, jóvenes, matrimonios y familias.</p>
+            <strong>TODOS</strong>
+          </article>
+        </div>
+        <h2 className="iea-statement iea-reveal">NADIE FUE LLAMADO A CAMINAR SOLO.</h2>
+      </section>
+
+      <section className="iea-section iea-light" id="visitanos">
+        <div className="iea-section-label iea-reveal"><span>03</span>TU PRIMERA VISITA</div>
+        <div className="iea-split">
+          <h2 className="iea-display iea-reveal">ESTE SÁBADO, HAY UN LUGAR PARA VOS.</h2>
+          <div className="iea-visit-info iea-reveal">
+            <div><span>CUÁNDO</span><strong>Sábados · 20:00</strong></div>
+            <div><span>DÓNDE</span><strong>Remedios de Escalada, Lanús</strong></div>
+            <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">ESCRIBINOS POR INSTAGRAM<span>↗</span></a>
+          </div>
+        </div>
+
+        <div className="iea-map iea-reveal">
+          <iframe
+            title="Ubicación Iglesia Extremo Amor"
+            src="https://maps.google.com/maps?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada,+Buenos+Aires&z=16&output=embed"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+          <div className="iea-map-pin" aria-hidden="true">
+            <span className="iea-map-pin-ring" />
+            <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" />
+          </div>
+          <div className="iea-map-card">
+            <div className="iea-map-card-head">
+              <img src="/img/icon-500x500.png" alt="Portal IEA" />
+              <div>
+                <strong>IGLESIA EXTREMO AMOR</strong>
+                <span>Av. Cnel. Rosales 883, Escalada</span>
+                <span>Sábados · 20:00 hs</span>
               </div>
             </div>
-          </div>
-        ))}
-
-        {/* Indicators */}
-        <div className="hero-indicators">
-          {slides.map((_, i) => (
-            <div
-              key={i}
-              onClick={() => setCurrentSlide(i)}
-              className="indicator-dot"
-              style={{
-                background: currentSlide === i ? '#ffffff' : 'rgba(255,255,255,0.2)'
-              }}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Meet Section */}
-      <section id="meet-section" className="meet-section">
-        <div className="animate-fade-in">
-          <h2 className="meet-title">CREEMOS EN UN DIOS REAL QUE TRANSFORMA VIDAS.</h2>
-          <p className="meet-text">
-            En Iglesia Extremo Amor, somos una familia que camina unida en fe, amor y esperanza. <br /><br />
-            Un lugar de <strong className="meet-highlight">ENCUENTRO</strong>. <br />
-            Un lugar para la <strong className="meet-highlight">FAMILIA</strong>. <br />
-            Un lugar para <strong className="meet-highlight">VOS</strong>.
-          </p>
-          <div className="meet-schedule">
-            <h4 className="schedule-title">TODOS LOS SÁBADOS</h4>
-            <p className="schedule-time">19:30 HS</p>
-            <p className="meet-text">Remedios de Escalada, Buenos Aires.</p>
-          </div>
-        </div>
-        <div className="meet-image-container">
-          <img
-            src="/img/img-home.jpg"
-            alt="Reunión"
-            className="meet-image"
-          />
-          <div className="meet-badge">
-            <p className="meet-badge-subtitle">Vení a conocernos</p>
+            <a className="iea-map-link" href="https://maps.google.com/?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada" target="_blank" rel="noopener noreferrer">CÓMO LLEGAR <span>↗</span></a>
           </div>
         </div>
       </section>
 
-      {/* Location Section */}
-      <section id="location-section" className="location-section">
-        <div className="map-container">
-          <div className="map-wrapper">
-             <iframe 
-               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3278.431057497184!2d-58.404221124235215!3d-34.71738737291244!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bccd4d7729215f%3A0xe781977755b46b6e!2sAv.%20Coronel%20Leonardo%20Rosales%20883%2C%20B1826%20Remedios%20de%20Escalada%2C%20Provincia%20de%20Buenos%20Aires!5e0!3m2!1ses-419!2sar!4v1714100000000!5m2!1ses-419!2sar" 
-               width="100%" 
-               height="100%" 
-               style={{ border: 0, filter: 'grayscale(1) invert(0.9) contrast(1.2)', opacity: 0.7 }} 
-               allowFullScreen="" 
-               loading="lazy" 
-               referrerPolicy="no-referrer-when-downgrade"
-             ></iframe>
-             <div className="map-marker-overlay">
-                <div className="map-marker-point">
-                   <img src="/img/icon-500x500.png" alt="Portal IEA" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-                </div>
-                <div className="map-tooltip">
-                   <h3>IGLESIA EXTREMO AMOR</h3>
-                   <p>📍 Av. Cnel. Rosales 883, Escalada</p>
-                   <p>⏰ Sábados 19:30hs</p>
-                   <div className="tooltip-arrow"></div>
-                </div>
-             </div>
+      <footer className="iea-footer">
+        <div className="iea-footer-top">
+          <div className="iea-footer-brand">
+            <img src="/img/icon-500x500.png" alt="IEA" />
+            <span>IEA · IGLESIA EXTREMO AMOR</span>
+            <p>Un lugar de encuentro. Un lugar para la familia. Un lugar para vos.</p>
           </div>
-        </div>
-      </section>
-
-      {/* Footer Minimalist */}
-      <footer className="home-footer">
-        <div className="footer-content">
-          <div className="footer-brand">
-            <h2>
-              IGLESIA <strong style={{ fontWeight: 900, color: '#ffffff' }}>EXTREMO AMOR</strong>
-            </h2>
-            <p className="meet-text" style={{ maxWidth: '400px' }}>
-              © 2026 Todos los derechos reservados a Iglesia Extremo Amor.
-            </p>
-          </div>
-          <div className="footer-links">
-            <div className="footer-link-col">
+          <div className="iea-footer-cols">
+            <div className="iea-footer-col">
               <span>REDES</span>
-              <span>INSTAGRAM</span>
-              <span>FACEBOOK</span>
-              <span>YOUTUBE</span>
+              <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">Instagram</a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">Facebook</a>
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
-            <div className="footer-link-col">
-              <span>LEGAL</span>
-              <span>PRIVACIDAD</span>
-              <span>TÉRMINOS</span>
+            <div className="iea-footer-col">
+              <span>IGLESIA</span>
+              <button onClick={() => scrollTo('somos')}>Somos</button>
+              <button onClick={() => scrollTo('comunidad')}>Comunidad</button>
+              <button onClick={() => scrollTo('visitanos')}>Visitanos</button>
+            </div>
+            <div className="iea-footer-col">
+              <span>PORTAL</span>
+              <button className="iea-footer-portal" onClick={goPortal}>Acceso a portal <b>↗</b></button>
             </div>
           </div>
+        </div>
+        <div className="iea-footer-bottom">
+          <span>© 2026 Iglesia Extremo Amor. Todos los derechos reservados.</span>
+          <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">@iea_escalada ↗</a>
         </div>
       </footer>
     </div>
