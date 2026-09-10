@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube } from 'lucide-react';
+import { HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight } from 'lucide-react';
 import FloatingAssistant from '../components/common/FloatingAssistant';
 import './Home.css';
 
@@ -33,8 +33,7 @@ const Home = () => {
     <div className="iea-home">
       <header className="iea-nav">
         <div className="iea-nav-brand" onClick={() => scrollTo('top')} role="button" tabIndex={0}>
-          <img src="/img/icon-500x500.png" alt="IEA" className="iea-nav-logo" />
-          <span>IGLESIA EXTREMO AMOR</span>
+          <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" className="iea-nav-logo" />
         </div>
         <nav className="iea-nav-links">
           <button onClick={() => scrollTo('somos')}>Somos</button>
@@ -50,13 +49,18 @@ const Home = () => {
       <section className="iea-hero" id="top">
         <div className="iea-hero-media" aria-hidden="true" />
         <div className="iea-hero-ellipse" aria-hidden="true" />
+        <div className="iea-hero-logo" aria-hidden="true">
+          <img src="/img/icon-500x500.png" alt="" />
+        </div>
         <h1 className="iea-hero-title">
           <span className="iea-word iea-word-left">IGLESIA</span>
-          <span className="iea-word iea-word-right">EXTREMO</span>
-          <span className="iea-word iea-word-left">AMOR</span>
+          <span className="iea-title-line">
+            <span className="iea-word iea-word-right">EXTREMO</span>
+            <span className="iea-word iea-word-left">AMOR</span>
+          </span>
         </h1>
         <div className="iea-hero-bottom">
-          <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>CONOCÉ IEA <span>↗</span></button>
+          <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>CONOCÉ IEA <ArrowUpRight size={22} /></button>
         </div>
       </section>
 
@@ -102,7 +106,7 @@ const Home = () => {
               <strong>19:30 HS</strong>
               <span>Remedios de Escalada, Buenos Aires.</span>
             </div>
-            <button className="iea-inline-link" onClick={() => scrollTo('comunidad')}>Conocé nuestra comunidad <span>↗</span></button>
+            <button className="iea-inline-link" onClick={() => scrollTo('comunidad')}>Conocé nuestra comunidad <ArrowUpRight size={16} /></button>
           </div>
         </div>
 
@@ -157,21 +161,23 @@ const Home = () => {
           <div className="iea-visit-info iea-reveal">
             <div><span>CUÁNDO</span><strong>Sábados · 19:30</strong></div>
             <div><span>DÓNDE</span><strong>Remedios de Escalada, Lanús</strong></div>
-            <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">ESCRIBINOS POR INSTAGRAM<span>↗</span></a>
+            <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">ESCRIBINOS POR INSTAGRAM<ArrowUpRight size={18} /></a>
           </div>
         </div>
 
-        <div className="iea-map iea-reveal">
-          <iframe
-            title="Ubicación Iglesia Extremo Amor"
-            src="https://maps.google.com/maps?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada,+Buenos+Aires&z=16&output=embed"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            allowFullScreen
-          />
-          <div className="iea-map-pin" aria-hidden="true">
-            <span className="iea-map-pin-ring" />
-            <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" />
+        <div className="iea-map-wrap iea-reveal">
+          <div className="iea-map">
+            <iframe
+              title="Ubicación Iglesia Extremo Amor"
+              src="https://maps.google.com/maps?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada,+Buenos+Aires&z=16&output=embed"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+            <div className="iea-map-pin" aria-hidden="true">
+              <span className="iea-map-pin-ring" />
+              <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" />
+            </div>
           </div>
           <div className="iea-map-card">
             <div className="iea-map-card-head">
@@ -182,19 +188,33 @@ const Home = () => {
                 <span>Sábados · 19:30 hs</span>
               </div>
             </div>
-            <a className="iea-map-link" href="https://maps.google.com/?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada" target="_blank" rel="noopener noreferrer">CÓMO LLEGAR <span>↗</span></a>
+            <a className="iea-map-link" href="https://maps.google.com/?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada" target="_blank" rel="noopener noreferrer">CÓMO LLEGAR <ArrowUpRight size={16} /></a>
           </div>
         </div>
       </section>
 
       <footer className="iea-footer">
         <div className="iea-footer-top">
-          <div className="iea-footer-brand">
-            <img src="/img/icon-500x500.png" alt="IEA" />
-            <span>IEA · IGLESIA EXTREMO AMOR</span>
-            <p>Un lugar de <strong>ENCUENTRO</strong>. Un lugar para la <strong>FAMILIA</strong>. Un lugar para <strong>VOS</strong>.</p>
-          </div>
-          <div className="iea-footer-cols">
+            <div className="iea-footer-brand">
+              <div className="iea-footer-brand-head">
+                <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" />
+                <span>IGLESIA EXTREMO AMOR</span>
+              </div>
+              <div className="iea-footer-contact">
+                <span>Av. Cnel. Rosales 879-883, Remedios de Escalada</span>
+                <span>+54 9 11 3565-9725 / 11 6725-4066</span>
+                <span>iglesiaextremoamor@gmail.com</span>
+              </div>
+            </div>
+            <div className="iea-footer-uad">
+              <a href="https://www.uad.org.ar/v02/" target="_blank" rel="noopener noreferrer" aria-label="Unión de las Asambleas de Dios, Región 8">
+                <img src="https://www.uad.org.ar/v02/wp-content/uploads/2018/01/cropped-uad-1.png" alt="UAD" />
+              </a>
+              <strong>Unión de las Asambleas de Dios</strong>
+              <span>Región 8</span>
+              <span>Fichero de culto Nº 00000</span>
+            </div>
+            <div className="iea-footer-cols">
             <div className="iea-footer-col">
               <span>REDES</span>
               <div className="iea-footer-social">
@@ -212,13 +232,17 @@ const Home = () => {
             </div>
             <div className="iea-footer-col">
               <span>PORTAL</span>
-              <button className="iea-footer-portal" onClick={goPortal}>Acceso a portal <b>↗</b></button>
+              <button className="iea-footer-portal" onClick={goPortal}>Acceso a portal <ArrowUpRight size={16} /></button>
             </div>
           </div>
         </div>
         <div className="iea-footer-bottom">
           <span>© 2026 Iglesia Extremo Amor. Todos los derechos reservados.</span>
-          <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">@iea_escalada ↗</a>
+          <div className="iea-footer-slogan">
+            <span>Un lugar de <strong>ENCUENTRO</strong>.</span>
+            <span>Un lugar para la <strong>FAMILIA</strong>.</span>
+            <span>Un lugar para <strong>VOS</strong>.</span>
+          </div>
         </div>
       </footer>
       <FloatingAssistant />
