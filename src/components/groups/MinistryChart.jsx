@@ -18,7 +18,7 @@ const norm = value => String(value || '')
 
 const displayName = member => `${member.firstName || ''} ${member.lastName || ''}`.trim();
 
-export default function MinistryChart({ groups = [], members = [] }) {
+export default function MinistryChart({ groups = [], members = [], scopeMember = null }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [dragging, setDragging] = useState(false);
@@ -87,9 +87,12 @@ export default function MinistryChart({ groups = [], members = [] }) {
   };
 
   const rootGroups = useMemo(() => {
+    if (scopeMember) {
+      return groups.filter(group => leadersOf(group).some(leader => leader.id === scopeMember.id));
+    }
     const roots = groups.filter(group => /martes|jueves/i.test(group.name || '')).slice(0, 2);
     return roots.length ? roots : groups.slice(0, 2);
-  }, [groups]);
+  }, [groups, scopeMember]);
 
   const childGroupsOf = group => {
     const parentMembers = membersOf(group);
@@ -110,7 +113,7 @@ export default function MinistryChart({ groups = [], members = [] }) {
       if (!edgeMap.has(key)) edgeMap.set(key, { id: key, from, to });
     };
 
-    addNode('root', 'root', 'Pastores');
+    addNode('root', 'root', scopeMember ? displayName(scopeMember) : 'Pastores');
     rootGroups.forEach(root => {
       const rootId = `group:${root.id}`;
       addNode(rootId, 'group', root.name, { group: root });
@@ -211,7 +214,7 @@ export default function MinistryChart({ groups = [], members = [] }) {
     });
 
     return { nodes: [...nodeMap.values()], edges, positions, width, height: viewMode === 'pyramid' ? Math.max(760, levelKeys.length * 155 + 130) : 760 };
-  }, [groups, members, rootGroups, expanded, viewMode]);
+  }, [groups, members, rootGroups, expanded, viewMode, scopeMember]);
 
   useEffect(() => {
     setManualPositions({});

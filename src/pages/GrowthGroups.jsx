@@ -199,7 +199,7 @@ const GrowthGroups = () => {
 
     const navigationCards = [
         { id: 'grupos', title: 'Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.', visible: canManageGroups },
-        { id: 'grafico', title: 'Gráfico del Ministerio', icon: <Network size={32} color="var(--color-primary)" />, description: 'Árbol pastoral: desde los pastores hacia los grupos y sus miembros.', visible: hasRole(['Admin', 'Pastor']) },
+        { id: 'grafico', title: 'Gráfico del Ministerio', icon: <Network size={32} color="var(--color-primary)" />, description: 'Red ministerial desde tu responsabilidad hacia sus miembros.', visible: canManageGroups },
         { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
         { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
         { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
@@ -400,7 +400,13 @@ const GrowthGroups = () => {
                     )}
                     {activeTab === 'clases' && <FriendshipClasses />}
                     {activeTab === 'seguimientos' && <FollowUps />}
-                    {activeTab === 'grafico' && <MinistryChart groups={myGroups} members={allMembers} />}
+                    {activeTab === 'grafico' && (
+                        <MinistryChart
+                            groups={myGroups}
+                            members={allMembers}
+                            scopeMember={isAdmin ? null : myMemberProfile}
+                        />
+                    )}
                 </div>
             )}
             <Modal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} title={editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"} size="lg" className="group-modal-content">
