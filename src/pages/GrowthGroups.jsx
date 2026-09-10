@@ -11,7 +11,7 @@ import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight } from 'lucide-react';
+import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
@@ -176,6 +176,10 @@ const GrowthGroups = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, isAdmin]);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [activeTab]);
+
     const handleDeleteGroup = async (id) => {
         if (window.confirm("¿Seguro que deseas eliminar este grupo?")) {
             await deleteGroup(id);
@@ -206,6 +210,7 @@ const GrowthGroups = () => {
         { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
         { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
         { id: 'solicitudes', title: 'Solicitudes', icon: <ArrowLeftRight size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Pedí y respondé traslados de personas entre grupos.', visible: canManageGroups },
+        { id: 'listado', title: 'Listado de Asistencia', icon: <CalendarCheck size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Miembros del grupo con presentes y ausentes por día.', visible: canManageGroups },
         { id: 'clases', title: 'Clases', icon: <BookOpen size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
         { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
     ].filter(card => card.visible !== false);
@@ -402,6 +407,12 @@ const GrowthGroups = () => {
                     )}
                     {activeTab === 'clases' && <FriendshipClasses />}
                     {activeTab === 'seguimientos' && <FollowUps />}
+                    {activeTab === 'listado' && (
+                        <AttendanceListTab
+                            myGroups={myGroups}
+                            myMembers={myMembers}
+                        />
+                    )}
                     {activeTab === 'solicitudes' && (
                         <TransferRequests
                             myGroups={myGroups}
@@ -504,10 +515,15 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     const [saving, setSaving] = useState(false);
     const [reportPeriod, setReportPeriod] = useState('mensual');
     const [groupStats, setGroupStats] = useState({ records: [], memberStats: {} });
+    const [viewingRecord, setViewingRecord] = useState(null);
 
     const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
-    const groupMembers = myMembers.filter(m => selectedGroup && m.group === selectedGroup.name).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+    const groupMembers = myMembers.filter(m => selectedGroup && m.group === selectedGroup.name && !['Inactivo', 'Baja'].includes(m.extraData?.active)).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
     const groupMemberIds = groupMembers.map(member => member.id).join(',');
+    // Los inactivos no se contabilizan en asistencia, aunque figuren en registros viejos.
+    const inactiveIds = new Set(myMembers.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).map(m => m.id));
+    const activePresentIds = (record) => (record?.presentMembers || []).filter(id => !inactiveIds.has(id));
+    const activeSnapshotMembers = (record) => (record?.members || []).filter(m => !inactiveIds.has(m.id));
 
     useEffect(() => {
         if (selectedGroup) {
@@ -531,8 +547,13 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
         setLoadingRecord(true);
         const record = await getAttendance(selectedGroupId, attendanceDate);
         if (record) {
-            setPresentIds(record.presentMembers || []);
-            setAbsentDetails(record.absentDetails || {});
+            const activeIds = new Set(groupMembers.map(m => m.id));
+            setPresentIds((record.presentMembers || []).filter(id => activeIds.has(id)));
+            const cleanedDetails = {};
+            Object.entries(record.absentDetails || {}).forEach(([id, detail]) => {
+                if (activeIds.has(id)) cleanedDetails[id] = detail;
+            });
+            setAbsentDetails(cleanedDetails);
             setGuests(record.guests || []);
             setOffering(record.offering ?? '');
             setAttendanceNotes(record.notes || '');
@@ -589,6 +610,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                 takenBy: currentUser?.uid || '',
             });
             alert('¡Asistencia guardada con éxito!');
+            getGroupAttendanceStats(selectedGroupId).then(setGroupStats);
         } catch {
             alert('Hubo un error al guardar la asistencia.');
         } finally {
@@ -662,6 +684,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                 (record.members || []).forEach(member => membersById.set(member.id, member));
             });
             const members = (membersById.size > 0 ? [...membersById.values()] : myMembers.filter(m => m.group === gName))
+                .filter(m => !inactiveIds.has(m.id))
                 .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
             if (members.length === 0) return;
             if (groupIndex > 0) pdf.addPage();
@@ -721,6 +744,34 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                     startY: reasonsY + 3,
                     head: [['Miembro', 'Fecha', 'Motivo']],
                     body: absenceRows,
+                    margin: { left: 12, right: 12 },
+                    styles: { fontSize: 7, cellPadding: 2 },
+                    headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+                });
+            }
+
+            const guestRows = [];
+            const seenGuests = new Set();
+            groupRecords.forEach(record => {
+                (record.guests || []).forEach(guest => {
+                    const key = `${String(guest.name || '').toLowerCase()}|${String(guest.contact || '').toLowerCase()}`;
+                    if (guest.name && !seenGuests.has(key)) {
+                        seenGuests.add(key);
+                        guestRows.push([guest.name, guest.contact || '-', record.date]);
+                    }
+                });
+            });
+            if (guestRows.length > 0) {
+                let guestsY = pdf.lastAutoTable.finalY + 8;
+                if (guestsY > 180) pdf.addPage();
+                if (guestsY > 180) guestsY = 20;
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(9);
+                pdf.text('Invitados', 12, guestsY);
+                autoTable(pdf, {
+                    startY: guestsY + 3,
+                    head: [['Nombre', 'Contacto', 'Fecha']],
+                    body: guestRows,
                     margin: { left: 12, right: 12 },
                     styles: { fontSize: 7, cellPadding: 2 },
                     headStyles: { fillColor: [71, 85, 105], textColor: 255 },
@@ -873,6 +924,34 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                     </button>
                 </Card>
 
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} style={{ color: 'var(--color-primary)' }} /> Reportes generados</div>}>
+                    {groupStats.records.length === 0 ? (
+                        <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                            Todavía no hay asistencias guardadas para este grupo.
+                        </div>
+                    ) : (
+                        <div className="d-flex flex-column gap-2">
+                            {[...groupStats.records].reverse().map(record => {
+                                const total = activeSnapshotMembers(record).length || groupMembers.length;
+                                const present = activePresentIds(record).length;
+                                return (
+                                    <div key={record.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 0.75rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                                {new Date(`${record.date}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                            </div>
+                                            <small style={{ color: 'var(--color-text-muted)' }}>
+                                                {record.topic || 'Sin tema'} · {present}/{total} presentes{(record.guests || []).length > 0 ? ` · ${(record.guests || []).length} invitados` : ''}
+                                            </small>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setViewingRecord(record)}>Ver</Button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Card>
+
                 <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Flame size={20} style={{ color: 'var(--color-warning)' }} /> Rachas y constancia</div>}>
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
                         Miembros con mejor continuidad en {selectedGroup?.name || 'el grupo'}.
@@ -889,7 +968,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                                     ...stats,
                                     member: myMembers.find(m => m.id === memberId)
                                 }))
-                                .filter(item => item.member)
+                                .filter(item => item.member && !['Inactivo', 'Baja'].includes(item.member.extraData?.active))
                                 .sort((a, b) => b.bestStreak - a.bestStreak || b.percentage - a.percentage)
                                 .slice(0, 5)
                                 .map((item, index) => (
@@ -910,7 +989,219 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                     )}
                 </Card>
             </div>
+
+            <Modal
+                isOpen={!!viewingRecord}
+                onClose={() => setViewingRecord(null)}
+                title={viewingRecord ? `Asistencia · ${new Date(`${viewingRecord.date}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}` : 'Asistencia'}
+            >
+                {viewingRecord && (() => {
+                    const snapshot = ((viewingRecord.members || []).length > 0
+                        ? viewingRecord.members
+                        : groupMembers.map(m => ({ id: m.id, firstName: m.firstName, lastName: m.lastName }))
+                    ).filter(m => !inactiveIds.has(m.id));
+                    const inactiveSnapshot = (viewingRecord.members || []).filter(m => inactiveIds.has(m.id));
+                    const presentSet = new Set(activePresentIds(viewingRecord));
+                    const present = snapshot.filter(m => presentSet.has(m.id));
+                    const absent = snapshot.filter(m => !presentSet.has(m.id));
+                    const detailOf = (id) => viewingRecord.absentDetails?.[id];
+                    return (
+                        <div className="d-flex flex-column gap-3">
+                            {viewingRecord.topic && <p style={{ margin: 0 }}><strong>Tema:</strong> {viewingRecord.topic}</p>}
+                            <div>
+                                <h4 style={{ margin: '0 0 0.5rem' }}>Presentes ({present.length})</h4>
+                                {present.length === 0 ? <p style={{ color: 'var(--color-text-muted)' }}>Nadie marcado presente.</p> : (
+                                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                                        {present.map(m => <li key={m.id}>{m.lastName}, {m.firstName}</li>)}
+                                    </ul>
+                                )}
+                            </div>
+                            <div>
+                                <h4 style={{ margin: '0 0 0.5rem' }}>Ausentes ({absent.length})</h4>
+                                {absent.length === 0 ? <p style={{ color: 'var(--color-text-muted)' }}>Asistencia perfecta.</p> : (
+                                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                                        {absent.map(m => {
+                                            const detail = detailOf(m.id);
+                                            return (
+                                                <li key={m.id}>
+                                                    {m.lastName}, {m.firstName}
+                                                    {detail?.reason && <span style={{ color: 'var(--color-text-muted)' }}> — {detail.reason}{detail.detail ? `: ${detail.detail}` : ''}</span>}
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                            {(viewingRecord.guests || []).length > 0 && (
+                                <div>
+                                    <h4 style={{ margin: '0 0 0.5rem' }}>Invitados ({viewingRecord.guests.length})</h4>
+                                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                                        {viewingRecord.guests.map((g, i) => <li key={`${g.name}-${i}`}>{g.name}{g.contact ? ` (${g.contact})` : ''}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            {(viewingRecord.offering || viewingRecord.notes) && (
+                                <div style={{ fontSize: '0.9rem' }}>
+                                    {!!viewingRecord.offering && <p style={{ margin: '0 0 0.25rem' }}><strong>Ofrenda:</strong> ${viewingRecord.offering}</p>}
+                                    {viewingRecord.notes && <p style={{ margin: 0 }}><strong>Notas:</strong> {viewingRecord.notes}</p>}
+                                </div>
+                            )}
+                            {inactiveSnapshot.length > 0 && (
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                                    Inactivos no contabilizados ({inactiveSnapshot.length}): {inactiveSnapshot.map(m => `${m.lastName}, ${m.firstName}`).join(' · ')}
+                                </p>
+                            )}
+                            {viewingRecord.groupPhoto && <img src={viewingRecord.groupPhoto} alt="Foto del grupo" style={{ width: '100%', borderRadius: '8px' }} />}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Button
+                                    size="sm"
+                                    icon={<Edit size={14} />}
+                                    onClick={() => {
+                                        const activeIds = new Set(groupMembers.map(m => m.id));
+                                        const editDetails = {};
+                                        Object.entries(viewingRecord.absentDetails || {}).forEach(([id, detail]) => {
+                                            if (activeIds.has(id)) editDetails[id] = detail;
+                                        });
+                                        setAttendanceDate(viewingRecord.date);
+                                        setIsManualDate(!availableDates.includes(viewingRecord.date));
+                                        setTopic(viewingRecord.topic || '');
+                                        setPresentIds(activePresentIds(viewingRecord).filter(id => activeIds.has(id)));
+                                        setAbsentDetails(editDetails);
+                                        setGuests(viewingRecord.guests || []);
+                                        setOffering(viewingRecord.offering ?? '');
+                                        setAttendanceNotes(viewingRecord.notes || '');
+                                        setGroupPhoto(viewingRecord.groupPhoto || '');
+                                        setViewingRecord(null);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                >
+                                    Editar este reporte
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Modal>
         </div>
+    );
+};
+
+const AttendanceListTab = ({ myGroups, myMembers }) => {
+    const [selectedGroupId, setSelectedGroupId] = useState(myGroups.length > 0 ? myGroups[0].id : '');
+    const [period, setPeriod] = useState('mensual');
+    const [records, setRecords] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
+    const inactiveIds = new Set(myMembers.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).map(m => m.id));
+
+    useEffect(() => {
+        if (!selectedGroupId) return;
+        setLoading(true);
+        const end = new Date();
+        const start = new Date();
+        if (period === 'mensual') start.setMonth(end.getMonth() - 1);
+        if (period === 'trimestral') start.setMonth(end.getMonth() - 3);
+        if (period === 'anual') start.setFullYear(end.getFullYear() - 1);
+        const fmt = (d) => d.toISOString().split('T')[0];
+        getAttendanceForDateRange([selectedGroupId], fmt(start), fmt(end)).then(data => {
+            setRecords(data || []);
+            setLoading(false);
+        });
+    }, [selectedGroupId, period]);
+
+    const dates = Array.from(new Set(records.map(r => r.date))).sort();
+    const memberMap = new Map();
+    records.forEach(r => (r.members || []).forEach(m => {
+        if (m?.id && !inactiveIds.has(m.id) && !memberMap.has(m.id)) memberMap.set(m.id, m);
+    }));
+    myMembers
+        .filter(m => selectedGroup && m.group === selectedGroup.name && !inactiveIds.has(m.id))
+        .forEach(m => { if (!memberMap.has(m.id)) memberMap.set(m.id, m); });
+    const members = [...memberMap.values()].sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+
+    const statusOf = (memberId, date) => {
+        const record = records.find(r => r.date === date);
+        if (!record) return '-';
+        if ((record.members || []).length > 0 && !record.members.some(m => m.id === memberId)) return '-';
+        return (record.presentMembers || []).includes(memberId) ? 'P' : 'A';
+    };
+
+    const fmtDate = (date) => new Date(`${date}T12:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+
+    if (myGroups.length === 0) {
+        return <Card><p style={{ color: 'var(--color-text-muted)' }}>No tienes grupos para ver el listado.</p></Card>;
+    }
+
+    return (
+        <Card>
+            <div className="d-flex gap-2" style={{ flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                    Grupo
+                    <select className="form-input" value={selectedGroupId} onChange={e => setSelectedGroupId(e.target.value)}>
+                        {myGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                </label>
+                <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                    Período
+                    <select className="form-input" value={period} onChange={e => setPeriod(e.target.value)}>
+                        <option value="mensual">Mensual (últimos 30 días)</option>
+                        <option value="trimestral">Trimestral (últimos 90 días)</option>
+                        <option value="anual">Anual (últimos 12 meses)</option>
+                    </select>
+                </label>
+            </div>
+
+            {loading ? (
+                <p style={{ color: 'var(--color-text-muted)' }}>Cargando registros...</p>
+            ) : dates.length === 0 ? (
+                <EmptyState icon={CalendarDays} title="Sin registros" message="No hay asistencias guardadas en este período." />
+            ) : (
+                <>
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem', minWidth: `${220 + dates.length * 52}px` }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', textAlign: 'left', padding: '0.6rem', borderBottom: '1px solid var(--color-border)', minWidth: '180px' }}>Miembro</th>
+                                    {dates.map(date => (
+                                        <th key={date} style={{ padding: '0.6rem 0.4rem', borderBottom: '1px solid var(--color-border)', textAlign: 'center', whiteSpace: 'nowrap' }}>{fmtDate(date)}</th>
+                                    ))}
+                                    <th style={{ padding: '0.6rem 0.4rem', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {members.map(member => {
+                                    const marks = dates.map(date => statusOf(member.id, date));
+                                    const valid = marks.filter(v => v !== '-');
+                                    const pct = valid.length ? Math.round((marks.filter(v => v === 'P').length / valid.length) * 100) : 0;
+                                    return (
+                                        <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                            <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', padding: '0.6rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                                {member.lastName}, {member.firstName}
+                                            </td>
+                                            {marks.map((mark, i) => (
+                                                <td key={dates[i]} style={{
+                                                    padding: '0.6rem 0.4rem',
+                                                    textAlign: 'center',
+                                                    fontWeight: 800,
+                                                    color: mark === 'P' ? 'var(--color-success)' : mark === 'A' ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                                                }}>
+                                                    {mark}
+                                                </td>
+                                            ))}
+                                            <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center', fontWeight: 800 }}>{pct}%</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        P = presente · A = ausente · - = sin registro · Los inactivos no se incluyen.
+                    </p>
+                </>
+            )}
+        </Card>
     );
 };
 
