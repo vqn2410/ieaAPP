@@ -5,7 +5,7 @@ import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
 import MemberForm from '../components/members/MemberForm';
 import BulkUploadModal from '../components/members/BulkUploadModal';
-import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2, Users, ChevronLeft, ChevronRight, UserRoundX, SlidersHorizontal, MoreVertical, Mail, Phone } from 'lucide-react';
+import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2, Users, ChevronLeft, ChevronRight, UserRoundX, SlidersHorizontal, MoreVertical, Mail, Phone, Cake } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getMembers, deleteMember, updateMember } from '../services/memberService';
@@ -22,6 +22,27 @@ const initialAvatar = (firstName, lastName) => {
   const f = (firstName || '?')[0];
   const l = (lastName || '?')[0];
   return `${f}${l}`;
+};
+
+const formatBirthday = (member) => {
+  const raw = member?.birthDate || member?.birthday || member?.birthdate || member?.dateOfBirth;
+  if (!raw) return null;
+  try {
+    if (typeof raw === 'object' && raw.seconds) {
+      const d = new Date(raw.seconds * 1000);
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const str = String(raw).trim();
+    const parts = (str.includes('-') ? str.split('-') : str.split('/')).map(p => p.trim());
+    if (parts.length < 2) return null;
+    const iso = parts[0].length === 4;
+    const day = (iso ? parts[2] : parts[0] || '').slice(0, 2);
+    const month = (iso ? parts[1] : parts[1] || '').slice(0, 2);
+    if (!day || !month) return null;
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}`;
+  } catch {
+    return null;
+  }
 };
 
 const Members = () => {
@@ -284,7 +305,7 @@ const Members = () => {
           <div className="members-table-wrap">
             <div className="members-results-head"><h2><Users size={18} /> Resultados ({filteredMembers.length})</h2><div className="members-sort"><span>Orden por nombre:</span><button>Nombre A-Z</button><button>Nombre Z-A</button></div></div>
             <div className="members-view-tabs"><span>Ver:</span><button className={viewStatus === 'active' ? 'active' : ''} onClick={() => { setViewStatus('active'); setCurrentPage(1); }}>Activos ({members.filter(m => !['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button><button className={viewStatus === 'all' ? 'active' : ''} onClick={() => { setViewStatus('all'); setCurrentPage(1); }}>Todas</button><button className={viewStatus === 'inactive' ? 'active' : ''} onClick={() => { setViewStatus('inactive'); setCurrentPage(1); }}>Dados de baja ({members.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button></div>
-            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}</span></div></div><div className="member-directory-status"><Badge>{(Array.isArray(member.role) ? member.role : [member.role || 'Member']).map(role => settings?.roles?.[role] || role).join(' · ')}</Badge><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span><div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div></article>)}</div>
+            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}</span></div></div><div className="member-directory-status"><Badge>{(Array.isArray(member.role) ? member.role : [member.role || 'Member']).map(role => settings?.roles?.[role] || role).join(' · ')}</Badge><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span>{(() => { const birthday = formatBirthday(member); return birthday ? <span className="member-birthday" title={`Cumpleaños: ${birthday}`}><Cake size={13} />{birthday}</span> : null; })()}<div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div></article>)}</div>
             <table className="members-table">
               <thead>
                 <tr>
