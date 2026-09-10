@@ -15,15 +15,31 @@
 
 .members-filters {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
 .members-search-wrap {
   position: relative;
-  flex: 1;
-  min-width: 200px;
+  width: 100%;
+  min-width: 0;
+}
+
+.members-filter-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.members-filter-row .members-filter-select {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.members-filter-row .btn {
+  flex-shrink: 0;
 }
 
 .members-search-icon {
@@ -217,6 +233,15 @@
 
   .members-search-wrap {
     min-width: 0;
+    width: 100%;
+  }
+
+  .members-filter-row .members-filter-select {
+    flex: 1 1 140px;
+  }
+
+  .members-filter-row .btn {
+    flex: 1 1 auto;
   }
 
   .members-table thead {

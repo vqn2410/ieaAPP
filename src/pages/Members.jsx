@@ -258,6 +258,7 @@ const Members = () => {
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
           </div>
+          <div className="members-filter-row">
           <select className="form-input members-filter-select" value={filterGroup} onChange={(e) => { setFilterGroup(e.target.value); setCurrentPage(1); }}>
             <option value="">Grupo: Todos</option>
             {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
@@ -274,6 +275,7 @@ const Members = () => {
             <option value="No">No Bautizado</option>
           </select>
            <Button variant="outline" size="sm" icon={<SlidersHorizontal size={14} />}>Filtros</Button><Button variant="outline" size="sm" icon={<RefreshCw size={14} />} onClick={loadMembers}>Recargar</Button>
+          </div>
           </div>
 
         {loading ? (
