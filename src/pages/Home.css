@@ -23,7 +23,7 @@
 }
 .iea-nav-links { flex: 1; justify-content: flex-end; }
 
-.iea-nav-brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; cursor: pointer; }
+.iea-nav-brand { position: relative; left: auto; top: auto; transform: none; display: flex; align-items: center; cursor: pointer; }
 .iea-nav-logo { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
 
 .iea-nav-links { display: flex; align-items: center; gap: clamp(1.25rem, 3vw, 2.75rem); }
