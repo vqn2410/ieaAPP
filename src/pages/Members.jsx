@@ -41,6 +41,8 @@ const Members = () => {
   const [showModal, setShowModal] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState(null);
+  const [facilitatorGroups, setFacilitatorGroups] = useState([]);
+  const [newMemberGroupId, setNewMemberGroupId] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [bajaMember, setBajaMember] = useState(null);
   const [bajaMotivo, setBajaMotivo] = useState('');
@@ -50,6 +52,8 @@ const Members = () => {
   const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
   const canEdit = roles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
   const canCreate = roles.some(role => ['Admin', 'Pastor'].includes(role));
+  const isFacilitatorCreator = !canCreate && canEdit && facilitatorGroups.length > 0;
+  const canCreateMember = canCreate || isFacilitatorCreator;
 
   const loadMembers = async () => {
     setLoading(true);
@@ -57,6 +61,7 @@ const Members = () => {
     const isAdminOrPastor = roles.some(role => ['Admin', 'Pastor'].includes(role));
     if (isAdminOrPastor) {
       setMembers(data);
+      setFacilitatorGroups([]);
     } else {
       const groups = await getGroups();
       const currentEmail = userData?.email?.trim().toLowerCase();
@@ -65,7 +70,9 @@ const Members = () => {
       const isLeader = group => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
         .filter(Boolean)
         .some(value => value === currentMember?.id || normalize(value) === normalize(`${currentMember?.lastName}, ${currentMember?.firstName}`) || normalize(value) === normalize(`${currentMember?.firstName} ${currentMember?.lastName}`));
-      const groupNames = groups.filter(isLeader).map(group => normalize(group.name));
+      const ledGroups = groups.filter(isLeader);
+      setFacilitatorGroups(ledGroups.map(g => ({ id: g.id, name: g.name })));
+      const groupNames = ledGroups.map(group => normalize(group.name));
       setMembers(data.filter(member => {
         const mg = normalize(member.group);
         if (!mg) return false;
@@ -85,7 +92,7 @@ const Members = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('nuevo') === '1' && canCreate) {
+    if (params.get('nuevo') === '1' && canCreateMember) {
       setMemberToEdit(null);
       setShowModal(true);
       navigate('/dashboard/miembros', { replace: true });
@@ -93,7 +100,7 @@ const Members = () => {
     }
     const initialSearch = params.get('search');
     if (initialSearch) setSearchTerm(initialSearch);
-  }, [location.search, canCreate, navigate]);
+  }, [location.search, canCreateMember, navigate]);
 
   const handleMemberAdded = () => {
     setShowModal(false);
@@ -102,6 +109,7 @@ const Members = () => {
 
   const handleAddNew = () => {
     setMemberToEdit(null);
+    setNewMemberGroupId('');
     setShowModal(true);
   };
 
@@ -220,7 +228,7 @@ const Members = () => {
           <div className="d-flex gap-2" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {canCreate && <Button variant="outline" size="sm" icon={<Download size={14} />} onClick={handleExportCSV}>Exportar CSV</Button>}
             {canCreate && <Button variant="outline" size="sm" icon={<Upload size={14} />} onClick={() => setShowBulkUpload(true)}>Carga Masiva</Button>}
-            {canCreate && <Button size="sm" icon={<Plus size={14} />} onClick={handleAddNew}>Nuevo</Button>}
+            {canCreateMember && <Button size="sm" icon={<Plus size={14} />} onClick={handleAddNew}>Nuevo</Button>}
           </div>
         )}
       </div>
@@ -361,7 +369,35 @@ const Members = () => {
       </Card>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={memberToEdit ? 'Editar Miembro' : 'Registrar Miembro'} size="lg">
-        <MemberForm onSuccess={handleMemberAdded} initialData={memberToEdit} />
+        {memberToEdit || canCreate ? (
+          <MemberForm
+            onSuccess={handleMemberAdded}
+            initialData={memberToEdit}
+            {...(!canCreate && memberToEdit ? { fixedGroup: memberToEdit.group } : {})}
+          />
+        ) : (
+          <>
+            {facilitatorGroups.length > 1 && (
+              <label style={{ display: 'grid', gap: '0.35rem', marginBottom: '1rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                Grupo asignado
+                <select
+                  className="form-input"
+                  value={newMemberGroupId || facilitatorGroups[0].id}
+                  onChange={e => setNewMemberGroupId(e.target.value)}
+                >
+                  {facilitatorGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </label>
+            )}
+            <MemberForm
+              key={newMemberGroupId || facilitatorGroups[0]?.id || 'nuevo'}
+              onSuccess={handleMemberAdded}
+              initialData={null}
+              fixedGroup={(facilitatorGroups.find(g => g.id === newMemberGroupId) || facilitatorGroups[0])?.name}
+              fixedGroupId={(facilitatorGroups.find(g => g.id === newMemberGroupId) || facilitatorGroups[0])?.id}
+            />
+          </>
+        )}
       </Modal>
 
       <BulkUploadModal

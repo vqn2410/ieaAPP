@@ -182,6 +182,61 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-md);
 }
 
+/* Modal: overlay y tamaños con respaldo vh -> dvh */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 16000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.modal-overlay .modal-content {
+  max-height: 90vh;
+  max-height: calc(100dvh - 1.5rem);
+}
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
+  .modal-overlay .modal-content {
+    max-height: none;
+    margin: 0 auto;
+  }
+}
+
+/* Modal: scrollbars finas para no comer espacio en mobile */
+.modal-overlay,
+.modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.modal-overlay::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.modal-overlay::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-overlay::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
 /* Form Styles */
 .form-group {
   margin-bottom: 1.25rem;
