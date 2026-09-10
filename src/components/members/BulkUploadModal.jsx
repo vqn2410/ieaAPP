@@ -268,7 +268,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess }) => {
                     onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
                     onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
                 >
-                    <Upload size={32} color="var(--color-text-muted)" style={{ margin: '0 auto 1rem' }} />
+                    <Upload size={32} style={{ margin: '0 auto 1rem', color: 'var(--color-text-muted)' }} />
                     <div style={{ fontWeight: 500 }}>Haz clic para seleccionar tu archivo CSV</div>
                     <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
                         Soportado: .csv

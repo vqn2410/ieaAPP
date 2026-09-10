@@ -199,15 +199,15 @@ const GrowthGroups = () => {
     }
 
     const navigationCards = [
-        { id: 'grupos', title: 'Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.', visible: canManageGroups },
-        { id: 'grafico', title: 'Gráfico del Ministerio', icon: <Network size={32} color="var(--color-primary)" />, description: 'Red ministerial desde tu responsabilidad hacia sus miembros.', visible: canManageGroups },
-        { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
-        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
-        { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
-        { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} color="var(--color-primary)" />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
-        { id: 'solicitudes', title: 'Solicitudes', icon: <ArrowLeftRight size={32} color="var(--color-primary)" />, description: 'Pedí y respondé traslados de personas entre grupos.', visible: canManageGroups },
-        { id: 'clases', title: 'Clases', icon: <BookOpen size={32} color="var(--color-primary)" />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
-        { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
+        { id: 'grupos', title: 'Grupos', icon: <Heart size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.', visible: canManageGroups },
+        { id: 'grafico', title: 'Gráfico del Ministerio', icon: <Network size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Red ministerial desde tu responsabilidad hacia sus miembros.', visible: canManageGroups },
+        { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
+        { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
+        { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
+        { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
+        { id: 'solicitudes', title: 'Solicitudes', icon: <ArrowLeftRight size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Pedí y respondé traslados de personas entre grupos.', visible: canManageGroups },
+        { id: 'clases', title: 'Clases', icon: <BookOpen size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
+        { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
     ].filter(card => card.visible !== false);
 
     const resolveMemberName = (idOrName) => {
@@ -342,7 +342,7 @@ const GrowthGroups = () => {
                                 return (
                                     <div key={group.id} className="animate-slide-up">
                                         <div className="d-flex align-center gap-2 mb-2 ml-1">
-                                            <Heart size={16} color="var(--color-primary)" />
+                                            <Heart size={16} style={{ color: 'var(--color-primary)' }} />
                                             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{group.name}</h3>
                                             <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>{membersOfGroup.length} miembros</span>
                                         </div>
@@ -738,7 +738,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: '1rem' }}>
             <div className="lg:col-span-2">
-                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckSquare size={20} color="var(--color-primary)" /> Cargar Asistencia</div>}>
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckSquare size={20} style={{ color: 'var(--color-primary)' }} /> Cargar Asistencia</div>}>
                     <div className="attendance-header-fields" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group m-0">
                             <label className="form-label">Seleccione Grupo de Amistad</label>
@@ -855,7 +855,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
             </div>
 
             <div className="lg:col-span-1">
-                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} color="var(--color-primary-light)" /> Reportes y Exportación</div>}>
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} style={{ color: 'var(--color-primary-light)' }} /> Reportes y Exportación</div>}>
                     <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
                         Descarga el reporte PDF del grupo seleccionado con membrete institucional.
                     </p>
@@ -873,7 +873,7 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
                     </button>
                 </Card>
 
-                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Flame size={20} color="var(--color-warning)" /> Rachas y constancia</div>}>
+                <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Flame size={20} style={{ color: 'var(--color-warning)' }} /> Rachas y constancia</div>}>
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
                         Miembros con mejor continuidad en {selectedGroup?.name || 'el grupo'}.
                     </p>
@@ -984,7 +984,7 @@ const WheelOfLifeTab = ({ myGroups, currentUser, isAdmin }) => {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1.5rem' }}>
-            <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LifeBuoy size={20} color="var(--color-primary)" /> Evaluación del mes</div>}>
+            <Card title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LifeBuoy size={20} style={{ color: 'var(--color-primary)' }} /> Evaluación del mes</div>}>
                 <div className="form-group mb-4">
                     <label className="form-label">Grupo</label>
                     <select
@@ -1084,7 +1084,7 @@ const WheelOfLifeTab = ({ myGroups, currentUser, isAdmin }) => {
 
 const RadarChartMini = () => (
     <svg width="15" height="15" viewBox="0 0 300 300" style={{ display: 'inline-block' }}>
-        <polygon points="150,30 255,90 255,210 150,270 45,210 45,90" fill="rgba(var(--color-primary-rgb), 0.35)" stroke="var(--color-primary)" strokeWidth="6" />
+        <polygon points="150,30 255,90 255,210 150,270 45,210 45,90" strokeWidth="6" style={{ fill: 'rgba(var(--color-primary-rgb), 0.35)', stroke: 'var(--color-primary)' }} />
     </svg>
 );
 

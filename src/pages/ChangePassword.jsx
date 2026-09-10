@@ -59,7 +59,7 @@ const ChangePassword = () => {
     <div className="d-flex justify-center align-center" style={{ minHeight: '70vh' }}>
       <Card title={
           <div className="d-flex align-center gap-2">
-            <Lock size={20} color="var(--color-primary)" /> ACTUALIZAR CONTRASEÑA
+            <Lock size={20} style={{ color: 'var(--color-primary)' }} /> ACTUALIZAR CONTRASEÑA
           </div>
       } style={{ maxWidth: '400px', width: '100%' }}>
         <div className="alert alert-warning mb-4" style={{ fontSize: '0.85rem', background: '#fffbeb', border: '1px solid #fde68a', padding: '1rem', borderRadius: '8px' }}>

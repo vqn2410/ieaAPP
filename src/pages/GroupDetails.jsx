@@ -129,7 +129,7 @@ const GroupDetails = () => {
             <div className="d-flex align-center gap-3 mb-4" style={{ flexWrap: 'wrap' }}>
                 <Button variant="outline" icon={<ArrowLeft size={16} />} onClick={() => navigate('/dashboard/grupos')}>Volver</Button>
                 <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={24} color="var(--color-primary)" />
+                    <Users size={24} style={{ color: 'var(--color-primary)' }} />
                     Integrantes de {group.name}
                 </h1>
                 {canManage && <Button size="sm" icon={<UserPlus size={15} />} onClick={() => setShowAddMember(true)}>Agregar persona</Button>}

@@ -12,7 +12,7 @@ const Finances = () => {
       </div>
       <Card>
         <div className="d-flex align-center gap-3">
-          <PieChart size={32} color="var(--color-primary)" />
+          <PieChart size={32} style={{ color: 'var(--color-primary)' }} />
           <div>
             <h3>Módulo de Finanzas</h3>
             <p>Registro de diezmos, ofrendas y gastos con reportes en PDF/Excel.</p>

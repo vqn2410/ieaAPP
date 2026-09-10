@@ -29,13 +29,13 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
         return `${p.x},${p.y}`;
       })
       .join(' ');
-    return <polygon key={level} points={points} fill="none" stroke="var(--color-border)" strokeWidth="1" />;
+    return <polygon key={level} points={points} fill="none" strokeWidth="1" style={{ stroke: 'var(--color-border)' }} />;
   });
 
   const axes = dimensions.map((d, i) => {
     const p = pointAt(i, total, 10);
     return (
-      <line key={i} x1={CENTER} y1={CENTER} x2={p.x} y2={p.y} stroke="var(--color-border)" strokeWidth="1" />
+      <line key={i} x1={CENTER} y1={CENTER} x2={p.x} y2={p.y} strokeWidth="1" style={{ stroke: 'var(--color-border)' }} />
     );
   });
 
@@ -45,10 +45,9 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
       {axes}
       <polygon
         points={polygonPoints}
-        fill="rgba(var(--color-primary-rgb), 0.18)"
-        stroke="var(--color-primary)"
         strokeWidth="2"
         strokeLinejoin="round"
+        style={{ fill: 'rgba(var(--color-primary-rgb), 0.18)', stroke: 'var(--color-primary)' }}
       />
       {dimensions.map((d, i) => {
         const v = Math.max(0, Math.min(10, Number(values[d.key]) || 0));
@@ -56,7 +55,7 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
         const labelP = pointAt(i, total, 11.5);
         return (
           <g key={d.key}>
-            <circle cx={p.x} cy={p.y} r="3.5" fill="var(--color-primary)" />
+            <circle cx={p.x} cy={p.y} r="3.5" style={{ fill: 'var(--color-primary)' }} />
             <text
               x={labelP.x}
               y={labelP.y}
@@ -64,7 +63,7 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
               dominantBaseline="middle"
               fontSize="10.5"
               fontWeight="600"
-              fill="var(--color-text)"
+              style={{ fill: 'var(--color-text)' }}
             >
               {d.label}
             </text>

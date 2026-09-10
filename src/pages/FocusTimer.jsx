@@ -120,15 +120,15 @@ const FocusTimer = () => {
 
           <div className="focus-ring-wrap">
             <svg className="focus-ring" viewBox="0 0 280 280">
-              <circle cx="140" cy="140" r={R} fill="none" stroke="var(--color-surface-hover)" strokeWidth="14" />
+              <circle cx="140" cy="140" r={R} fill="none" strokeWidth="14" style={{ stroke: 'var(--color-surface-hover)' }} />
               <circle
                 cx="140" cy="140" r={R} fill="none"
-                stroke="var(--color-primary)" strokeWidth="14"
+                strokeWidth="14"
                 strokeLinecap="round"
                 strokeDasharray={CIRC}
                 strokeDashoffset={CIRC * (1 - progress)}
                 transform="rotate(-90 140 140)"
-                style={{ transition: 'stroke-dashoffset 1s linear' }}
+                style={{ transition: 'stroke-dashoffset 1s linear', stroke: 'var(--color-primary)' }}
               />
             </svg>
             <div className="focus-time-display">

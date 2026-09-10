@@ -378,9 +378,9 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
         <svg className="neural-network-svg" width={graph.width} height={graph.height} viewBox={`0 0 ${graph.width} ${graph.height}`} role="img" aria-label="Red neuronal de grupos y personas">
           <defs>
             <linearGradient id="neural-edge" x1="0" x2="1">
-              <stop offset="0" stopColor="var(--color-primary)" stopOpacity=".3" />
-              <stop offset=".5" stopColor="var(--color-primary)" stopOpacity="1" />
-              <stop offset="1" stopColor="var(--color-primary)" stopOpacity=".35" />
+              <stop offset="0" stopOpacity=".3" style={{ stopColor: 'var(--color-primary)' }} />
+              <stop offset=".5" stopOpacity="1" style={{ stopColor: 'var(--color-primary)' }} />
+              <stop offset="1" stopOpacity=".35" style={{ stopColor: 'var(--color-primary)' }} />
             </linearGradient>
             <filter id="neural-glow"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           </defs>

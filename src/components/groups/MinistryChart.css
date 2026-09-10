@@ -797,3 +797,37 @@
   .neural-edge,
   .network-node-halo { animation: none; }
 }
+
+/* ============ RED NEURONAL EN MODO OSCURO ============ */
+:root[data-theme='dark'] .neural-network-viewport {
+  background:
+    radial-gradient(circle at 18% 35%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 30%),
+    radial-gradient(circle at 78% 70%, color-mix(in srgb, var(--color-primary) 15%, transparent), transparent 32%),
+    #050507;
+}
+:root[data-theme='dark'] .network-node-circle {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .6)) drop-shadow(0 0 10px color-mix(in srgb, var(--color-primary) 35%, transparent));
+}
+:root[data-theme='dark'] .neural-edge {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--color-primary) 80%, transparent));
+}
+:root[data-theme='dark'] .network-node-halo {
+  opacity: .7;
+}
+:root[data-theme='dark'] .network-node-label {
+  fill: #f7f7f9;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, .7);
+  stroke-width: 3px;
+}
+:root[data-theme='dark'] .network-node-sub {
+  fill: #c3c9d4;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, .7);
+  stroke-width: 3px;
+}
+:root[data-theme='dark'] .network-node-group .network-node-circle {
+  fill: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
+}

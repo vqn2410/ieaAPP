@@ -279,7 +279,7 @@ const Settings = () => {
         {activeTab === 'profile' && (
           <Card title={
               <div className="d-flex align-center gap-2">
-                  <User size={20} color="var(--color-primary-light)" /> Mi Perfil de Usuario
+                  <User size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi Perfil de Usuario
               </div>
           } className="lg:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '1.5rem' }}>
@@ -309,7 +309,7 @@ const Settings = () => {
         )}
 
         {activeTab === 'areas' && (
-          <Card title={<div className="d-flex align-center gap-2"><ClipboardList size={20} color="var(--color-primary-light)" /> CONFIGURACIÓN DE ÁREAS</div>} className="lg:col-span-2">
+          <Card title={<div className="d-flex align-center gap-2"><ClipboardList size={20} style={{ color: 'var(--color-primary-light)' }} /> CONFIGURACIÓN DE ÁREAS</div>} className="lg:col-span-2">
             <p style={{ color: 'var(--color-text-muted)' }}>Administrá las áreas de servicio disponibles para los perfiles de IEA.</p>
             <div className="settings-area-create"><input className="form-input" value={newArea} onChange={event => setNewArea(event.target.value)} onKeyDown={event => event.key === 'Enter' && handleCreateArea()} placeholder="Nombre de la nueva área" /><Button onClick={handleCreateArea}>Crear</Button></div>
             <div className="settings-area-list">{(formData.serviceAreas || []).map(area => <div key={area}><span>{area}</span><button onClick={() => saveAreas((formData.serviceAreas || []).filter(item => item !== area))} title={`Eliminar ${area}`}><Trash2 size={15} /></button></div>)}</div>
@@ -322,7 +322,7 @@ const Settings = () => {
           <>
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Palette size={20} color="var(--color-primary-light)" /> Mi apariencia personal
+                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi apariencia personal
               </div>
             } className="lg:col-span-2">
               <p style={{color: 'var(--color-text-muted)', marginBottom: '1.5rem'}}>
@@ -396,7 +396,7 @@ const Settings = () => {
 
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Palette size={20} color="var(--color-primary-light)" /> Apariencia Global (Toda la iglesia)
+                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Apariencia Global (Toda la iglesia)
               </div>
             }>
               <div className="form-group mb-4">
@@ -422,7 +422,7 @@ const Settings = () => {
 
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Layers size={20} color="var(--color-primary-light)" /> Módulos del Sistema
+                <Layers size={20} style={{ color: 'var(--color-primary-light)' }} /> Módulos del Sistema
               </div>
             }>
               <p style={{color: 'var(--color-text-muted)', marginBottom: '1.5rem'}}>Activa o desactiva las funcionalidades que tu congregación usa:</p>
@@ -455,7 +455,7 @@ const Settings = () => {
           <>
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Shield size={20} color="var(--color-primary-light)" /> Personalizar Nombres de Roles
+                <Shield size={20} style={{ color: 'var(--color-primary-light)' }} /> Personalizar Nombres de Roles
               </div>
             } className="lg:col-span-2">
               <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1rem' }}>
@@ -488,7 +488,7 @@ const Settings = () => {
 
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Lock size={20} color="var(--color-primary-light)" /> Control de Acceso (Matriz de Permisos)
+                <Lock size={20} style={{ color: 'var(--color-primary-light)' }} /> Control de Acceso (Matriz de Permisos)
               </div>
             } className="lg:col-span-2">
               <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
@@ -540,7 +540,7 @@ const Settings = () => {
             <Card title={
               <div className="d-flex align-center gap-2 justify-between w-full">
                 <div className="d-flex align-center gap-2">
-                   <Key size={20} color="var(--color-primary-light)" /> Gestión de Usuarios y Roles
+                   <Key size={20} style={{ color: 'var(--color-primary-light)' }} /> Gestión de Usuarios y Roles
                 </div>
 
               </div>
@@ -656,7 +656,7 @@ const Settings = () => {
           <>
             <Card title={
               <div className="d-flex align-center gap-2">
-                <ClipboardX size={20} color="var(--color-primary-light)" /> Motivos de Ausencia
+                <ClipboardX size={20} style={{ color: 'var(--color-primary-light)' }} /> Motivos de Ausencia
               </div>
             }>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -675,7 +675,7 @@ const Settings = () => {
 
             <Card title={
               <div className="d-flex align-center gap-2">
-                <ClipboardList size={20} color="var(--color-primary-light)" /> Tipos de Seguimiento
+                <ClipboardList size={20} style={{ color: 'var(--color-primary-light)' }} /> Tipos de Seguimiento
               </div>
             }>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -711,7 +711,7 @@ const Settings = () => {
 
             <Card title={
               <div className="d-flex align-center gap-2">
-                <Calendar size={20} color="var(--color-primary-light)" /> Gestión de Feriados
+                <Calendar size={20} style={{ color: 'var(--color-primary-light)' }} /> Gestión de Feriados
               </div>
             } className="lg:col-span-2">
               <div className="d-flex gap-2 mb-4">

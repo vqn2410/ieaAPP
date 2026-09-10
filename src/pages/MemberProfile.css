@@ -477,3 +477,9 @@
 .profile .profile-personal-card:hover,
 .profile .profile-family-card:hover,
 .profile .profile-tab-card:hover { transform: none; box-shadow: none; }
+
+/* Modo oscuro: contraste en valores de contacto y etapas */
+:root[data-theme='dark'] .profile-contact-block .profile-field-value { color: #a9bcff; }
+:root[data-theme='dark'] .profile-growth-stage span { color: #e7e7ea; background: #2a2a33; }
+:root[data-theme='dark'] .profile-growth-stage.active span { color: #0b0b0b; background: #f4f4f6; }
+:root[data-theme='dark'] .profile-tab-empty svg { color: #ffffff; }

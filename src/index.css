@@ -56,21 +56,21 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-primary: #e7e7ea;
-  --color-primary-rgb: 231, 231, 234;
-  --color-primary-light: #d4d4d8;
+  --color-primary: #f4f4f6;
+  --color-primary-rgb: 244, 244, 246;
+  --color-primary-light: #e2e2e8;
   --color-bg: #000000;
   --color-background: #000000;
-  --color-surface: #0c0c0e;
-  --color-surface-hover: #19191c;
-  --color-text: #f2f2f4;
-  --color-text-muted: #9ca3af;
-  --color-border: rgba(255, 255, 255, 0.1);
-  --gradient-primary: linear-gradient(135deg, #18181b 0%, #26262b 100%);
-  --gradient-surface: linear-gradient(180deg, #0c0c0e 0%, #000000 100%);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --color-surface: #17171c;
+  --color-surface-hover: #24242c;
+  --color-text: #f7f7f9;
+  --color-text-muted: #c3c9d4;
+  --color-border: rgba(255, 255, 255, 0.3);
+  --gradient-primary: linear-gradient(135deg, #f4f4f6 0%, #d4d4d8 100%);
+  --gradient-surface: linear-gradient(180deg, #16161b 0%, #0d0d11 100%);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.75), 0 4px 8px rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -180,6 +180,30 @@ h1, h2, h3, h4, h5, h6 {
 .card:hover {
   border-color: rgba(11, 11, 11, 0.22);
   box-shadow: var(--shadow-md);
+}
+
+/* ===== Modo oscuro: bordes blancos realzados e iconos blancos ===== */
+:root[data-theme='dark'] .card,
+:root[data-theme='dark'] .form-input,
+:root[data-theme='dark'] .modal-content {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+:root[data-theme='dark'] .btn-outline {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+:root[data-theme='dark'] .members-search-icon,
+:root[data-theme='dark'] .members-summary-card svg,
+:root[data-theme='dark'] .member-more-button,
+:root[data-theme='dark'] .groups-card-title svg,
+:root[data-theme='dark'] .groups-card-meta svg,
+:root[data-theme='dark'] .kids-search,
+:root[data-theme='dark'] .ibrp-search,
+:root[data-theme='dark'] .visitors-search-icon,
+:root[data-theme='dark'] .profile-tab-empty svg,
+:root[data-theme='dark'] .dash-calendar-list-item svg,
+:root[data-theme='dark'] .mt-chevron,
+:root[data-theme='dark'] .mt-node .mt-chevron {
+  color: #ffffff;
 }
 
 /* Modal: overlay y tamaños con respaldo vh -> dvh */
@@ -293,7 +317,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border: 1px solid var(--color-primary);
 }
 
@@ -305,7 +329,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-secondary {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-bg);
 }
 
 .btn-secondary:hover {

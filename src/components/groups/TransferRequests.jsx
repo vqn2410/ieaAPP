@@ -136,7 +136,7 @@ const TransferRequests = ({ myGroups = [], allMembers = [], currentUser, myMembe
         <div className="d-flex flex-column gap-3">
             <Card>
                 <h3 style={{ margin: '0 0 0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Send size={18} color="var(--color-primary)" /> Solicitar traslado
+                    <Send size={18} style={{ color: 'var(--color-primary)' }} /> Solicitar traslado
                 </h3>
                 <p style={{ margin: '0 0 1rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                     Si la persona pertenece a otro grupo, pedí el traslado a su facilitador. Te avisaremos aquí cuando responda.
@@ -189,7 +189,7 @@ const TransferRequests = ({ myGroups = [], allMembers = [], currentUser, myMembe
 
             <Card>
                 <h3 style={{ margin: '0 0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <ArrowLeftRight size={18} color="var(--color-primary)" /> Solicitudes recibidas
+                    <ArrowLeftRight size={18} style={{ color: 'var(--color-primary)' }} /> Solicitudes recibidas
                 </h3>
                 {loading ? <p style={{ color: 'var(--color-text-muted)' }}>Cargando...</p>
                     : incoming.length === 0 ? <EmptyState icon={ArrowLeftRight} title="Sin pendientes" message="No tenés pedidos de traslado por responder." />
