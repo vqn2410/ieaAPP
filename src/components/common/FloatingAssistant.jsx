@@ -20,12 +20,11 @@ const FloatingAssistant = () => {
 
   const canUse = hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
   const isAdmin = hasRole(['Admin']);
+  const authenticated = Boolean(currentUser) && canUse;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, open]);
-
-  if (!canUse) return null;
 
   const send = async (text) => {
     const question = (text || input).trim();
@@ -34,12 +33,21 @@ const FloatingAssistant = () => {
     setMessages(prev => [...prev, { role: 'user', content: question }]);
     setLoading(true);
     try {
-      const token = await currentUser.getIdToken();
-      const res = await fetch(iaUrl('/api/assistant'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ question, adminLearn: learnMode }),
-      });
+      let res;
+      if (authenticated) {
+        const token = await currentUser.getIdToken();
+        res = await fetch(iaUrl('/api/assistant'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ question, adminLearn: learnMode }),
+        });
+      } else {
+        res = await fetch(iaUrl('/api/public-assistant'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Error del servidor');
       setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);

@@ -28,6 +28,7 @@ const Assistant = lazy(() => import('./pages/Assistant'));
 const Kids = lazy(() => import('./pages/Kids'));
 const IbrpAssigned = lazy(() => import('./pages/IbrpAssigned'));
 const IeaMockup = lazy(() => import('./pages/IeaMockup'));
+const Extensions = lazy(() => import('./pages/Extensions'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, loading, hasRole } = useAuth();
@@ -76,6 +77,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/session-expired" element={<SessionExpired />} />
           <Route path="/maqueta-iea" element={<IeaMockup />} />
+          <Route path="/extensiones" element={<Extensions />} />
           
           <Route 
             path="/dashboard" 

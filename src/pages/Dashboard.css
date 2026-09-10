@@ -40,7 +40,7 @@
 
 .dash-greeting-sub::before {
   content: '•';
-  color: #6c8c63;
+  color: #0b0b0b;
   font-size: 1rem;
 }
 
@@ -593,19 +593,19 @@
 }
 
 .dash-summary-dot-members {
-  background: #6366f1;
+  background: #0b0b0b;
 }
 
 .dash-summary-dot-groups {
-  background: #8b5cf6;
+  background: #4a4a4a;
 }
 
 .dash-summary-dot-baptised {
-  background: #06b6d4;
+  background: #8a8a86;
 }
 
 .dash-summary-dot-events {
-  background: #10b981;
+  background: #c2beb4;
 }
 
 /* Side card accents */
@@ -625,15 +625,15 @@
 }
 
 .dash-side-card-hd svg.quick-icon {
-  color: #6366f1;
+  color: #0b0b0b;
 }
 
 .dash-side-card-hd svg.fup-icon {
-  color: #8b5cf6;
+  color: #4a4a4a;
 }
 
 .dash-side-card-hd svg.birthday-icon {
-  color: #e07a55;
+  color: #0b0b0b;
 }
 
 /* Birthdays */
@@ -672,8 +672,8 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #fff0e8;
-  color: #bd684b;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
   font-size: 0.625rem;
   font-weight: 700;
 }
@@ -811,7 +811,7 @@
   border: 0;
   border-radius: 50%;
   color: #fff;
-  background: #e07a55;
+  background: #0b0b0b;
   font-size: 0.5rem;
   font-weight: 700;
   cursor: pointer;
@@ -834,7 +834,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #e07a55;
+  background: #0b0b0b;
 }
 
 @media (max-width: 640px) {
@@ -859,5 +859,5 @@
 }
 
 .dash-side-card-hd svg.summary-icon {
-  color: #06b6d4;
+  color: #8a8a86;
 }

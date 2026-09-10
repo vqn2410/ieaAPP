@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube } from 'lucide-react';
+import FloatingAssistant from '../components/common/FloatingAssistant';
 import './Home.css';
 
 const Home = () => {
@@ -38,6 +40,7 @@ const Home = () => {
           <button onClick={() => scrollTo('somos')}>Somos</button>
           <button onClick={() => scrollTo('comunidad')}>Comunidad</button>
           <button onClick={() => scrollTo('visitanos')}>Visitanos</button>
+          <button onClick={() => navigate('/extensiones')}>Iglesias en Extensión</button>
           <button className="iea-nav-cta" onClick={goPortal}>
             {currentUser ? 'IR AL PANEL' : 'INICIAR SESIÓN'}
           </button>
@@ -49,27 +52,56 @@ const Home = () => {
         <div className="iea-hero-ellipse" aria-hidden="true" />
         <h1 className="iea-hero-title">
           <span className="iea-word iea-word-left">IGLESIA</span>
-          <span className="iea-word iea-word-right iea-outline">EXTREMO</span>
-          <span className="iea-word iea-word-left iea-outline">AMOR</span>
+          <span className="iea-word iea-word-right">EXTREMO</span>
+          <span className="iea-word iea-word-left">AMOR</span>
         </h1>
         <div className="iea-hero-bottom">
-          <p className="iea-hero-tagline">Un lugar de encuentro.<br />Un lugar para la familia.<br />Un lugar para vos.</p>
           <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>CONOCÉ IEA <span>↗</span></button>
         </div>
       </section>
 
       <div className="iea-strip">
-        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 20:00</strong></p>
+        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
         <p><span>ESTAMOS EN</span><strong>Remedios de Escalada · Lanús</strong></p>
       </div>
+
+      <section className="iea-slogan-section" aria-label="Nuestro slogan">
+        <div className="iea-slogan-timeline">
+          <div className="iea-slogan-step iea-reveal">
+            <span className="iea-slogan-node"><svg className="iea-slogan-ring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" /></svg><HeartHandshake size={28} /></span>
+            <div className="iea-slogan-content">
+              <span className="iea-slogan-index">01</span>
+              <p className="iea-slogan-text">Un lugar de <strong>ENCUENTRO</strong>.</p>
+            </div>
+          </div>
+          <div className="iea-slogan-step iea-reveal">
+            <span className="iea-slogan-node"><svg className="iea-slogan-ring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" /></svg><HomeIcon size={28} /></span>
+            <div className="iea-slogan-content">
+              <span className="iea-slogan-index">02</span>
+              <p className="iea-slogan-text">Un lugar para la <strong>FAMILIA</strong>.</p>
+            </div>
+          </div>
+          <div className="iea-slogan-step iea-reveal">
+            <span className="iea-slogan-node"><svg className="iea-slogan-ring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" /></svg><Sparkles size={28} /></span>
+            <div className="iea-slogan-content">
+              <span className="iea-slogan-index">03</span>
+              <p className="iea-slogan-text">Un lugar para <strong>VOS</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="iea-section iea-light" id="somos">
         <div className="iea-section-label iea-reveal"><span>01</span>QUIÉNES SOMOS</div>
         <div className="iea-split">
-          <h2 className="iea-display iea-reveal">UNA COMUNIDAD DONDE LA FE SE VUELVE VIDA COMPARTIDA.</h2>
+          <h2 className="iea-display iea-reveal">CREEMOS EN UN DIOS REAL QUE TRANSFORMA VIDAS.</h2>
           <div className="iea-body iea-reveal">
-            <p><strong>Somos una iglesia en Remedios de Escalada. Creemos en el amor radical de Dios: un amor que nos encuentra, nos transforma y nos mueve a servir.</strong></p>
-            <p>Jesús es el centro. Caminamos en amistad, crecemos en la fe y abrimos lugar para que cada persona pueda compartir su historia.</p>
+            <p>En Iglesia Extremo Amor, somos una familia que camina unida en fe, amor y esperanza.</p>
+            <div className="iea-schedule">
+              <span>TODOS LOS SÁBADOS</span>
+              <strong>19:30 HS</strong>
+              <span>Remedios de Escalada, Buenos Aires.</span>
+            </div>
             <button className="iea-inline-link" onClick={() => scrollTo('comunidad')}>Conocé nuestra comunidad <span>↗</span></button>
           </div>
         </div>
@@ -100,7 +132,7 @@ const Home = () => {
             <span className="iea-card-eyebrow">CADA SÁBADO</span>
             <h3>Reunión general</h3>
             <p>Adoración, Palabra y un espacio para encontrarnos con Dios y con las personas.</p>
-            <strong>20:00</strong>
+            <strong>19:30</strong>
           </article>
           <article className="iea-reveal">
             <span className="iea-card-eyebrow">DURANTE LA SEMANA</span>
@@ -123,7 +155,7 @@ const Home = () => {
         <div className="iea-split">
           <h2 className="iea-display iea-reveal">ESTE SÁBADO, HAY UN LUGAR PARA VOS.</h2>
           <div className="iea-visit-info iea-reveal">
-            <div><span>CUÁNDO</span><strong>Sábados · 20:00</strong></div>
+            <div><span>CUÁNDO</span><strong>Sábados · 19:30</strong></div>
             <div><span>DÓNDE</span><strong>Remedios de Escalada, Lanús</strong></div>
             <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">ESCRIBINOS POR INSTAGRAM<span>↗</span></a>
           </div>
@@ -147,7 +179,7 @@ const Home = () => {
               <div>
                 <strong>IGLESIA EXTREMO AMOR</strong>
                 <span>Av. Cnel. Rosales 883, Escalada</span>
-                <span>Sábados · 20:00 hs</span>
+                <span>Sábados · 19:30 hs</span>
               </div>
             </div>
             <a className="iea-map-link" href="https://maps.google.com/?q=Av.+Coronel+Leonardo+Rosales+883,+Remedios+de+Escalada" target="_blank" rel="noopener noreferrer">CÓMO LLEGAR <span>↗</span></a>
@@ -160,20 +192,23 @@ const Home = () => {
           <div className="iea-footer-brand">
             <img src="/img/icon-500x500.png" alt="IEA" />
             <span>IEA · IGLESIA EXTREMO AMOR</span>
-            <p>Un lugar de encuentro. Un lugar para la familia. Un lugar para vos.</p>
+            <p>Un lugar de <strong>ENCUENTRO</strong>. Un lugar para la <strong>FAMILIA</strong>. Un lugar para <strong>VOS</strong>.</p>
           </div>
           <div className="iea-footer-cols">
             <div className="iea-footer-col">
               <span>REDES</span>
-              <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">Instagram</a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">Facebook</a>
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">YouTube</a>
+              <div className="iea-footer-social">
+                <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram size={18} /></a>
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook size={18} /></a>
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube size={18} /></a>
+              </div>
             </div>
             <div className="iea-footer-col">
               <span>IGLESIA</span>
               <button onClick={() => scrollTo('somos')}>Somos</button>
               <button onClick={() => scrollTo('comunidad')}>Comunidad</button>
               <button onClick={() => scrollTo('visitanos')}>Visitanos</button>
+              <button onClick={() => navigate('/extensiones')}>Iglesias en Extensión</button>
             </div>
             <div className="iea-footer-col">
               <span>PORTAL</span>
@@ -186,6 +221,7 @@ const Home = () => {
           <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">@iea_escalada ↗</a>
         </div>
       </footer>
+      <FloatingAssistant />
     </div>
   );
 };

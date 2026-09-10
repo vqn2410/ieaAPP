@@ -446,7 +446,7 @@
 :root[data-theme='dark'] .mobile-header,
 :root[data-theme='dark'] .bottom-nav,
 :root[data-theme='dark'] .mobile-menu-overlay {
-  background-color: #172033 !important;
+  background-color: #141414 !important;
   border-color: var(--color-border);
 }
 
@@ -456,8 +456,8 @@
 }
 
 :root[data-theme='dark'] .bottom-nav-item.active {
-  color: #f1f5f9;
-  background: rgba(147, 197, 253, 0.12);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 10px;
 }
 
