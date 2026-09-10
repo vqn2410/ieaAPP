@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock3, Search, Star, UserPlus, Users } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
@@ -132,7 +132,7 @@ const GroupDetails = () => {
                    {group.scheduleDay && group.scheduleTime && (
                        <div>
                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Encuentros</span>
-                           <span>📅 {group.scheduleDay} a las 🕒 {group.scheduleTime} hs</span>
+                            <span className="group-detail-schedule"><CalendarDays size={16} /> {group.scheduleDay} <span>a las</span> <Clock3 size={16} /> {group.scheduleTime} hs</span>
                        </div>
                    )}
                    <div>
@@ -164,7 +164,7 @@ const GroupDetails = () => {
                                     {groupFacilitators.length > 0 && (
                                         <>
                                             <tr style={{ backgroundColor: 'var(--color-bg)' }}>
-                                                <td colSpan="3" style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>🌟 Facilitadores</td>
+                                                 <td colSpan="3" className="group-member-section"><Star size={14} /> Facilitadores</td>
                                             </tr>
                                             {groupFacilitators.map(renderRow)}
                                         </>
@@ -172,7 +172,7 @@ const GroupDetails = () => {
                                     {groupCoFacilitators.length > 0 && (
                                         <>
                                             <tr style={{ backgroundColor: 'var(--color-bg)' }}>
-                                                <td colSpan="3" style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>⭐ Co-Facilitadores</td>
+                                                 <td colSpan="3" className="group-member-section"><Star size={14} /> Co-Facilitadores</td>
                                             </tr>
                                             {groupCoFacilitators.map(renderRow)}
                                         </>
@@ -180,7 +180,7 @@ const GroupDetails = () => {
                                     {normalMembers.length > 0 && (
                                         <>
                                             <tr style={{ backgroundColor: 'var(--color-bg)' }}>
-                                                <td colSpan="3" style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>👥 Miembros Regulares</td>
+                                                 <td colSpan="3" className="group-member-section"><Users size={14} /> Miembros Regulares</td>
                                             </tr>
                                             {normalMembers.map(renderRow)}
                                         </>

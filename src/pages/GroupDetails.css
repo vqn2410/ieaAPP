@@ -1,2 +1,7 @@
 .group-details-page { max-width: 1180px; margin: 0 auto; }.group-details-page .card { border-radius: 14px; box-shadow: 0 1px 2px rgba(30, 30, 20, .04); }.group-detail-description { width: 100%; padding-bottom: .75rem; color: var(--color-text-muted); font-size: .82rem; border-bottom: 1px solid var(--color-border); }.group-details-page table { min-width: 560px; }
+.group-detail-schedule { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.group-detail-schedule svg { color: var(--color-primary); }
+.group-detail-schedule span { color: var(--color-text-muted); }
+.group-member-section { padding: .75rem 1rem; background: var(--color-bg); color: var(--color-text-muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.group-member-section svg { vertical-align: -2px; margin-right: .35rem; color: var(--color-primary); }
 @media (max-width: 640px) { .group-details-page h1 { font-size: 1.35rem; }.group-details-page .d-flex.gap-4 { gap: 1rem; }.group-details-page .btn { flex: 1; } }

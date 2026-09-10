@@ -3,13 +3,14 @@ import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import GroupForm from '../components/groups/GroupForm';
+import MinistryChart from '../components/groups/MinistryChart';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers } from '../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../services/attendanceService';
 import { getHolidays } from '../services/holidayService';
-import { CalendarDays, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image } from 'lucide-react';
+import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import EmptyState from '../components/common/EmptyState';
@@ -198,6 +199,7 @@ const GrowthGroups = () => {
 
     const navigationCards = [
         { id: 'grupos', title: 'Grupos', icon: <Heart size={32} color="var(--color-primary)" />, description: 'Gestiona tus agrupaciones asignadas y consulta sus horarios.', visible: canManageGroups },
+        { id: 'grafico', title: 'Gráfico del Ministerio', icon: <Network size={32} color="var(--color-primary)" />, description: 'Árbol pastoral: desde los pastores hacia los grupos y sus miembros.', visible: hasRole(['Admin', 'Pastor']) },
         { id: 'miembros', title: 'Mis Miembros', icon: <Users size={32} color="var(--color-primary)" />, description: 'Listado completo y fichas de contacto de tus integrantes.', visible: canManageGroups },
         { id: 'asistencia', title: 'Asistencia y Reportes', icon: <CheckSquare size={32} color="var(--color-primary)" />, description: 'Toma asistencia y descarga informes mensuales o trimestrales.', visible: canManageGroups },
         { id: 'calendario', title: 'Calendario', icon: <CalendarDays size={32} color="var(--color-primary)" />, description: 'Consultá los días y horarios semanales de cada grupo.', visible: canManageGroups },
@@ -272,12 +274,17 @@ const GrowthGroups = () => {
 
                                     return (
                                         <Card key={g.id} className="growth-group-card">
-                                            <div className="d-flex justify-between align-start mb-3">
-                                                <div>
-                                                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-primary)' }}>{g.name}</h3>
-                                                    <span className="badge badge-gray" style={{ fontSize: '0.7rem', marginTop: '0.25rem' }}>{g.type}</span>
+                                            <div className="growth-group-card-header">
+                                                <div className="growth-group-card-title">
+                                                    <h3>{g.name}</h3>
+                                                    <span className="badge badge-gray">{g.type}</span>
                                                 </div>
-                                                {g.scheduleDay && <div style={{ textAlign: 'right', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>📅 {g.scheduleDay}<br />🕒 {g.scheduleTime} hs</div>}
+                                                {g.scheduleDay && (
+                                                    <div className="growth-group-card-schedule">
+                                                        <span><CalendarDays size={15} />{g.scheduleDay}</span>
+                                                        <span><Clock3 size={15} />{g.scheduleTime} hs</span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div style={{ marginBottom: '1.5rem' }}>
@@ -301,8 +308,8 @@ const GrowthGroups = () => {
 
                                             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
                                                 <div className="d-flex justify-between align-center">
-                                                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>👥 {myMembers.filter(m => m.group === g.name).length} Miembros</div>
-                                                    <div className="d-flex gap-2">
+                                                     <div className="growth-group-card-count"><Users size={16} /> {myMembers.filter(m => m.group === g.name).length} Miembros</div>
+                                                     <div className="growth-group-card-actions">
                                                         <Button variant="outline" size="sm" icon={<Users size={14} />} onClick={() => navigate(`/dashboard/grupos/${g.id}`)}>Miembros</Button>
                                                         {isAdmin && <Button variant="outline" size="sm" icon={<Edit size={14} />} onClick={() => { setEditingGroup(g); setShowGroupModal(true); }}>Editar</Button>}
                                                         {isAdmin && (
@@ -393,6 +400,7 @@ const GrowthGroups = () => {
                     )}
                     {activeTab === 'clases' && <FriendshipClasses />}
                     {activeTab === 'seguimientos' && <FollowUps />}
+                    {activeTab === 'grafico' && <MinistryChart groups={myGroups} members={allMembers} />}
                 </div>
             )}
             <Modal isOpen={showGroupModal} onClose={() => setShowGroupModal(false)} title={editingGroup ? "Editar Grupo" : "Crear Nuevo Grupo"} size="lg" className="group-modal-content">

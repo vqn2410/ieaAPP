@@ -7,6 +7,26 @@
 }
 
 .growth-groups-page { max-width: 1180px; margin: 0 auto; }.growth-groups-page h1 { font-size: 2rem; font-weight: 500; letter-spacing: -.04em; }.growth-groups-page .card { border-radius: 14px; box-shadow: 0 1px 2px rgba(30, 30, 20, .04); }.growth-group-card { transition: transform .2s ease, box-shadow .2s ease; }.growth-group-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(30, 30, 20, .08); }
+
+.growth-group-card { height: 100%; padding: 1.5rem; }
+.growth-group-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; min-height: 5.5rem; }
+.growth-group-card-title { min-width: 0; }
+.growth-group-card-title h3 { margin: 0; font-size: 1.25rem; color: var(--color-primary); overflow-wrap: anywhere; }
+.growth-group-card-title .badge { display: inline-flex; margin-top: .5rem; max-width: 100%; white-space: normal; }
+.growth-group-card-schedule { display: flex; flex-direction: column; gap: .4rem; flex: 0 0 auto; color: var(--color-text-muted); font-size: .8125rem; }
+.growth-group-card-schedule span { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+.growth-group-card-schedule svg { color: var(--color-primary); flex-shrink: 0; }
+.growth-group-card-count { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-text-muted); font-size: .8125rem; font-weight: 600; }
+.growth-group-card-count svg { color: var(--color-primary); }
+.growth-group-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.growth-group-card-actions .btn { min-width: 6.5rem; }
+@media (max-width: 640px) {
+  .growth-group-card { padding: 1.1rem; }
+  .growth-group-card-header { flex-direction: column; min-height: 0; }
+  .growth-group-card-schedule { flex-direction: row; flex-wrap: wrap; }
+  .growth-group-card-actions { width: 100%; justify-content: stretch; }
+  .growth-group-card-actions .btn { flex: 1 1 8rem; min-width: 0; }
+}
 .attendance-additional { margin-top: 1.25rem; border: 1px solid var(--color-border); border-radius: 12px; padding: 1rem; background: var(--color-surface); }.attendance-additional-header { margin-bottom: .9rem; }.attendance-additional-header h3 { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: .95rem; }.attendance-additional-header p, .attendance-guests-box small { display: block; margin: .2rem 0 0; color: var(--color-text-muted); font-size: .7rem; }.attendance-guests-box { border: 1px solid var(--color-border); border-radius: 12px; padding: .8rem; background: var(--color-bg); }.attendance-guest-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .75rem; }.attendance-guest-list { display: grid; gap: .35rem; margin-top: .65rem; }.attendance-guest-list > div { display: flex; align-items: center; gap: .5rem; padding: .45rem .6rem; border-radius: 7px; background: var(--color-surface); font-size: .75rem; }.attendance-guest-list span { flex: 1; }.attendance-guest-list small { margin: 0; }.attendance-guest-list button { border: 0; color: var(--color-danger); background: transparent; font-size: 1rem; cursor: pointer; }.attendance-additional-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-top: 1rem; }.attendance-additional-grid label, .attendance-photo > label { display: grid; gap: .35rem; color: var(--color-text); font-size: .75rem; font-weight: 600; }.attendance-notes-field textarea { resize: vertical; }.attendance-photo { display: grid; gap: .45rem; margin-top: 1rem; }.attendance-photo-actions { display: flex; gap: .5rem; }.attendance-photo-actions input { display: none; }.attendance-photo img { width: min(100%, 280px); max-height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid var(--color-border); }
 .attendance-header-fields { display: grid; grid-template-columns: 1fr; }
 @media (max-width: 640px) { .growth-groups-page h1 { font-size: 1.55rem; }.growth-groups-page .d-flex { flex-wrap: wrap; }.growth-groups-page .btn { max-width: 100%; }.attendance-guest-fields, .attendance-additional-grid { grid-template-columns: 1fr; }.attendance-additional { padding: .75rem; }.attendance-guests-box > .d-flex { align-items: flex-start; gap: .6rem; flex-direction: column; }.attendance-photo-actions { flex-wrap: wrap; } }

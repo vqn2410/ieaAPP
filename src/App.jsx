@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import MainLayout from './components/layout/MainLayout';
 import InactivityTimer from './components/common/InactivityTimer';
@@ -31,13 +31,16 @@ const IeaMockup = lazy(() => import('./pages/IeaMockup'));
 const Extensions = lazy(() => import('./pages/Extensions'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
-  const { currentUser, loading, hasRole } = useAuth();
+  const { currentUser, userData, loading, hasRole } = useAuth();
+  const location = useLocation();
 
   if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
   
   if (!currentUser) return <Navigate to="/login" />;
   
-  // Redirection for password change removed as requested
+  if (userData?.needsPasswordChange === true && location.pathname !== '/dashboard/cambio-clave') {
+    return <Navigate to="/dashboard/cambio-clave" replace />;
+  }
 
   if (requiredRoles && !hasRole(requiredRoles)) {
     return <Navigate to="/dashboard" />;

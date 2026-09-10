@@ -5,6 +5,7 @@ import Modal from '../components/common/Modal';
 import { Plus, Users, Edit, Trash2, Search, Clock, CalendarDays, UserCheck } from 'lucide-react';
 import { getGroups, createGroup, deleteGroup, updateGroup } from '../services/groupService';
 import { getMembers, updateMember } from '../services/memberService';
+import { addUserRoleByEmail } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { normalizeString } from '../utils/helpers';
@@ -156,7 +157,6 @@ const Groups = () => {
         const m = membersList.find(x => x.id === memberId);
         if (!m) return;
         const toUpdate = {};
-        if (m.group !== groupName) toUpdate.group = groupName;
         let currentRoles = Array.isArray(m.role) ? m.role : [m.role || 'Member'];
         const eliteRoles = ['Admin', 'Pastor', 'MinistryLeader'];
         const isElite = currentRoles.some(r => eliteRoles.includes(r));
@@ -166,6 +166,7 @@ const Groups = () => {
             newRoles = newRoles.filter(r => r !== 'Member');
           }
           toUpdate.role = newRoles;
+          syncMemberPromises.push(addUserRoleByEmail(m.email, targetRole));
         }
         if (Object.keys(toUpdate).length > 0) {
           syncMemberPromises.push(updateMember(memberId, toUpdate));

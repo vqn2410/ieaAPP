@@ -17,6 +17,8 @@ import './Dashboard.css';
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const fullMonths = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const normDashboard = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
+const currentUserEmail = userData => userData?.email || '';
 const announcements = [
   { title: 'Reunión de oración', image: '/anuncios/ORACI%C3%93N.jpg' },
   { title: 'Generosidad', image: '/anuncios/OFRENDA.jpg' },
@@ -200,6 +202,10 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
     return map;
   }, {});
   const today = new Date();
+  const monthBirthdays = members
+    .map(member => ({ member, parts: getBirthdayParts(member) }))
+    .filter(({ parts }) => parts?.month === monthIndex + 1)
+    .sort((a, b) => a.parts.day - b.parts.day);
 
   return (
     <Card className="dash-birthday-calendar-card">
@@ -215,7 +221,17 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
           return <div className={`dash-calendar-day ${!day ? 'empty' : ''} ${isToday ? 'today' : ''}`} key={`${year}-${monthIndex}-${index}`}><span className="dash-calendar-number">{day}</span>{people.map(person => <button className="dash-calendar-person" key={person.id} title={`${person.firstName} ${person.lastName}`} onClick={() => onMemberClick(person.id)}>{`${(person.firstName || '?')[0]}${(person.lastName || '?')[0]}`}</button>)}</div>;
         })}</div>
       </div>
-      <div className="dash-calendar-legend"><span className="dash-calendar-dot" /> Hay cumpleaños registrados. Seleccioná las iniciales para ver el perfil.</div>
+      <div className="dash-calendar-list">
+        <div className="dash-calendar-list-hd">{monthBirthdays.length > 0 ? `${monthBirthdays.length} cumpleaños en ${fullMonths[monthIndex]}` : `Sin cumpleaños en ${fullMonths[monthIndex]}`}</div>
+        {monthBirthdays.map(({ member, parts }) => (
+          <button key={member.id} className="dash-calendar-list-item" onClick={() => onMemberClick(member.id)}>
+            <span className="dash-calendar-list-day">{parts.day}</span>
+            <span className="dash-calendar-list-name">{member.lastName}, {member.firstName}</span>
+            <Cake size={14} strokeWidth={1.5} />
+          </button>
+        ))}
+      </div>
+      <div className="dash-calendar-legend"><span className="dash-calendar-dot" /> Seleccioná un nombre para ver el perfil.</div>
     </Card>
   );
 };
@@ -236,31 +252,57 @@ const Dashboard = () => {
         const [members, groups, events, pendingFups] = await Promise.all([
           getMembers(), getGroups(), getEvents(), getPendingFollowUps()
         ]);
+        const isAdminOrPastor = hasRole(['Admin', 'Pastor']);
+        const currentMember = members.find(member =>
+          member.email && currentUserEmail(userData) &&
+          member.email.trim().toLowerCase() === currentUserEmail(userData).trim().toLowerCase()
+        );
+        const matchesLeader = (group, member) => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
+          .filter(Boolean)
+          .some(value => value === member?.id || normDashboard(value) === normDashboard(`${member?.lastName}, ${member?.firstName}`) || normDashboard(value) === normDashboard(`${member?.firstName} ${member?.lastName}`));
+        const visibleGroups = isAdminOrPastor || !currentMember
+          ? groups
+          : groups.filter(group => matchesLeader(group, currentMember));
+        const visibleGroupIds = new Set(visibleGroups.map(group => group.id));
+        const visibleGroupNames = new Set(visibleGroups.map(group => normDashboard(group.name)));
+        const visibleMembers = isAdminOrPastor || !currentMember
+          ? members
+          : members.filter(member => visibleGroups.some(group => {
+              const memberGroup = normDashboard(member.group);
+              const groupName = normDashboard(group.name);
+              return memberGroup === groupName || groupName.includes(memberGroup);
+            }));
+        const visibleEvents = isAdminOrPastor || !currentMember
+          ? events
+          : events.filter(event => visibleGroupIds.has(event.groupId) || visibleGroupNames.has(normDashboard(event.group)));
+        const visibleFollowUps = isAdminOrPastor || !currentMember
+          ? pendingFups
+          : pendingFups.filter(followUp => visibleMembers.some(member => member.id === followUp.memberId));
         const now = new Date();
-        const upcoming = events
+        const upcoming = visibleEvents
           .filter(e => e.date && new Date(e.date + 'T12:00:00') >= now)
           .sort((a, b) => new Date(a.date + 'T12:00:00') - new Date(b.date + 'T12:00:00'))
           .slice(0, 5);
 
-        const recent = [...members]
+        const recent = [...visibleMembers]
           .filter(m => m.createdAt)
           .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
           .slice(0, 5);
 
-        const baptised = members.filter(isBaptised).length;
+        const baptised = visibleMembers.filter(isBaptised).length;
 
         const memberMap = {};
         members.forEach(m => { memberMap[m.id] = m; });
 
         setStats({
-          members: members.length,
-          groups: groups.length,
-          events: events.filter(e => e.date && new Date(e.date + 'T12:00:00') >= now).length,
+          members: visibleMembers.length,
+          groups: visibleGroups.length,
+          events: visibleEvents.filter(e => e.date && new Date(e.date + 'T12:00:00') >= now).length,
           baptised,
           upcomingEvents: upcoming,
           recentMembers: recent,
           allMembers: members,
-          pendingFollowUps: pendingFups.map(f => ({ ...f, memberName: memberMap[f.memberId] ? `${memberMap[f.memberId].firstName} ${memberMap[f.memberId].lastName}` : '?' }))
+          pendingFollowUps: visibleFollowUps.map(f => ({ ...f, memberName: memberMap[f.memberId] ? `${memberMap[f.memberId].firstName} ${memberMap[f.memberId].lastName}` : '?' }))
         });
       } catch {
         console.error('Error loading dashboard');
@@ -269,7 +311,7 @@ const Dashboard = () => {
       }
     };
     load();
-  }, []);
+  }, [hasRole, userData]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -394,7 +436,7 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          <Card>
+          {hasRole(['Admin', 'Pastor']) && <Card>
             <div className="dash-card-hd">
               <div className="dash-card-title">
                 <UserPlus size={16} strokeWidth={1.5} />
@@ -426,7 +468,7 @@ const Dashboard = () => {
                 ))
               )}
             </div>
-          </Card>
+          </Card>}
 
           <BirthdayCalendar members={stats.allMembers} onMemberClick={id => navigate(`/dashboard/miembros/${id}`)} />
         </div>

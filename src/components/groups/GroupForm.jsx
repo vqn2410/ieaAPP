@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Button from '../common/Button';
 import { createGroup, updateGroup } from '../../services/groupService';
 import { updateMember } from '../../services/memberService';
+import { addUserRoleByEmail } from '../../services/userService';
 import './GroupForm.css';
 
 const GroupForm = ({ initialData, onSuccess, membersList }) => {
@@ -41,7 +42,15 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 zone,
                 capacity: capacity ? Number(capacity) : null,
                 meetingAddress,
-                initialMemberIds: initialMembers,
+                initialMemberIds: initialMembers.filter(memberId =>
+                    ![...facilitators, ...coFacilitators].some(idOrName => {
+                        const member = membersList.find(item =>
+                            item.id === idOrName ||
+                            `${item.lastName}, ${item.firstName}`.toLowerCase() === String(idOrName).toLowerCase()
+                        );
+                        return member?.id === memberId;
+                    })
+                ),
                 facilitatorEmails: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
                     const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
                     return member?.email?.trim().toLowerCase();
@@ -80,9 +89,9 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 if (!newRoles.includes(targetRole)) {
                     newRoles.push(targetRole);
                     if (newRoles.includes('Member')) newRoles = newRoles.filter(r => r !== 'Member');
-                    await updateMember(memberId, { role: newRoles, group: groupName });
-                } else if (m.group !== groupName) {
-                    await updateMember(memberId, { group: groupName });
+                    // La responsabilidad no cambia el grupo de pertenencia.
+                    await updateMember(memberId, { role: newRoles });
+                    await addUserRoleByEmail(m.email, targetRole);
                 }
             };
 
@@ -94,7 +103,9 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 const m = findMember(cfId);
                 if (m) await updateRole(m.id, 'CoFacilitator');
             }
+            const responsibleIds = new Set([...facilitators, ...coFacilitators].map(idOrName => findMember(idOrName)?.id).filter(Boolean));
             for (const memberId of initialMembers) {
+                if (responsibleIds.has(memberId)) continue;
                 const member = membersList.find(item => item.id === memberId);
                 if (member && member.group !== groupName) await updateMember(memberId, { group: groupName });
             }

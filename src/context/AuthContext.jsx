@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../services/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -47,7 +47,14 @@ export function AuthProvider({ children }) {
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
-            setUserData(docSnap.data());
+            const storedData = docSnap.data();
+            // Corrige documentos antiguos que conservaron el flag activo
+            // después de haber registrado una fecha de cambio.
+            if (storedData.needsPasswordChange === true && storedData.lastPasswordChange) {
+              await updateDoc(docRef, { needsPasswordChange: false });
+              storedData.needsPasswordChange = false;
+            }
+            setUserData(storedData);
           } else {
             // Document doesn't exist yet, check for pre-assignment by email
             const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
@@ -61,6 +68,7 @@ export function AuthProvider({ children }) {
                 role: preData.role || ['Member'], 
                 email: user.email.toLowerCase(), 
                 name: preData.name || user.displayName || 'Usuario', 
+                needsPasswordChange: true,
                 createdAt: new Date() 
               };
               // Migrate and delete pre-assignment
@@ -73,6 +81,7 @@ export function AuthProvider({ children }) {
                 role: ['Member'],
                 email: user.email.toLowerCase(), 
                 name: user.displayName || 'Usuario', 
+                needsPasswordChange: true,
                 createdAt: new Date() 
               };
               await setDoc(docRef, finalAuthData);

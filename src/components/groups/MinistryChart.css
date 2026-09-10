@@ -1,0 +1,799 @@
+.chart-canvas-viewport {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  overflow: hidden;
+  background: radial-gradient(circle at 25% 50%, color-mix(in srgb, var(--color-primary) 12%, var(--color-bg)) 0%, var(--color-bg) 85%);
+  border-radius: 18px;
+  border: 2px solid var(--color-border);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05);
+  touch-action: none;
+}
+.chart-canvas-viewport:active {
+  cursor: grabbing;
+}
+
+/* Pantalla completa: tapa toda la ventana y maximiza el lienzo */
+.chart-canvas-viewport.fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+.chart-canvas-viewport.fullscreen .chart-canvas-scene {
+  padding: 6rem 4rem;
+}
+
+.chart-canvas-scene {
+  transform-origin: center center;
+  will-change: transform;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 2rem;
+  min-width: min-content;
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+.chart-canvas-controls {
+  position: absolute;
+  bottom: 1.2rem;
+  right: 1.2rem;
+  display: flex;
+  gap: 0.4rem;
+  z-index: 10;
+  background: var(--color-surface);
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.chart-canvas-btn {
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.chart-canvas-btn:hover {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+.chart-canvas-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  height: 34px;
+  padding: 0 .7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chart-canvas-view-btn:hover,
+.chart-canvas-view-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-bg);
+}
+
+.chart-canvas-hint {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ============ ÁRBOL HORIZONTAL (izquierda -> derecha) ============ */
+.mt-tree,
+.mt-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mt-tree ul {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+.mt-col {
+  flex-direction: column;
+}
+
+/* Cada item: [nodo] [hijos a la derecha], nodo centrado verticalmente. */
+.mt-tree li {
+  list-style: none;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 9px 0 9px 28px;
+}
+
+/* Stub horizontal: del riel vertical al centro del nodo */
+.mt-tree li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 28px;
+  height: 3px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--color-primary) 25%, var(--color-border)),
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 25%, var(--color-border))
+  );
+  border-radius: 999px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  animation: energy-flow-x 1.2s linear infinite;
+}
+
+/* Riel vertical que une a los hermanos (misma x en todos los <li> del nivel) */
+.mt-tree li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-primary) 25%, var(--color-border)),
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 25%, var(--color-border))
+  );
+  border-radius: 999px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  animation: energy-flow-y 1.2s linear infinite;
+}
+.mt-tree li:first-child::after {
+  top: 50%;
+}
+.mt-tree li:last-child::after {
+  bottom: 50%;
+}
+.mt-tree li:only-child::after {
+  display: none;
+}
+
+/* La raíz no tiene padre: sin stub ni riel */
+.mt-tree li.mt-root-li {
+  padding-left: 0;
+}
+.mt-tree li.mt-root-li::before,
+.mt-tree li.mt-root-li::after {
+  display: none;
+}
+
+/* ============ NODOS ============ */
+.mt-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.15rem;
+  border: 2px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 100%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.mt-node.has-children { cursor: pointer; }
+.mt-node.has-children:hover,
+.mt-node.open {
+  border-color: var(--color-primary);
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  box-shadow: 0 0 25px color-mix(in srgb, var(--color-primary) 30%, transparent), 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+.mt-node.has-children:active { transform: scale(0.97); }
+.mt-node.open {
+  animation: node-glow 2s ease-in-out infinite;
+}
+
+.mt-node.root {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border-color: var(--color-primary);
+  padding: 0.9rem 1.6rem;
+  box-shadow: 0 0 35px color-mix(in srgb, var(--color-primary) 50%, transparent);
+  white-space: normal;
+  max-width: 240px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+.mt-node.root span {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.mt-node.root strong { font-size: 1rem; line-height: 1.2; }
+.mt-node.root .mt-count {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  color: var(--color-primary);
+  background: var(--color-bg);
+  box-shadow: none;
+}
+
+.mt-node.group {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+.mt-node.group em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.mt-node.person {
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+}
+
+.mt-count {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  flex-shrink: 0;
+}
+
+.mt-chevron {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.mt-node.open .mt-chevron {
+  transform: rotate(-90deg);
+  color: var(--color-primary);
+}
+
+/* ============ FILA DE MIEMBRO + RAMAS ============ */
+.mt-member-item {
+  align-items: center;
+}
+.mt-member-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Cada facilitador tiene una neurona propia; no se repite su nombre en el
+   colector. Las señales se reúnen antes del nodo de grupo. */
+.mt-neuron-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 2.4rem;
+  height: 1.8rem;
+  margin-left: 0.65rem;
+}
+.mt-neuron-cell::before {
+  content: '';
+  width: 2.4rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 25%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  animation: neural-flow 1.5s linear infinite;
+}
+.mt-neuron-dot {
+  position: absolute;
+  right: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 5px var(--color-primary), 0 0 14px var(--color-primary);
+  animation: neuron-fire 1.8s ease-in-out infinite;
+}
+.mt-neuron-cell.to-up::after,
+.mt-neuron-cell.to-down::after {
+  content: '';
+  position: absolute;
+  right: -0.2rem;
+  width: 3px;
+  height: var(--convergence-distance, 5.5rem);
+  border-radius: 999px;
+  background: linear-gradient(var(--color-primary), color-mix(in srgb, var(--color-primary) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+  animation: neural-pulse 2.2s ease-in-out infinite;
+}
+.mt-neuron-cell.to-up::after {
+  bottom: 50%;
+}
+.mt-neuron-cell.to-down::after {
+  top: 50%;
+}
+.mt-neuron-branch {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+.mt-neuron-branch > .mt-node.group {
+  margin-left: 1rem;
+  position: relative;
+  z-index: 3;
+  transform: translateZ(24px) rotateY(-2deg);
+  transition: transform .3s ease, margin .3s ease;
+}
+.mt-neuron-branch > .mt-node.group::before {
+  content: '';
+  position: absolute;
+  left: -1.1rem;
+  top: 50%;
+  width: 1.1rem;
+  height: 1rem;
+  border-top: 3px solid var(--color-primary);
+  border-right: 3px solid var(--color-primary);
+  border-radius: 0 14px 0 0;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 65%, transparent));
+}
+.mt-neuron-branch > .mt-node.group::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: -0.12rem;
+  top: calc(50% - 0.22rem);
+  width: 0;
+  height: 0;
+  border-top: 0.22rem solid transparent;
+  border-bottom: 0.22rem solid transparent;
+  border-left: 0.35rem solid var(--color-primary);
+  transform: translateX(-100%);
+}
+.mt-neuron-secondary {
+  display: inline-flex;
+  align-items: center;
+  width: 2rem;
+  height: 1.8rem;
+  position: relative;
+  margin-left: -0.25rem;
+}
+.mt-neuron-secondary::before {
+  content: '';
+  width: 2.8rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 25%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  animation: neural-flow 1.5s linear infinite;
+}
+.mt-neuron-secondary .mt-neuron-dot {
+  right: 0;
+}
+.mt-neuron-secondary::after {
+  content: '';
+  position: absolute;
+  right: -0.2rem;
+  width: 3px;
+  height: var(--convergence-distance, 5.5rem);
+  border-radius: 999px;
+  background: linear-gradient(var(--color-primary), color-mix(in srgb, var(--color-primary) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+  animation: neural-pulse 2.2s ease-in-out infinite;
+}
+.mt-neuron-secondary.to-up::after {
+  bottom: 50%;
+  transform-origin: bottom;
+}
+.mt-neuron-secondary.to-down::after {
+  top: 50%;
+  transform-origin: top;
+}
+
+/* Profundidad 3D solo en la red de facilitadores, sin rotar el árbol completo. */
+.mt-neuron-member,
+.mt-neuron-member .mt-member-row,
+.mt-neuron-branch {
+  transform-style: preserve-3d;
+}
+.mt-neuron-member .mt-node.person {
+  transform: translateZ(16px);
+  box-shadow:
+    0 8px 0 color-mix(in srgb, var(--color-primary) 16%, var(--color-border)),
+    0 12px 24px rgba(0, 0, 0, 0.16),
+    0 0 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+.mt-neuron-member .mt-node.person:hover {
+  transform: translateZ(28px) rotateY(-3deg);
+}
+.mt-neuron-branch {
+  perspective: 700px;
+}
+.mt-neuron-branch:nth-child(2n) {
+  transform: translateZ(8px) rotateY(-1deg);
+}
+.mt-neuron-branch:nth-child(3n) {
+  transform: translateZ(14px) rotateY(1deg);
+}
+.mt-neuron-branch > .mt-node.group {
+  box-shadow:
+    0 9px 0 color-mix(in srgb, var(--color-primary) 18%, var(--color-border)),
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 24px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+.mt-neuron-branch > .mt-node.group:hover {
+  transform: translateZ(38px) rotateY(-5deg) rotateX(2deg);
+}
+.mt-neuron-cell::before,
+.mt-neuron-secondary::before {
+  transform: translateZ(8px);
+  box-shadow:
+    0 0 7px color-mix(in srgb, var(--color-primary) 75%, transparent),
+    0 4px 8px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+.mt-neuron-dot,
+.mt-neuron-secondary .mt-neuron-dot {
+  transform: translateZ(18px);
+}
+.mt-neuron-convergence {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 2.8rem;
+  min-height: 3.5rem;
+  padding: 0.35rem 0.7rem;
+  border-right: 3px solid var(--color-primary);
+  border-radius: 0 18px 18px 0;
+  position: relative;
+}
+.mt-neuron-convergence::after {
+  content: '';
+  position: absolute;
+  right: -0.7rem;
+  top: 50%;
+  width: 0.7rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+}
+.mt-neuron-pulse {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 6px var(--color-primary), 0 0 15px var(--color-primary);
+  animation: neuron-fire 1.8s ease-in-out infinite;
+}
+
+.mt-subgroups-branches {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-left: 1.6rem;
+  position: relative;
+}
+
+.mt-subgroups-branches::before {
+  content: '';
+  position: absolute;
+  left: -1.6rem;
+  top: 50%;
+  width: 1.6rem;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 35%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--color-primary) 60%, transparent));
+  animation: neural-pulse 2.2s ease-in-out infinite;
+}
+
+/* Rama desde un miembro hacia su subgrupo */
+.mt-subgroup-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  position: relative;
+  padding-left: 26px;
+  transform: none;
+}
+.mt-subgroup-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 26px;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 35%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--color-primary) 60%, transparent));
+  animation: neural-pulse 2.2s ease-in-out infinite;
+}
+
+/* Varios facilitadores convergen en un único nodo de grupo. */
+.mt-convergence {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+}
+.mt-convergence-leaders {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  position: relative;
+}
+.mt-convergence-leaders::before {
+  content: '';
+  position: absolute;
+  right: -0.2rem;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 65%, transparent);
+}
+.mt-convergence-leaders::after {
+  content: '';
+  position: absolute;
+  right: -0.45rem;
+  top: 50%;
+  width: 0.75rem;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--color-primary);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary) 60%, transparent));
+}
+.mt-convergence-item {
+  align-items: center;
+  margin-top: 0.35rem;
+}
+.mt-convergence .mt-co-fac-badge {
+  border-style: solid;
+}
+
+/* Badge de vínculo / co-facilitador */
+.mt-co-fac-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 60%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mt-co-fac-link {
+  cursor: pointer;
+  font-family: inherit;
+}
+.mt-co-fac-link:hover {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border-style: solid;
+}
+
+.ministry-empty {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Impulso de energía recorriendo las uniones */
+@keyframes energy-flow-x {
+  from { background-position: 0 0; }
+  to { background-position: 36px 0; }
+}
+@keyframes energy-flow-y {
+  from { background-position: 0 0; }
+  to { background-position: 0 36px; }
+}
+@keyframes node-glow {
+  0%, 100% { box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 25%, transparent), 0 6px 16px rgba(0, 0, 0, 0.12); }
+  50% { box-shadow: 0 0 26px color-mix(in srgb, var(--color-primary) 55%, transparent), 0 6px 16px rgba(0, 0, 0, 0.12); }
+}
+@keyframes neural-pulse {
+  0%, 100% { opacity: 0.55; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 11px color-mix(in srgb, var(--color-primary) 80%, transparent)); }
+}
+@keyframes neural-flow {
+  from { opacity: 0.35; transform: scaleX(0.75); transform-origin: left; }
+  50% { opacity: 1; transform: scaleX(1); }
+  to { opacity: 0.35; transform: scaleX(0.75); transform-origin: right; }
+}
+@keyframes neuron-fire {
+  0%, 100% { transform: scale(0.75); opacity: 0.55; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-canvas-scene { transform: none !important; }
+  .mt-tree li::before,
+  .mt-tree li::after,
+  .mt-subgroup-wrap::before,
+  .mt-subgroups-branches::before,
+  .mt-neuron-cell::before,
+  .mt-neuron-dot,
+  .mt-neuron-pulse { animation: none; }
+  .mt-node.open { animation: none; }
+}
+
+/* ============ RED NEURONAL SVG ============ */
+.neural-network-viewport {
+  background:
+    radial-gradient(circle at 18% 35%, color-mix(in srgb, var(--color-primary) 15%, transparent), transparent 28%),
+    radial-gradient(circle at 78% 70%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 30%),
+    var(--color-bg);
+}
+.neural-network-scene {
+  display: block;
+  min-width: max-content;
+  min-height: max-content;
+  padding: 2rem;
+}
+.neural-network-svg {
+  display: block;
+  overflow: visible;
+}
+.neural-edges {
+  fill: none;
+}
+.neural-edge {
+  fill: none;
+  stroke: url(#neural-edge);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-primary) 65%, transparent));
+  stroke-dasharray: 8 14;
+  animation: neural-edge-flow 2.4s linear infinite;
+}
+.neural-edge.lineage-highlight {
+  stroke: var(--color-primary);
+  stroke-width: 6;
+  filter: drop-shadow(0 0 8px var(--color-primary));
+  stroke-dasharray: 13 9;
+  animation-duration: .9s;
+}
+.network-node {
+  cursor: grab;
+  user-select: none;
+}
+.network-node:active { cursor: grabbing; }
+.network-node-clickable {
+  cursor: pointer;
+}
+.network-node-circle {
+  fill: var(--color-surface);
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  filter: drop-shadow(0 8px 9px rgba(0, 0, 0, .18));
+  transition: transform .25s ease, fill .25s ease;
+}
+.network-node-root .network-node-circle {
+  fill: var(--color-primary);
+  stroke: var(--color-primary);
+}
+.network-node-group .network-node-circle {
+  fill: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+}
+.network-node:hover .network-node-circle,
+.network-node-group[aria-expanded="true"] .network-node-circle {
+  fill: color-mix(in srgb, var(--color-primary) 28%, var(--color-surface));
+  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--color-primary) 75%, transparent));
+}
+.network-node.lineage-highlight .network-node-circle {
+  stroke: var(--color-primary);
+  stroke-width: 6;
+  filter: drop-shadow(0 0 16px var(--color-primary));
+}
+.network-node.lineage-highlight .network-node-halo {
+  opacity: 1;
+  stroke-width: 4;
+  stroke: var(--color-primary);
+}
+.network-node-halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  stroke-width: 2;
+  opacity: .45;
+  animation: none;
+}
+.network-node-label {
+  fill: var(--color-text);
+  font-size: 15px;
+  font-weight: 800;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.network-node-root .network-node-label {
+  fill: var(--color-bg);
+  font-size: 17px;
+}
+.network-node-sub {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+@keyframes neural-edge-flow {
+  to { stroke-dashoffset: -44; }
+}
+@keyframes neuron-halo {
+  0%, 100% { opacity: .25; transform: scale(.96); transform-origin: center; }
+  50% { opacity: .75; transform: scale(1.08); transform-origin: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .neural-edge,
+  .network-node-halo { animation: none; }
+}
