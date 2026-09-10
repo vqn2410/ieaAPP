@@ -4,6 +4,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordRe
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
@@ -37,6 +38,16 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    const storedVersion = localStorage.getItem('app-version');
+    const versionChanged = storedVersion && storedVersion !== APP_VERSION;
+
+    if (versionChanged) {
+      // Fuerza un nuevo inicio de sesión después de una actualización.
+      sessionStorage.clear();
+      signOut(auth).catch(error => console.error('Error cerrando sesión por actualización:', error));
+    }
+    localStorage.setItem('app-version', APP_VERSION);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
