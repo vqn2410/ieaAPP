@@ -22,6 +22,18 @@ service cloud.firestore {
       return isAuth() && (getUserField('role')).hasAny(roles);
     }
 
+    function isGlobalManager() {
+      return hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    function hasCampus(campusId) {
+      return isAuth() && campusId != null && getUserField('campusIds').hasAny([campusId]);
+    }
+
+    function canAccessCampus(campusId) {
+      return isGlobalManager() || (hasRole('CampusAdmin') && hasCampus(campusId));
+    }
+
     function managesGroup(groupId) {
       return isAuth()
         && request.auth.token.email != null
@@ -29,7 +41,8 @@ service cloud.firestore {
     }
 
     function canManageMemberGroup(groupId) {
-      return hasAnyRole(['Admin', 'Pastor'])
+      return isGlobalManager()
+        || (hasRole('CampusAdmin') && canAccessCampus(get(/databases/$(database)/documents/groups/$(groupId)).data.campusId))
         || (hasAnyRole(['Facilitator', 'CoFacilitator']) && managesGroup(groupId));
     }
 
@@ -43,14 +56,19 @@ service cloud.firestore {
       allow delete: if isAuth() && hasRole('Admin');
     }
 
+    match /campuses/{campusId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isGlobalManager();
+    }
+
     // === Colección: members ===
     // Solo usuarios autenticados pueden leer
     // Admins y pastores gestionan cualquier miembro; facilitadores solo su grupo.
     match /members/{memberId} {
-      allow read: if isAuth();
+      allow read: if isAuth() && canAccessCampus(resource.data.campusId);
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
       allow update: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
-      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow delete: if isGlobalManager() || (hasRole('CampusAdmin') && canAccessCampus(resource.data.campusId));
     }
 
     // === Colección: kids ===
@@ -87,17 +105,17 @@ service cloud.firestore {
 
     // === Colección: group_attendance ===
     match /group_attendance/{recordId} {
-      allow read: if isAuth();
-      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'Facilitator', 'CoFacilitator']);
-      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow read: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId);
+      allow create, update: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isGlobalManager() || hasRole('CampusAdmin');
     }
 
     // === Colección: groups ===
     match /groups/{groupId} {
-      allow read: if isAuth();
-      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
-      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
-      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow read: if isAuth() && canAccessCampus(resource.data.campusId);
+      allow create: if isAuth() && canAccessCampus(request.resource.data.campusId);
+      allow update: if isAuth() && canAccessCampus(request.resource.data.campusId);
+      allow delete: if isGlobalManager() || (hasRole('CampusAdmin') && canAccessCampus(resource.data.campusId));
     }
 
     // === Colección: finances ===
@@ -155,9 +173,23 @@ service cloud.firestore {
 
     // === Colección: groupEvaluations ===
     match /groupEvaluations/{docId} {
-      allow read: if isAuth();
-      allow create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
-      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+      allow read: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId);
+      allow create, update: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isGlobalManager() || hasRole('CampusAdmin');
+    }
+
+    match /transferRequests/{requestId} {
+      allow read: if isAuth() && (
+        isGlobalManager() ||
+        canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.toGroupId)).data.campusId) ||
+        (resource.data.fromGroupId != null && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.fromGroupId)).data.campusId))
+      );
+      allow create: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.toGroupId)).data.campusId);
+      allow update: if isAuth() && (
+        isGlobalManager() ||
+        (resource.data.fromGroupId != null && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.fromGroupId)).data.campusId))
+      );
+      allow delete: if isGlobalManager();
     }
 
     // === Denegar todo lo demás ===

@@ -4,12 +4,16 @@ import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, 
 const COLLECTION_NAME = 'members';
 
 // Obtener todos los miembros
-export const getMembers = async (groupId = null) => {
+export const getMembers = async (groupId = null, campusId = null) => {
     try {
         let q;
-        if (groupId) {
+        if (groupId && campusId) {
+            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId), where('campusId', '==', campusId), orderBy('lastName'));
+        } else if (groupId) {
             // Filtrar por grupo si el usuario es facilitador
             q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId), orderBy('lastName'));
+        } else if (campusId) {
+            q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId), orderBy('lastName'));
         } else {
             // Todos los miembros
             q = query(collection(db, COLLECTION_NAME), orderBy('lastName'));

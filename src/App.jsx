@@ -1,34 +1,35 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
-import MainLayout from './components/layout/MainLayout';
+import MainLayout from './components/portal/layout/MainLayout';
 import InactivityTimer from './components/common/InactivityTimer';
+import RouteTransition from './components/common/RouteTransition';
 import { useAuth } from './context/AuthContext';
 
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Members = lazy(() => import('./pages/Members'));
-const MemberProfile = lazy(() => import('./pages/MemberProfile'));
-const Events = lazy(() => import('./pages/Events'));
-const News = lazy(() => import('./pages/News'));
-const Live = lazy(() => import('./pages/Live'));
-const GroupDetails = lazy(() => import('./pages/GroupDetails'));
-const GrowthGroups = lazy(() => import('./pages/GrowthGroups'));
-const Reports = lazy(() => import('./pages/Reports'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Home = lazy(() => import('./pages/Home'));
-const Login = lazy(() => import('./pages/Login'));
-const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const Dashboard = lazy(() => import('./pages/portal/Dashboard'));
+const Members = lazy(() => import('./pages/portal/Members'));
+const MemberProfile = lazy(() => import('./pages/portal/MemberProfile'));
+const Events = lazy(() => import('./pages/portal/Events'));
+const News = lazy(() => import('./pages/landing/News'));
+const Live = lazy(() => import('./pages/landing/Live'));
+const GroupDetails = lazy(() => import('./pages/portal/GroupDetails'));
+const GrowthGroups = lazy(() => import('./pages/portal/GrowthGroups'));
+const Reports = lazy(() => import('./pages/portal/Reports'));
+const Settings = lazy(() => import('./pages/portal/Settings'));
+const Home = lazy(() => import('./pages/landing/Home'));
+const Login = lazy(() => import('./pages/portal/Login'));
+const ChangePassword = lazy(() => import('./pages/portal/ChangePassword'));
 
-const Visitors = lazy(() => import('./pages/Visitors'));
-const MemberPortal = lazy(() => import('./pages/MemberPortal'));
-const SessionExpired = lazy(() => import('./pages/SessionExpired'));
-const Notes = lazy(() => import('./pages/Notes'));
-const FocusTimer = lazy(() => import('./pages/FocusTimer'));
-const Assistant = lazy(() => import('./pages/Assistant'));
-const Kids = lazy(() => import('./pages/Kids'));
-const IbrpAssigned = lazy(() => import('./pages/IbrpAssigned'));
-const IeaMockup = lazy(() => import('./pages/IeaMockup'));
-const Extensions = lazy(() => import('./pages/Extensions'));
+const Visitors = lazy(() => import('./pages/portal/Visitors'));
+const MemberPortal = lazy(() => import('./pages/portal/MemberPortal'));
+const SessionExpired = lazy(() => import('./pages/portal/SessionExpired'));
+const Notes = lazy(() => import('./pages/portal/Notes'));
+const FocusTimer = lazy(() => import('./pages/portal/FocusTimer'));
+const Assistant = lazy(() => import('./pages/portal/Assistant'));
+const Kids = lazy(() => import('./pages/portal/Kids'));
+const IbrpAssigned = lazy(() => import('./pages/portal/IbrpAssigned'));
+const IeaMockup = lazy(() => import('./pages/landing/IeaMockup'));
+const Extensions = lazy(() => import('./pages/landing/Extensions'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, userData, loading, hasRole } = useAuth();
@@ -73,8 +74,9 @@ function App() {
 
   return (
     <Router>
+      <RouteTransition />
       <InactivityTimer>
-        <Suspense fallback={<Loading />}>
+        <Suspense fallback={<RouteTransition mode="loading" />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -109,7 +111,7 @@ function App() {
             <Route 
               path="grupos" 
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
                   <GrowthGroups />
                 </ProtectedRoute>
               } 
@@ -117,7 +119,7 @@ function App() {
             <Route 
               path="grupos/:id" 
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'Facilitator', 'CoFacilitator']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']}>
                   <GroupDetails />
                 </ProtectedRoute>
               } 

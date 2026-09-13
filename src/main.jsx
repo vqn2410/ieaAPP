@@ -5,6 +5,7 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { ToastProvider } from './components/common/Toast';
+import { CampusProvider } from './context/CampusContext';
 
 if ('serviceWorker' in navigator) {
   let refreshing = false;
@@ -23,9 +24,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
       <SettingsProvider>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <CampusProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </CampusProvider>
       </SettingsProvider>
     </AuthProvider>
   </React.StrictMode>,

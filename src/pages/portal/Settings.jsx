@@ -1,0 +1,961 @@
+import React, { useState, useEffect, useRef } from 'react';
+import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
+import { SkeletonCard } from '../../components/common/Skeleton';
+import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2, ClipboardList } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { db } from '../../services/firebase';
+import { getHolidays, addHoliday, deleteHoliday } from '../../services/holidayService';
+import { getCampuses, createCampus, updateCampus, migrateLegacyRecordsToCampus } from '../../services/campusService';
+import { getMembers, createMember, updateMember } from '../../services/memberService';
+import MemberForm from '../../components/portal/members/MemberForm';
+import Modal from '../../components/common/Modal';
+import { auth } from '../../services/firebase';
+import './Settings.css';
+
+const Settings = () => {
+  const { currentUser, userData } = useAuth();
+  const { settings, updateSettings, userPreferences, updateUserPreference } = useSettings();
+  const [formData, setFormData] = useState(settings);
+  const reasonInputRef = useRef(null);
+  const holidayDateRef = useRef(null);
+  const holidayDescRef = useRef(null);
+  const [saving, setSaving] = useState(false);
+  const [appUsers, setAppUsers] = useState([]);
+  const [campuses, setCampuses] = useState([]);
+  const [newCampusName, setNewCampusName] = useState('');
+  const [migratingCampus, setMigratingCampus] = useState(false);
+  const [newAdmin, setNewAdmin] = useState({ campusId: '', name: '', email: '' });
+  const [savingAdmin, setSavingAdmin] = useState(false);
+  const [campusProfileMember, setCampusProfileMember] = useState(null);
+
+  // Profile state
+  const [profileData, setProfileData] = useState({
+    name: userData?.name || '',
+    phone: userData?.phone || '',
+    email: userData?.email || ''
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [newArea, setNewArea] = useState('');
+  
+  // Holidays state
+  const [holidays, setHolidays] = useState([]);
+
+  const loadUsers = async () => {
+     try {
+       // Load all documents from 'users' collection (real users and pre-assignments)
+       const userSnap = await getDocs(collection(db, 'users'));
+       const allUserDocs = userSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+       
+       // Deduplicate by email, prioritizing real UID over 'pre-' docs
+       const consolidatedUsersMap = new Map();
+       
+       allUserDocs.forEach(u => {
+         if (!u.email) return;
+         const emailKey = u.email.toLowerCase().trim();
+         
+         // If it's a pre-doc that was already migrated, ignore it unless there's no real user yet
+         if (u.id.startsWith('pre-') && u.migratedTo) return;
+
+         const existing = consolidatedUsersMap.get(emailKey);
+         // Prioritization: 
+         // 1. Real UID (non-pre)
+         // 2. Pre-doc (if no real UID yet)
+         if (!existing || (existing.id.startsWith('pre-') && !u.id.startsWith('pre-'))) {
+           consolidatedUsersMap.set(emailKey, u);
+         }
+       });
+
+       // Now load members to find those without ANY record in 'users' collection
+       const memberSnap = await getDocs(collection(db, 'members'));
+       const membersWithEmail = memberSnap.docs
+         .map(d => ({id: d.id, ...d.data()}))
+         .filter(m => m.email && m.email.includes('@'));
+
+       const finalUsers = Array.from(consolidatedUsersMap.values());
+       
+       membersWithEmail.forEach(m => {
+         const emailKey = m.email.toLowerCase().trim();
+         if (!consolidatedUsersMap.has(emailKey)) {
+           finalUsers.push({
+             id: `pending-${m.id}`,
+             email: m.email,
+             name: `${m.firstName} ${m.lastName}`,
+             role: ['Member'],
+             isMemberOnly: true
+           });
+         }
+       });
+
+       setAppUsers(finalUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+     } catch(e) {
+       console.error("Error loading combined users:", e);
+     }
+  };
+
+  const loadHolidays = async () => {
+      const data = await getHolidays();
+      setHolidays(data);
+  };
+
+  const loadCampuses = async () => {
+    try {
+      setCampuses(await getCampuses());
+    } catch (error) {
+      console.error('Error loading campuses:', error);
+    }
+  };
+
+  // Sync state when context loads initially
+  useEffect(() => {
+    setFormData(settings);
+    loadUsers();
+    loadHolidays();
+    loadCampuses();
+  }, [settings]);
+
+  useEffect(() => {
+    if (userData) {
+     setProfileData({
+        name: userData.name || '',
+        phone: userData.phone || '',
+        email: userData.email || '',
+        serviceAreas: userData.serviceAreas || []
+      });
+    }
+  }, [userData]);
+
+  const handleCreateCampus = async () => {
+    if (!newCampusName.trim()) return;
+    await createCampus({ name: newCampusName });
+    setNewCampusName('');
+    loadCampuses();
+  };
+
+  const handleMigrateLegacy = async () => {
+    const central = campuses.find(campus => /central/i.test(campus.name));
+    if (!central) {
+      alert('Primero creá un campus llamado "Sede Central".');
+      return;
+    }
+    if (!window.confirm('Se asignarán a Sede Central todos los miembros y grupos antiguos sin campus. ¿Continuar?')) return;
+    setMigratingCampus(true);
+    try {
+      const count = await migrateLegacyRecordsToCampus(central.id);
+      alert(`${count} registros asignados a Sede Central.`);
+      loadCampuses();
+    } catch (error) {
+      console.error('Error migrando registros antiguos:', error);
+      alert('No se pudo completar la migración.');
+    } finally {
+      setMigratingCampus(false);
+    }
+  };
+
+  const toggleCampusAdmin = async (campus, user) => {
+    if (/central/i.test(campus.name)) return;
+    const current = Array.isArray(user.campusIds) ? user.campusIds : [];
+    const next = current.includes(campus.id)
+      ? current.filter(id => id !== campus.id)
+      : [...current, campus.id].slice(-2);
+    const currentRoles = Array.isArray(user.role) ? user.role : [user.role || 'Member'];
+    const nextRoles = next.length > 0
+      ? [...new Set([...currentRoles.filter(role => role !== 'Member'), 'CampusAdmin'])]
+      : currentRoles.filter(role => role !== 'CampusAdmin').length > 0
+        ? currentRoles.filter(role => role !== 'CampusAdmin')
+        : ['Member'];
+    await updateDoc(doc(db, 'users', user.id), {
+      campusIds: next,
+      role: nextRoles,
+      ...(next.length > 0 && !next.includes(user.defaultCampusId) ? { defaultCampusId: next[0] } : {}),
+    });
+
+    // El encargado también debe existir en el padrón de su campus,
+    // aunque nunca haya pertenecido a Sede Central.
+    if (next.includes(campus.id)) {
+      const members = await getMembers();
+      const existing = members.find(member => member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase());
+      if (existing) {
+        await updateMember(existing.id, { campusId: campus.id, role: nextRoles });
+      } else {
+        const nameParts = String(user.name || '').trim().split(/\s+/).filter(Boolean);
+        await createMember({
+          firstName: nameParts.shift() || 'Encargado',
+          lastName: nameParts.join(' ') || campus.name,
+          email: user.email,
+          campusId: campus.id,
+          role: nextRoles,
+          group: '',
+          extraData: { active: 'Activo' },
+        });
+      }
+    } else {
+      const members = await getMembers();
+      const existing = members.find(member => member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase() && member.campusId === campus.id);
+      if (existing) await updateMember(existing.id, { campusId: null });
+    }
+    loadUsers();
+  };
+
+  const handleCreateCampusAdmin = async (campus) => {
+    if (/central/i.test(campus.name) || !newAdmin.name.trim() || !newAdmin.email.trim()) return;
+    const assigned = appUsers.filter(user => (user.campusIds || []).includes(campus.id));
+    if (assigned.length >= 2) {
+      alert('Este campus ya tiene dos encargados.');
+      return;
+    }
+    setSavingAdmin(true);
+    try {
+      const email = newAdmin.email.trim().toLowerCase();
+      await setDoc(doc(db, 'users', `pre-${email}`), {
+        name: newAdmin.name.trim(),
+        email,
+        role: ['CampusAdmin'],
+        campusIds: [campus.id],
+        defaultCampusId: campus.id,
+        isPending: true,
+        needsPasswordChange: true,
+      }, { merge: true });
+      const parts = newAdmin.name.trim().split(/\s+/);
+      const members = await getMembers();
+      const existing = members.find(member => member.email?.trim().toLowerCase() === email);
+      if (existing) {
+        await updateMember(existing.id, { campusId: campus.id, role: ['CampusAdmin'] });
+      } else {
+        await createMember({
+          firstName: parts.shift() || 'Encargado',
+          lastName: parts.join(' ') || campus.name,
+          email,
+          campusId: campus.id,
+          role: ['CampusAdmin'],
+          group: '',
+          extraData: { active: 'Activo' },
+        });
+      }
+      setNewAdmin({ campusId: '', name: '', email: '' });
+      await loadUsers();
+      alert('Encargado creado. Al registrarse deberá cambiar su contraseña inicial.');
+    } catch (error) {
+      console.error('Error creando encargado de campus:', error);
+      alert('No se pudo crear el encargado.');
+    } finally {
+      setSavingAdmin(false);
+    }
+  };
+
+  const openCampusAdminProfile = async (user) => {
+    const members = await getMembers();
+    const member = members.find(item => item.email?.trim().toLowerCase() === user.email?.trim().toLowerCase());
+    if (member) setCampusProfileMember(member);
+    else alert('La ficha del encargado todavía no existe.');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!currentUser) return;
+    setSavingProfile(true);
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        name: profileData.name,
+        phone: profileData.phone
+        ,serviceAreas: profileData.serviceAreas || []
+      }, { merge: true });
+      alert('Perfil actualizado correctamente.');
+    } catch (e) {
+      console.error(e);
+      alert('Error actualizando perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChange = (section, key, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [key]: value
+      }
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateSettings(formData);
+      alert('Configuración guardada correctamente.');
+    } catch {
+      alert('Error al guardar la configuración.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveAreas = async (areas) => {
+    const next = { ...formData, serviceAreas: areas };
+    setFormData(next);
+    await updateSettings(next);
+  };
+
+  const handleCreateArea = async () => {
+    const area = newArea.trim();
+    if (!area) return;
+    const areas = formData.serviceAreas || [];
+    if (areas.some(item => item.toLowerCase() === area.toLowerCase())) return;
+    await saveAreas([...areas, area]);
+    setNewArea('');
+  };
+
+  const handleToggleRole = async (userId, currentRoles, roleToggled) => {
+     try {
+       let arr = Array.isArray(currentRoles) ? currentRoles : (currentRoles ? [currentRoles] : []);
+       let newRoles = arr.includes(roleToggled) ? arr.filter(r => r !== roleToggled) : [...arr, roleToggled];
+       if (newRoles.length === 0) newRoles = ['Member'];
+       
+       if (userId.startsWith('pending-')) {
+          // It's a member without user account. We'll use their email to create a pre-assignment.
+          const userObj = appUsers.find(u => u.id === userId);
+          if (!userObj || !userObj.email) return;
+          
+          await setDoc(doc(db, 'users', `pre-${userObj.email.toLowerCase()}`), {
+            name: userObj.name,
+            email: userObj.email.toLowerCase(),
+            role: newRoles,
+            isPending: true,
+            needsPasswordChange: true
+          }, { merge: true });
+       } else {
+          await updateDoc(doc(db, 'users', userId), { role: newRoles });
+       }
+       
+       loadUsers();
+     } catch(e) {
+       console.error(e);
+       alert("Error actualizando permisos.");
+     }
+  };
+
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (userId === currentUser.uid) {
+      return alert('No puedes eliminar tu propio usuario administrador.');
+    }
+
+    if (!window.confirm(`¿Estás seguro de eliminar a ${userEmail}? Esta acción quitará sus roles y acceso al portal. No elimina la cuenta de autenticación pero le impide entrar.`)) {
+      return;
+    }
+
+    try {
+      // Delete from 'users' or 'pre-'
+      const docId = userId.startsWith('pending-') ? `pre-${userEmail.toLowerCase()}` : userId;
+      // Note: we can't delete from auth with client SDK, but deleting from firestore kills their access
+      // because ProtectedRoute and AuthContext won't find the user record/roles.
+      
+      await deleteDoc(doc(db, 'users', docId));
+      
+      alert('Registro eliminado correctamente.');
+      loadUsers();
+    } catch (e) {
+      console.error(e);
+      alert('Error eliminando registro: ' + e.message);
+    }
+  };
+
+  // Holiday handlers
+  const handleAddHoliday = async (date, description) => {
+      if (!date || !description) return alert('Completa fecha y descripción');
+      try {
+          await addHoliday({ date, description });
+          loadHolidays();
+      } catch {
+          alert('Error agregando feriado');
+      }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+      if (!window.confirm('¿Eliminar feriado?')) return;
+      try {
+          await deleteHoliday(id);
+          loadHolidays();
+      } catch {
+          alert('Error eliminando feriado');
+      }
+  };
+
+  const [activeTab, setActiveTab] = useState('profile');
+
+  if(!formData || !formData.theme || !formData.modules || !formData.roles) return <div className="p-4"><SkeletonCard /></div>;
+
+  const tabStyle = (id) => ({
+    padding: '0.75rem 1.5rem',
+    cursor: 'pointer',
+    borderBottom: activeTab === id ? '3px solid var(--color-primary)' : '3px solid transparent',
+    color: activeTab === id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+    fontWeight: activeTab === id ? 700 : 500,
+    transition: 'all 0.2s'
+  });
+
+  return (
+    <div className="animate-fade-in">
+      <div className="d-flex justify-between align-center mb-4">
+         <h1>Ajustes y Perfil</h1>
+         <div className="d-flex gap-2">
+            <Button variant="outline" onClick={() => window.location.reload()}>Recargar Todo</Button>
+            <Button onClick={handleSave} disabled={saving} id="save-settings-btn" icon={<Save size={18} />}>
+                {saving ? 'Guardando...' : 'Guardar Global'}
+            </Button>
+         </div>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="d-flex gap-2 mb-4" style={{ borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+        <div onClick={() => setActiveTab('profile')} style={tabStyle('profile')}>Mi Perfil</div>
+        <div onClick={() => setActiveTab('system')} style={tabStyle('system')}>Configuración del Sistema</div>
+        <div onClick={() => setActiveTab('roles')} style={tabStyle('roles')}>Administrar Roles</div>
+        <div onClick={() => setActiveTab('campuses')} style={tabStyle('campuses')}>Campus</div>
+        <div onClick={() => setActiveTab('groups')} style={tabStyle('groups')}>Configuración de Grupos</div>
+        <div onClick={() => setActiveTab('areas')} style={tabStyle('areas')}>Configuración de Áreas</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1.5rem' }}>
+        {activeTab === 'campuses' && (
+          <Card title={<div className="d-flex align-center gap-2"><Layers size={20} style={{ color: 'var(--color-primary)' }} /> Campus / Sedes</div>} className="lg:col-span-2">
+            <p style={{ color: 'var(--color-text-muted)' }}>Creá sedes y asigná hasta dos encargados por campus. Cada encargado verá únicamente los datos de su sede.</p>
+            <div className="d-flex gap-2 mb-4" style={{ maxWidth: '560px' }}>
+              <input className="form-input" value={newCampusName} onChange={event => setNewCampusName(event.target.value)} placeholder="Nombre de la nueva sede" />
+              <Button onClick={handleCreateCampus} disabled={!newCampusName.trim()}>Crear campus</Button>
+            </div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <Button variant="outline" size="sm" onClick={handleMigrateLegacy} disabled={migratingCampus}>
+                {migratingCampus ? 'Migrando registros...' : 'Asignar registros antiguos a Sede Central'}
+              </Button>
+              <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--color-text-muted)' }}>
+                Usalo una sola vez para incorporar los miembros y grupos existentes.
+              </small>
+            </div>
+            <div className="d-flex flex-column gap-3">
+              {campuses.length === 0 ? <p style={{ color: 'var(--color-text-muted)' }}>No hay campus creados.</p> : campuses.map(campus => {
+                const assigned = appUsers.filter(user => (user.campusIds || []).includes(campus.id));
+                const isCentral = /central/i.test(campus.name);
+                return (
+                  <div key={campus.id} style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1rem' }}>
+                    <div className="d-flex justify-between align-center gap-2">
+                      <div><strong>{campus.name}</strong><small style={{ display: 'block', color: 'var(--color-text-muted)' }}>{assigned.length}/2 encargados asignados</small></div>
+                      <Button variant="outline" size="sm" onClick={() => updateCampus(campus.id, { active: campus.active === false })}> {campus.active === false ? 'Activar' : 'Desactivar'} </Button>
+                    </div>
+                    {isCentral ? (
+                      <small style={{ display: 'block', marginTop: '.75rem', color: 'var(--color-text-muted)' }}>Administrada por los pastores principales: Cristian y Romina. No requiere encargados de campus.</small>
+                    ) : (
+                      <>
+                      <div className="d-flex gap-2" style={{ flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                        {assigned.length < 2 && (
+                          <>
+                            <input className="form-input" style={{ flex: '1 1 180px' }} value={newAdmin.campusId === campus.id ? newAdmin.name : ''} onChange={event => setNewAdmin({ campusId: campus.id, name: event.target.value, email: newAdmin.campusId === campus.id ? newAdmin.email : '' })} placeholder="Nombre del encargado" />
+                            <input className="form-input" style={{ flex: '1 1 220px' }} type="email" value={newAdmin.campusId === campus.id ? newAdmin.email : ''} onChange={event => setNewAdmin({ campusId: campus.id, name: newAdmin.campusId === campus.id ? newAdmin.name : '', email: event.target.value })} placeholder="Email del encargado" />
+                            <Button size="sm" onClick={() => handleCreateCampusAdmin(campus)} disabled={savingAdmin || newAdmin.campusId !== campus.id || !newAdmin.name.trim() || !newAdmin.email.trim()}>{savingAdmin ? 'Creando...' : 'Crear encargado'}</Button>
+                          </>
+                        )}
+                      </div>
+                      <div className="d-flex gap-2" style={{ flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                        {appUsers.filter(user => !user.id?.startsWith('pending-') && user.email).map(user => {
+                          const checked = (user.campusIds || []).includes(campus.id);
+                          return <div key={`${campus.id}-${user.id}`} style={{ display: 'flex', alignItems: 'center', gap: '.45rem', border: '1px solid var(--color-border)', borderRadius: '7px', padding: '.4rem .55rem', fontSize: '.75rem' }}><label style={{ display: 'flex', alignItems: 'center', gap: '.35rem' }}><input type="checkbox" checked={checked} disabled={!checked && assigned.length >= 2} onChange={() => toggleCampusAdmin(campus, user)} />{user.name || user.email}</label>{checked && <Button variant="outline" size="sm" onClick={() => openCampusAdminProfile(user)}>Perfil</Button>}</div>;
+                        })}
+                      </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+        
+        {/* TAB: PERFIL */}
+        {activeTab === 'profile' && (
+          <Card title={
+              <div className="d-flex align-center gap-2">
+                  <User size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi Perfil de Usuario
+              </div>
+          } className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '1.5rem' }}>
+                   <div className="form-group">
+                      <label className="form-label">Tu Nombre</label>
+                      <input className="form-input" value={profileData.name} onChange={e => setProfileData({...profileData, name: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                      <label className="form-label">Teléfono de contacto</label>
+                      <input className="form-input" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                      <label className="form-label">E-mail (No editable)</label>
+                      <input className="form-input" value={profileData.email} disabled style={{ backgroundColor: 'var(--color-surface-hover)', cursor: 'not-allowed' }} />
+                   </div>
+               </div>
+               <div className="form-group mt-4">
+                 <label className="form-label">Áreas de servicio asignadas</label>
+                 <div className="settings-area-checks">{(formData.serviceAreas || []).map(area => <label key={area}><input type="checkbox" checked={(profileData.serviceAreas || []).includes(area)} onChange={() => setProfileData(prev => ({ ...prev, serviceAreas: (prev.serviceAreas || []).includes(area) ? prev.serviceAreas.filter(item => item !== area) : [...(prev.serviceAreas || []), area] }))} /> {area}</label>)}</div>
+               </div>
+              <div className="d-flex justify-end mt-2">
+                  <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? 'Actualizando...' : 'Actualizar mis datos'}
+                  </Button>
+              </div>
+          </Card>
+        )}
+
+        {activeTab === 'areas' && (
+          <Card title={<div className="d-flex align-center gap-2"><ClipboardList size={20} style={{ color: 'var(--color-primary-light)' }} /> CONFIGURACIÓN DE ÁREAS</div>} className="lg:col-span-2">
+            <p style={{ color: 'var(--color-text-muted)' }}>Administrá las áreas de servicio disponibles para los perfiles de IEA.</p>
+            <div className="settings-area-create"><input className="form-input" value={newArea} onChange={event => setNewArea(event.target.value)} onKeyDown={event => event.key === 'Enter' && handleCreateArea()} placeholder="Nombre de la nueva área" /><Button onClick={handleCreateArea}>Crear</Button></div>
+            <div className="settings-area-list">{(formData.serviceAreas || []).map(area => <div key={area}><span>{area}</span><button onClick={() => saveAreas((formData.serviceAreas || []).filter(item => item !== area))} title={`Eliminar ${area}`}><Trash2 size={15} /></button></div>)}</div>
+            <div className="settings-area-save"><Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</Button></div>
+          </Card>
+        )}
+
+        {/* TAB: SISTEMA */}
+        {activeTab === 'system' && (
+          <>
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi apariencia personal
+              </div>
+            } className="lg:col-span-2">
+              <p style={{color: 'var(--color-text-muted)', marginBottom: '1.5rem'}}>
+                Estos ajustes se guardan en tu perfil y solo afectan a tus dispositivos.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem' }}>
+                <div className="form-group m-0">
+                  <label className="form-label">Modo de la app</label>
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className={`btn ${(userPreferences?.theme || 'light') === 'light' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => updateUserPreference({ theme: 'light' })}
+                    >
+                      Claro
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${(userPreferences?.theme || 'light') === 'dark' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => updateUserPreference({ theme: 'dark' })}
+                    >
+                      Oscuro
+                    </button>
+                  </div>
+                </div>
+                <div className="form-group m-0">
+                  <label className="form-label">Color primario (personal)</label>
+                  <div className="d-flex flex-wrap gap-2 align-center">
+                    {[
+                      { name: 'Slate', value: '#1e293b' },
+                      { name: 'Azul', value: '#2563eb' },
+                      { name: 'Celeste', value: '#0ea5e9' },
+                      { name: 'Esmeralda', value: '#059669' },
+                      { name: 'Violeta', value: '#7c3aed' },
+                      { name: 'Rosa', value: '#db2777' },
+                      { name: 'Ámbar', value: '#d97706' },
+                      { name: 'Rojo', value: '#dc2626' }
+                    ].map(c => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        title={c.name}
+                        style={{
+                          width: '34px', height: '34px', borderRadius: '50%',
+                          background: c.value, cursor: 'pointer', border: '2px solid',
+                          borderColor: userPreferences?.primaryColor === c.value
+                            ? 'var(--color-text)'
+                            : 'transparent',
+                          outline: userPreferences?.primaryColor === c.value
+                            ? '2px solid var(--color-primary)'
+                            : 'none',
+                          outlineOffset: '2px'
+                        }}
+                        onClick={() => updateUserPreference({ primaryColor: c.value })}
+                      />
+                    ))}
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="color"
+                        title="Color personalizado"
+                        value={userPreferences?.primaryColor || formData.theme.primaryColor || '#1e293b'}
+                        onChange={e => updateUserPreference({ primaryColor: e.target.value })}
+                        style={{ width: '34px', height: '34px', padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'transparent' }}
+                      />
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Custom</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Apariencia Global (Toda la iglesia)
+              </div>
+            }>
+              <div className="form-group mb-4">
+                <label className="form-label" htmlFor="primary-color-picker">Color Primario (Énfasis)</label>
+                <div className="d-flex align-center gap-2">
+                  <input 
+                    id="primary-color-picker"
+                    type="color" 
+                    value={formData.theme.primaryColor} 
+                    onChange={(e) => handleChange('theme', 'primaryColor', e.target.value)} 
+                    style={{ width: '40px', height: '40px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  />
+                  <input 
+                    id="primary-color-text"
+                    className="form-input" 
+                    value={formData.theme.primaryColor} 
+                    onChange={(e) => handleChange('theme', 'primaryColor', e.target.value)} 
+                  />
+                </div>
+                <small style={{ color: 'var(--color-text-muted)' }}>Color por defecto para todos. Cada usuario puede personalizarlo desde "Mi apariencia personal".</small>
+              </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Layers size={20} style={{ color: 'var(--color-primary-light)' }} /> Módulos del Sistema
+              </div>
+            }>
+              <p style={{color: 'var(--color-text-muted)', marginBottom: '1.5rem'}}>Activa o desactiva las funcionalidades que tu congregación usa:</p>
+              
+              <div className="d-flex flex-column gap-3 mb-2">
+                <label htmlFor="mod-fin" className="toggle-switch">
+                  <input type="checkbox" className="toggle-input" checked={formData.modules.finances} onChange={(e) => handleChange('modules', 'finances', e.target.checked)} id="mod-fin" />
+                  <span className="toggle-slider"></span>
+                  <span style={{ marginLeft: '1rem', cursor: 'pointer' }}>Módulo de Finanzas (Solo Admin y Pastores)</span>
+                </label>
+                
+                <label htmlFor="mod-news" className="toggle-switch">
+                  <input type="checkbox" className="toggle-input" checked={formData.modules.news} onChange={(e) => handleChange('modules', 'news', e.target.checked)} id="mod-news" />
+                  <span className="toggle-slider"></span>
+                  <span style={{ marginLeft: '1rem', cursor: 'pointer' }}>Noticias y Avisos Internos</span>
+                </label>
+                
+                <label htmlFor="mod-live" className="toggle-switch">
+                  <input type="checkbox" className="toggle-input" checked={formData.modules.live} onChange={(e) => handleChange('modules', 'live', e.target.checked)} id="mod-live" />
+                  <span className="toggle-slider"></span>
+                  <span style={{ marginLeft: '1rem', cursor: 'pointer' }}>Transmisiones en Vivo (Streaming)</span>
+                </label>
+              </div>
+            </Card>
+          </>
+        )}
+
+        {/* TAB: ROLES */}
+        {activeTab === 'roles' && (
+          <>
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Shield size={20} style={{ color: 'var(--color-primary-light)' }} /> Personalizar Nombres de Roles
+              </div>
+            } className="lg:col-span-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Administrador General</label>
+                  <input className="form-input" value={formData.roles.Admin} onChange={(e) => handleChange('roles', 'Admin', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nivel Pastor/Director</label>
+                  <input className="form-input" value={formData.roles.Pastor} onChange={(e) => handleChange('roles', 'Pastor', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Líder Principal / Ministerio</label>
+                  <input className="form-input" value={formData.roles.MinistryLeader} onChange={(e) => handleChange('roles', 'MinistryLeader', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Miembro Regular</label>
+                  <input className="form-input" value={formData.roles.Member} onChange={(e) => handleChange('roles', 'Member', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Facilitador / Líder de Grupo</label>
+                  <input className="form-input" value={formData.roles.Facilitator} onChange={(e) => handleChange('roles', 'Facilitator', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Co-Facilitador / Ayudante</label>
+                  <input className="form-input" value={formData.roles.CoFacilitator} onChange={(e) => handleChange('roles', 'CoFacilitator', e.target.value)} />
+                </div>
+              </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Lock size={20} style={{ color: 'var(--color-primary-light)' }} /> Control de Acceso (Matriz de Permisos)
+              </div>
+            } className="lg:col-span-2">
+              <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                  <thead style={{ backgroundColor: 'var(--color-surface-hover)' }}>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '0.75rem 1rem' }}>Módulo / Área</th>
+                      {Object.keys(formData.roles).map(roleKey => (
+                        <th key={roleKey} style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>{formData.roles[roleKey]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 'miembros', label: 'Miembros' },
+                      { id: 'eventos', label: 'Eventos' },
+                      { id: 'crecimiento', label: 'Grupos de Amistad' },
+                      { id: 'noticias', label: 'Noticias' },
+                      { id: 'transmisiones', label: 'Transmisiones' },
+                      { id: 'finanzas', label: 'Finanzas' },
+                      { id: 'grupos', label: 'Gestor de Grupos' },
+                      { id: 'configuracion', label: 'Configuración' }
+                    ].map(area => (
+                      <tr key={area.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{area.label}</td>
+                        {Object.keys(formData.roles).map(roleKey => {
+                          const isChecked = (formData.rolePermissions?.[roleKey] || []).includes(area.id);
+                          return (
+                            <td key={roleKey} style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={isChecked}
+                                onChange={() => {
+                                  const currentPerms = formData.rolePermissions?.[roleKey] || [];
+                                  const newPerms = isChecked ? currentPerms.filter(p => p !== area.id) : [...currentPerms, area.id];
+                                  setFormData(prev => ({ ...prev, rolePermissions: { ...(prev.rolePermissions || {}), [roleKey]: newPerms } }));
+                                }}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2 justify-between w-full">
+                <div className="d-flex align-center gap-2">
+                   <Key size={20} style={{ color: 'var(--color-primary-light)' }} /> Gestión de Usuarios y Roles
+                </div>
+
+              </div>
+            } className="lg:col-span-2">
+              <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                  <thead style={{ backgroundColor: 'var(--color-surface-hover)' }}>
+                    <tr>
+                      <th style={{ padding: '0.75rem 1rem' }}>Usuario</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Roles Asignados</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appUsers.map(u => (
+                      <tr key={u.id} className="table-row-hover">
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                           <div style={{ fontWeight: 600 }}>{u.name}</div>
+                           <div style={{fontSize:'0.75rem', color:'var(--color-text-muted)'}}>{u.email}</div>
+                           {u.isMemberOnly && <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>Solo en BD</span>}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+                            {(Array.isArray(u.role) ? u.role : [u.role || 'Member']).map(r => (
+                              <span key={r} className="badge badge-gray">{formData.roles[r] || r}</span>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {Object.keys(formData.roles).map(r => (
+                               <label key={r} style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.2rem', background: 'var(--color-surface-hover)', color: 'var(--color-text)', padding: '2px 4px', borderRadius: '4px' }}>
+                                 <input type="checkbox" checked={(Array.isArray(u.role) ? u.role : [u.role || 'Member']).includes(r)} onChange={() => handleToggleRole(u.id, u.role, r)} /> {formData.roles[r]}
+                               </label>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {!u.isMemberOnly && (
+                               <>
+                                 <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    style={{ color: 'var(--color-primary)' }}
+                                    onClick={async () => {
+                                       if(window.confirm(`¿Enviar correo de restablecimiento a ${u.email}?`)) {
+                                          try {
+                                              await sendPasswordResetEmail(auth, u.email);
+                                             alert('Correo enviado correctamente.');
+                                             loadUsers();
+                                          } catch(e) { alert('Error: ' + e.message); }
+                                       }
+                                    }}
+                                 >
+                                    Enviar Link
+                                 </Button>
+                                 <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    style={{ color: 'var(--color-primary)' }}
+                                    onClick={async () => {
+                                        if(window.confirm(`¿Restablecer automáticamente la contraseña de ${u.email} a "123456"?`)) {
+                                          try {
+                                             // Llama a la función Serverless recien creada
+                                              const token = await currentUser.getIdToken();
+                                              const res = await fetch('/api/resetPassword', {
+                                                 method: 'POST',
+                                                 headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                 },
+                                                  body: JSON.stringify({ email: u.email })
+                                             });
+
+                                             if (!res.ok) {
+                                                const errData = await res.json();
+                                                throw new Error(errData.error || 'Error del servidor Vercel');
+                                             }
+
+                                              alert('¡Clave restablecida a 123456 con éxito!');
+                                             loadUsers();
+                                          } catch(e) { 
+                                             alert('Error: ' + e.message + '\n\n(Nota: Las funciones /api no corren en Vite nativo. Usa "npx vercel dev" o pruébalo subido a la nube).'); 
+                                          }
+                                       }
+                                    }}
+                                 >
+                                     Forzar 123456
+                                 </Button>
+
+                                   <Button 
+                                      size="sm" 
+                                      style={{ backgroundColor: '#ef4444', color: 'white' }}
+                                      onClick={() => handleDeleteUser(u.id, u.email)}
+                                      icon={<Trash2 size={14} />}
+                                   >
+                                      Eliminar
+                                   </Button>
+                                 </>
+                              )}
+                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </>
+        )}
+
+        {/* TAB: GRUPOS */}
+        {activeTab === 'groups' && (
+          <>
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <ClipboardX size={20} style={{ color: 'var(--color-primary-light)' }} /> Motivos de Ausencia
+              </div>
+            }>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                {(formData.absenceReasons || []).map((reason, i) => (
+                  <div key={i} className="badge badge-gray">{reason} <button onClick={() => setFormData(prev => ({ ...prev, absenceReasons: prev.absenceReasons.filter((_, idx) => idx !== i) }))} style={{border:'none', background:'none', cursor:'pointer'}}>×</button></div>
+                ))}
+              </div>
+              <div className="d-flex gap-2">
+                <input ref={reasonInputRef} className="form-input" placeholder="Añadir motivo..." />
+                <Button onClick={() => {
+                  const val = reasonInputRef.current?.value.trim();
+                  if(val) { setFormData(prev => ({ ...prev, absenceReasons: [...prev.absenceReasons, val] })); reasonInputRef.current.value = ''; }
+                }}>Añadir</Button>
+              </div>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <ClipboardList size={20} style={{ color: 'var(--color-primary-light)' }} /> Tipos de Seguimiento
+              </div>
+            }>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                {formData.followUpTypes?.map((t, i) => (
+                  <div key={i} className="d-flex align-center gap-2" style={{ padding: '0.375rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1, fontSize: '0.8125rem', padding: '0.375rem 0.5rem' }}
+                      value={t.label}
+                      onChange={e => {
+                        const updated = [...(formData.followUpTypes || [])];
+                        updated[i] = { ...updated[i], label: e.target.value };
+                        setFormData(prev => ({ ...prev, followUpTypes: updated }));
+                      }}
+                    />
+                    <button
+                      style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
+                      onClick={() => setFormData(prev => ({ ...prev, followUpTypes: prev.followUpTypes.filter((_, idx) => idx !== i) }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFormData(prev => ({ ...prev, followUpTypes: [...(prev.followUpTypes || []), { id: `custom-${Date.now()}`, label: '' }] }))}
+              >
+                + Añadir tipo
+              </Button>
+            </Card>
+
+            <Card title={
+              <div className="d-flex align-center gap-2">
+                <Calendar size={20} style={{ color: 'var(--color-primary-light)' }} /> Gestión de Feriados
+              </div>
+            } className="lg:col-span-2">
+              <div className="d-flex gap-2 mb-4">
+                <input type="date" className="form-input" ref={holidayDateRef} />
+                <input type="text" className="form-input" placeholder="Descripción" ref={holidayDescRef} style={{flex:1}} />
+                <Button onClick={() => {
+                  const d = holidayDateRef.current?.value;
+                  const desc = holidayDescRef.current?.value;
+                  if(d && desc) { handleAddHoliday(d, desc); holidayDateRef.current.value = ''; holidayDescRef.current.value = ''; }
+                }}>Agregar</Button>
+              </div>
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '0.85rem' }}>
+                   <tbody>
+                      {holidays.map(h => (
+                        <tr key={h.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '0.5rem' }}>{h.date}</td>
+                          <td style={{ padding: '0.5rem' }}>{h.description}</td>
+                          <td style={{ padding: '0.5rem' }}><button onClick={() => handleDeleteHoliday(h.id)} style={{color:'var(--color-danger)', border:'none', background:'none'}}>Eliminar</button></td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
+              </div>
+            </Card>
+          </>
+        )}
+      </div>
+      <Modal
+        isOpen={!!campusProfileMember}
+        onClose={() => setCampusProfileMember(null)}
+        title={campusProfileMember ? `Perfil de ${campusProfileMember.firstName} ${campusProfileMember.lastName}` : 'Perfil del encargado'}
+        size="lg"
+      >
+        {campusProfileMember && (
+          <MemberForm
+            initialData={campusProfileMember}
+            fixedCampusId={campusProfileMember.campusId}
+            onSuccess={() => {
+              setCampusProfileMember(null);
+              loadUsers();
+            }}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default Settings;

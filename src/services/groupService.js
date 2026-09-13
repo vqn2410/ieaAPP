@@ -1,11 +1,13 @@
 import { db } from './firebase';
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'groups';
 
-export const getGroups = async () => {
+export const getGroups = async (campusId = null) => {
     try {
-        const q = query(collection(db, COLLECTION_NAME), orderBy('name'));
+        const q = campusId
+            ? query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId), orderBy('name'))
+            : query(collection(db, COLLECTION_NAME), orderBy('name'));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (e) {

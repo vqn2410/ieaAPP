@@ -69,6 +69,7 @@ const initialSettings = {
     Member: 'Miembro',
     Facilitator: 'Facilitador',
     CoFacilitator: 'Co-facilitador',
+    CampusAdmin: 'Encargado de campus',
     Maestro: 'Maestro'
   },
   modules: {
@@ -93,14 +94,15 @@ const initialSettings = {
     'Otros'
   ],
   rolePermissions: {
-    Admin: ['miembros', 'eventos', 'crecimiento', 'noticias', 'transmisiones', 'finanzas', 'grupos', 'configuracion'],
-    Pastor: ['miembros', 'eventos', 'crecimiento', 'noticias', 'transmisiones', 'finanzas', 'grupos'],
-    MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'noticias'],
+    Admin: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'transmisiones', 'finanzas', 'grupos', 'configuracion'],
+    Pastor: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'transmisiones', 'finanzas', 'grupos'],
+    MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias'],
     Facilitator: ['miembros', 'eventos', 'crecimiento'],
     CoFacilitator: ['miembros', 'crecimiento'],
-    Member: ['dashboard'],
-    Maestro: ['kids', 'kids-attendance', 'kids-reports'],
-    AreaLeader: ['ibrp', 'miembros', 'grupos']
+    CampusAdmin: ['miembros', 'grupos', 'crecimiento', 'visitantes', 'notas'],
+    AreaLeader: ['ibrp'],
+    Maestro: ['kids'],
+    Member: ['dashboard']
   }
 };
 
