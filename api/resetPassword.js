@@ -24,13 +24,20 @@ function initializeFirebaseAdmin() {
 
   const projectId = process.env.FIREBASE_PROJECT_ID || "iea-app-73f5f";
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
+    ? Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64, 'base64').toString('utf8')
+    : process.env.FIREBASE_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
     throw new Error('Faltan Variables de Entorno en Vercel.');
   }
 
-  privateKey = privateKey.replace(/\\n/g, '\n');
+  privateKey = String(privateKey)
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\\\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r/g, '');
 
   admin.initializeApp({
     credential: admin.credential.cert({
