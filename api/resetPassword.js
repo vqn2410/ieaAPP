@@ -25,8 +25,14 @@ function initializeFirebaseAdmin() {
   const projectId = process.env.FIREBASE_PROJECT_ID || "iea-app-73f5f";
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
-    ? Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64, 'base64').toString('utf8')
+    ? Buffer.from(String(process.env.FIREBASE_PRIVATE_KEY_BASE64).replace(/\s/g, ''), 'base64').toString('utf8')
     : process.env.FIREBASE_PRIVATE_KEY;
+  try {
+    const json = JSON.parse(privateKey);
+    privateKey = json.private_key || privateKey;
+  } catch {
+    // La variable también puede contener directamente la clave PEM.
+  }
 
   if (!clientEmail || !privateKey) {
     throw new Error('Faltan Variables de Entorno en Vercel.');
