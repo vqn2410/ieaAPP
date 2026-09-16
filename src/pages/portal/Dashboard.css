@@ -4,7 +4,7 @@
 }
 
 .main-content:has(.dash) {
-  background: #faf9f5;
+  background: var(--color-background);
 }
 
 .main-content:has(.dash) .content-wrapper {
@@ -13,6 +13,13 @@
 
 :root[data-theme='dark'] .main-content:has(.dash) {
   background: var(--color-background);
+}
+:root[data-theme='dark'] .dash-greeting-sub::before,
+:root[data-theme='dark'] .dash-side-card-hd svg.quick-icon,
+:root[data-theme='dark'] .dash-side-card-hd svg.fup-icon,
+:root[data-theme='dark'] .dash-side-card-hd svg.birthday-icon,
+:root[data-theme='dark'] .dash-side-card-hd svg.summary-icon {
+  color: #ffffff;
 }
 
 :root[data-theme='dark'] .dash-calendar-person {
@@ -56,7 +63,7 @@
 
 .dash-greeting-sub::before {
   content: '•';
-  color: #0b0b0b;
+  color: var(--color-primary);
   font-size: 1rem;
 }
 
@@ -94,7 +101,7 @@
 }
 
 .dash-stat:hover {
-  border-color: #c9c5bc;
+  border-color: var(--color-primary);
   box-shadow: 0 8px 22px rgba(30, 30, 20, .07);
   transform: translateY(-2px);
 }
@@ -609,19 +616,19 @@
 }
 
 .dash-summary-dot-members {
-  background: #0b0b0b;
+  background: var(--color-primary);
 }
 
 .dash-summary-dot-groups {
-  background: #4a4a4a;
+  background: var(--color-primary-light);
 }
 
 .dash-summary-dot-baptised {
-  background: #8a8a86;
+  background: var(--color-success);
 }
 
 .dash-summary-dot-events {
-  background: #c2beb4;
+  background: var(--color-warning);
 }
 
 /* Side card accents */
@@ -641,15 +648,15 @@
 }
 
 .dash-side-card-hd svg.quick-icon {
-  color: #0b0b0b;
+  color: var(--color-primary);
 }
 
 .dash-side-card-hd svg.fup-icon {
-  color: #4a4a4a;
+  color: var(--color-primary-light);
 }
 
 .dash-side-card-hd svg.birthday-icon {
-  color: #0b0b0b;
+  color: var(--color-primary);
 }
 
 /* Birthdays */
@@ -818,6 +825,15 @@
 .dash-calendar-day.today .dash-calendar-number {
   color: var(--color-primary);
   font-weight: 700;
+}
+:root[data-theme='dark'] .dash-calendar-day.today {
+  border-color: #8acb4d;
+  background: rgba(138, 203, 77, 0.16);
+  box-shadow: 0 0 0 1px rgba(138, 203, 77, 0.2), 0 0 14px rgba(138, 203, 77, 0.12);
+}
+:root[data-theme='dark'] .dash-calendar-day.today .dash-calendar-number {
+  color: #ffffff;
+  font-weight: 800;
 }
 
 .dash-calendar-person {

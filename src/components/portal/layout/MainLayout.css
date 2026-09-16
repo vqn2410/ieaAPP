@@ -316,6 +316,10 @@
 :root[data-theme='dark'] .layout-container {
   background: #000000;
 }
+:root[data-theme='dark'] .main-content,
+:root[data-theme='dark'] .content-wrapper {
+  background: #000000;
+}
 
 :root[data-theme='dark'] .sidebar-header,
 :root[data-theme='dark'] .sidebar-footer {
