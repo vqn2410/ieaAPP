@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart } from 'lucide-react';
+import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users } from 'lucide-react';
 import FloatingAssistant from '../../components/common/FloatingAssistant';
 import './Home.css';
 
@@ -10,6 +10,49 @@ const Home = () => {
   const { currentUser } = useAuth();
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   const goPortal = () => navigate(currentUser ? '/dashboard' : '/login');
+  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
+
+  const nextSecondSaturday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const secondSaturday = (year, month) => {
+      const first = new Date(year, month, 1);
+      return new Date(year, month, 1 + ((6 - first.getDay() + 7) % 7) + 7);
+    };
+    let candidate = secondSaturday(today.getFullYear(), today.getMonth());
+    if (candidate < today) candidate = secondSaturday(today.getFullYear(), today.getMonth() + 1);
+    return candidate;
+  };
+  const santaCenaDate = nextSecondSaturday();
+  const santaCenaIso = santaCenaDate.toISOString().slice(0, 10);
+  const santaCenaLabel = santaCenaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Editá estos datos para actualizar la agenda pública de la iglesia.
+  // Los anuncios con fecha desaparecen automáticamente al pasar ese día.
+  const announcements = [
+    { day: 'Lunes', title: 'I.E.T.E. — Estudia Teología con nosotros', time: '20:00 hs', icon: BookOpen, image: '/anuncios/iete.jpg', description: 'Formación bíblica para crecer en la Palabra.' },
+    { day: 'Martes', title: 'Reunión de Oración', time: '19:00 hs', icon: HeartHandshake, image: '/anuncios/reu_oracion.jepg.jpg', description: 'Un espacio para buscar a Dios juntos.' },
+    { day: 'Viernes', title: 'La Tribu — Adolescentes', time: '19:00 hs', icon: Users, image: '/anuncios/LA-TRIBU.jpg', description: 'Una comunidad para crecer, compartir y encontrarse.' },
+    { day: 'Sábado', title: 'Reunión General', time: '19:30 hs', icon: Heart, image: '/anuncios/reu_general.jpg', description: 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.' },
+    { date: '2026-09-17', day: 'Jueves 17 de septiembre', title: 'Reunión de Voluntarios', time: '19:30 hs', icon: Users, image: '/anuncios/reu_de_voluntarios.jpg', description: 'Nos reunimos para servir mejor y caminar juntos.' },
+    { date: '2026-09-19', day: 'Sábado 19 de septiembre', title: 'Presentación de Niños', time: '19:30 hs', icon: Sparkles, image: '/anuncios/presentacion_de_ninos.PNG', description: 'Una celebración especial para nuestra familia.' },
+    { date: santaCenaIso, day: santaCenaLabel, title: 'Santa Cena', time: '19:30 hs', icon: Heart, image: '/anuncios/santacena.jpg', description: 'Un momento especial para recordar juntos el amor de Jesús.' },
+  ];
+  const visibleAnnouncements = announcements.filter(item => {
+    if (!item.date) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(`${item.date}T00:00:00`);
+    return date >= today;
+  });
+
+  useEffect(() => {
+    if (visibleAnnouncements.length < 2) return undefined;
+    const timer = setInterval(() => setActiveAnnouncementIndex(index => (index + 1) % visibleAnnouncements.length), 6500);
+    return () => clearInterval(timer);
+  }, [visibleAnnouncements.length]);
+
+  const featuredAnnouncement = visibleAnnouncements[activeAnnouncementIndex % Math.max(visibleAnnouncements.length, 1)] || visibleAnnouncements[0];
 
   useEffect(() => {
     const els = Array.from(document.querySelectorAll('.iea-reveal'));
@@ -147,8 +190,64 @@ const Home = () => {
         </div>
       </section>
 
+      <section className="iea-news-section iea-dark" id="anuncios" aria-label="Anuncios IEA">
+        <div className="iea-section-label iea-reveal"><span>02</span>LO QUE ESTÁ PASANDO</div>
+        <div className="iea-news-heading">
+          <h2 className="iea-display iea-reveal">Anuncios que<br /><em>nos encuentran.</em></h2>
+          <p className="iea-news-intro iea-reveal">No son solo fechas. Son momentos para volver a encontrarnos.</p>
+        </div>
+        <div className="iea-news-board">
+          <article className="iea-news-feature iea-reveal">
+            <img className="iea-news-feature-image" src={featuredAnnouncement?.image} alt="" aria-hidden="true" />
+            <span className="iea-news-signal"><span />Ahora en IEA</span>
+            <div className="iea-news-feature-date"><strong>{featuredAnnouncement?.time || '19:30 hs'}</strong><span>{featuredAnnouncement?.day || 'Todos los sábados'}</span></div>
+            <div className="iea-news-feature-content">
+              <span>{featuredAnnouncement?.date ? 'FECHA ESPECIAL' : 'AGENDA IEA'}</span>
+              <h3>{featuredAnnouncement?.title || 'Un lugar para volver a casa.'}</h3>
+              <p>{featuredAnnouncement?.description || 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.'}</p>
+              <button onClick={() => scrollTo('visitanos')}>Conocé más <ArrowUpRight size={16} /></button>
+            </div>
+            <div className="iea-news-orbit" aria-hidden="true" />
+          </article>
+          <div className="iea-news-stack">
+            <article className="iea-news-card iea-reveal">
+              <div className="iea-news-card-icon"><Users size={20} /></div>
+              <div><span>EN LA SEMANA</span><h3>Grupos de Amistad</h3><p>Pequeños encuentros. Vínculos reales. Una fe que se comparte.</p></div>
+              <ArrowUpRight className="iea-news-card-arrow" size={18} />
+            </article>
+            <article className="iea-news-card iea-reveal">
+              <div className="iea-news-card-icon"><CalendarDays size={20} /></div>
+              <div><span>PRÓXIMAMENTE</span><h3>Primeros Pasos</h3><p>Conocé quiénes somos, por qué existimos y cómo caminar con nosotros.</p></div>
+              <ArrowUpRight className="iea-news-card-arrow" size={18} />
+            </article>
+            <article className="iea-news-card iea-reveal">
+              <div className="iea-news-card-icon"><MapPin size={20} /></div>
+              <div><span>VENÍ A CONOCERNOS</span><h3>Remedios de Escalada</h3><p>Av. Cnel. Rosales 879-883 · Buenos Aires.</p></div>
+              <ArrowUpRight className="iea-news-card-arrow" size={18} />
+            </article>
+          </div>
+        </div>
+        <div className="iea-announcement-schedule iea-reveal">
+          <div className="iea-announcement-schedule-head">
+            <span>AGENDA ABIERTA</span>
+            <strong>Esta semana en IEA</strong>
+          </div>
+          <div className="iea-announcement-list">
+            {visibleAnnouncements.map(({ day, title, time, icon: Icon, image }) => (
+              <article className="iea-announcement-row" key={`${day}-${title}`}>
+                <span className="iea-announcement-day">{day}</span>
+                <span className="iea-announcement-icon"><Icon size={18} /></span>
+                <strong>{title}</strong>
+                <span className="iea-announcement-time"><Clock3 size={15} />{time}</span>
+                <img src={image} alt="" aria-hidden="true" />
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="iea-section iea-dark" id="comunidad">
-        <div className="iea-section-label iea-reveal"><span>02</span>VIDA EN COMUNIDAD</div>
+        <div className="iea-section-label iea-reveal"><span>03</span>VIDA EN COMUNIDAD</div>
         <div className="iea-split">
           <h2 className="iea-display iea-reveal">NOS ENCONTRAMOS PARA CRECER JUNTOS.</h2>
           <div className="iea-body iea-reveal"><p>La iglesia no ocurre solamente durante una reunión. Se construye cuando compartimos la vida, nos cuidamos y aprendemos a seguir a Jesús con otros.</p></div>
@@ -177,7 +276,7 @@ const Home = () => {
       </section>
 
       <section className="iea-section iea-light" id="visitanos">
-        <div className="iea-section-label iea-reveal"><span>03</span>TU PRIMERA VISITA</div>
+        <div className="iea-section-label iea-reveal"><span>04</span>TU PRIMERA VISITA</div>
         <div className="iea-split">
           <h2 className="iea-display iea-reveal">ESTE SÁBADO, HAY UN LUGAR PARA VOS.</h2>
           <div className="iea-visit-info iea-reveal">

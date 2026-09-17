@@ -372,6 +372,21 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <section className="dash-ministry-card" aria-label="Resumen ministerial">
+        <div className="dash-ministry-identity">
+          <div className="dash-ministry-avatar">{(userData?.name || 'IEA').split(' ').map(part => part[0]).slice(0, 2).join('')}</div>
+          <div>
+            <div className="dash-ministry-name">{userData?.name || 'Mi ministerio'} <span>{roleName}</span></div>
+            <p>Tu espacio de servicio y acompañamiento dentro de IEA.</p>
+          </div>
+        </div>
+        <div className="dash-ministry-metrics">
+          <div><strong>{stats.members}</strong><span>Personas que acompaño</span></div>
+          <div><strong>{stats.groups}</strong><span>Grupos activos</span></div>
+          <div><strong>{stats.events}</strong><span>Próximas actividades</span></div>
+        </div>
+      </section>
+
       <div className="dash-stats">
         <StatWidget title="Miembros" value={stats.members} icon={Users} to="/dashboard/miembros" loading={loading} />
         <StatWidget title="Próximos" value={stats.events} icon={Calendar} loading={loading} />

@@ -84,13 +84,15 @@ const Live = () => {
 
   useEffect(() => {
     let active = true;
-    fetch(iaUrl('/api/youtube'))
+    const load = () => fetch(iaUrl('/api/youtube'))
       .then(res => { if (!res.ok) throw new Error('YouTube API no disponible'); return res.json(); })
       .then(data => {
-        if (active && Array.isArray(data.videos) && data.videos.length) setVideos(data.videos.map(toCard));
+        if (active && Array.isArray(data.videos) && data.videos.length) setVideos(data.videos.slice(0, 4).map(toCard));
       })
       .catch(() => {});
-    return () => { active = false; };
+    load();
+    const refresh = setInterval(load, 10 * 60 * 1000);
+    return () => { active = false; clearInterval(refresh); };
   }, []);
 
   return (
