@@ -146,13 +146,16 @@ const GrowthGroups = () => {
         const ownMember = await getMemberByEmail(currentUser?.email);
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
-                let assignedGroups = await getGroupsByFacilitatorUid(currentUser?.uid);
-                if (assignedGroups.length === 0 && currentUser?.email) {
-                    assignedGroups = await getGroups(null, currentUser.email);
+                let assignedGroups = [];
+                try {
+                    assignedGroups = await getGroupsByFacilitatorUid(currentUser?.uid);
+                } catch (error) {
+                    console.warn('Aún no se pudo consultar por UID; intentando el email de facilitador:', error.message);
                 }
+                if (assignedGroups.length === 0 && currentUser?.email) assignedGroups = await getGroups(null, currentUser.email);
                 const membersByGroup = await Promise.all(assignedGroups.map(group => getMembersByGroupId(group.id)));
                 const assignedMembers = [...new Map(membersByGroup.flat().map(member => [member.id, member])).values()];
-                setAssignedGroupsError(assignedGroups.length === 0 ? 'No encontramos grupos vinculados al UID/email de esta cuenta. Pedile a un administrador que vuelva a guardar tu asignación como facilitador.' : '');
+                setAssignedGroupsError(assignedGroups.length === 0 ? 'No encontramos grupos vinculados al email de esta cuenta. Un Admin/Pastor debe editar y guardar el grupo para sincronizar facilitatorEmails.' : assignedMembers.length === 0 ? 'El grupo ya está vinculado, pero todavía no encontramos miembros con groupId. Un Admin/Pastor debe abrir Grupos una vez para sincronizar las membresías históricas.' : '');
                 setAssignedGroupsDiagnostics({ assignedGroups: assignedGroups.length, assignedMembers: assignedMembers.length });
                 setAllMembers(assignedMembers);
                 setMyMemberProfile(ownMember);
