@@ -315,7 +315,7 @@ const Dashboard = () => {
       }
     };
     load();
-  }, [hasRole, userData, activeCampusId]);
+  }, [hasRole, userData, activeCampusId, activeCampus?.name, isCampusAdmin]);
 
   useEffect(() => {
     const timer = setInterval(() => {

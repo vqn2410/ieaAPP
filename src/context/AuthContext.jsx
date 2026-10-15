@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { auth, db } from '../services/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { buildUserDataFromPreAssignment } from '../utils/authHelpers';
 
 const AuthContext = createContext();
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
@@ -17,25 +18,25 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function login(email, password) {
+  const login = useCallback((email, password) => {
     return signInWithEmailAndPassword(auth, email, password);
-  }
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     return signOut(auth);
-  }
+  }, []);
 
-  function resetPassword(email) {
+  const resetPassword = useCallback((email) => {
     return sendPasswordResetEmail(auth, email);
-  }
+  }, []);
 
-  function hasRole(allowedRoles) {
+  const hasRole = useCallback((allowedRoles) => {
     if (!userData || !userData.role) return false;
     if (Array.isArray(userData.role)) {
        return allowedRoles.some(r => userData.role.includes(r));
     }
     return allowedRoles.includes(userData.role);
-  }
+  }, [userData]);
 
   useEffect(() => {
     const storedVersion = localStorage.getItem('app-version');
@@ -59,6 +60,29 @@ export function AuthProvider({ children }) {
           
           if (docSnap.exists()) {
             const storedData = docSnap.data();
+            const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
+            const preDocSnap = await getDoc(preDocRef);
+            const storedRoles = Array.isArray(storedData.role) ? storedData.role : [storedData.role];
+            const hasCampusAssignment = Array.isArray(storedData.campusIds) && storedData.campusIds.length > 0;
+
+            // Complete pre-assignments created before the current migration flow.
+            if (
+              preDocSnap.exists()
+              && preDocSnap.data().isPending === true
+              && !storedData.preAssignmentAppliedAt
+              && (!hasCampusAssignment || storedRoles.includes('Member'))
+            ) {
+              const assignment = buildUserDataFromPreAssignment(preDocSnap.data(), user.email, user.displayName);
+              const assignmentPatch = {
+                role: assignment.role,
+                campusIds: assignment.campusIds,
+                defaultCampusId: assignment.defaultCampusId,
+                preAssignmentAppliedAt: new Date(),
+              };
+              await updateDoc(docRef, assignmentPatch);
+              Object.assign(storedData, assignmentPatch);
+            }
+
             // Corrige documentos antiguos que conservaron el flag activo
             // después de haber registrado una fecha de cambio.
             if (storedData.needsPasswordChange === true && storedData.lastPasswordChange) {
@@ -75,17 +99,10 @@ export function AuthProvider({ children }) {
 
             if (preDocSnap.exists()) {
               const preData = preDocSnap.data();
-              finalAuthData = { 
-                role: preData.role || ['Member'], 
-                email: user.email.toLowerCase(), 
-                name: preData.name || user.displayName || 'Usuario', 
-                needsPasswordChange: true,
-                createdAt: new Date() 
-              };
-              // Migrate and delete pre-assignment
+              finalAuthData = buildUserDataFromPreAssignment(preData, user.email, user.displayName);
+              finalAuthData.preAssignmentAppliedAt = new Date();
+              // Create the user's own document from the read-only pre-assignment.
               await setDoc(docRef, finalAuthData);
-              // Safely delete pre-doc if needed - using setDoc instead of deleteDoc if preferred but delete is better
-              await setDoc(preDocRef, { migratedTo: user.uid, migratedAt: new Date() }, { merge: true });
             } else {
               // No pre-assignment, create standard Member
               finalAuthData = { 
@@ -114,7 +131,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     currentUser,
     userData,
     login,
@@ -122,7 +139,7 @@ export function AuthProvider({ children }) {
     resetPassword,
     hasRole,
     loading
-  };
+  }), [currentUser, userData, login, logout, resetPassword, hasRole, loading]);
 
   return (
     <AuthContext.Provider value={value}>

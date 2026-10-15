@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Expand, GitBranch, Maximize2, Minimize2, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import './MinistryChart.css';
 
@@ -17,6 +17,17 @@ const norm = value => String(value || '')
   .trim();
 
 const displayName = member => `${member.firstName || ''} ${member.lastName || ''}`.trim();
+
+const sameGroup = (member, group) => {
+  const memberGroup = norm(member.group);
+  const groupName = norm(group.name);
+  return Boolean(memberGroup && groupName && (
+    memberGroup === groupName ||
+    groupName.includes(memberGroup) ||
+    memberGroup.includes(groupName) ||
+    (group.scheduleDay && memberGroup === norm(group.scheduleDay) && groupName.includes(norm(group.scheduleDay)))
+  ));
+};
 
 export default function MinistryChart({ groups = [], members = [], scopeMember = null }) {
   const [expanded, setExpanded] = useState(() => new Set());
@@ -45,7 +56,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     return map;
   }, [members]);
 
-  const resolveMember = value => {
+  const resolveMember = useCallback(value => {
     if (byId[value]) return byId[value];
     if (byName[norm(value)]) return byName[norm(value)];
     const tokens = norm(value).split(' ').filter(Boolean);
@@ -55,25 +66,22 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
       const last = norm(member.lastName);
       return tokens.some(token => token === first) && tokens.some(token => token.length > 2 && (last.startsWith(token) || token.startsWith(last)));
     }) || null;
-  };
+  }, [byId, byName, members]);
 
-  const leadersOf = group => [...asArray(group.facilitators), ...asArray(group.coFacilitators)]
+  const leadersOf = useCallback(group => [...asArray(group.facilitators), ...asArray(group.coFacilitators)]
     .map(resolveMember)
     .filter(Boolean)
-    .filter((member, index, list) => list.findIndex(item => item.id === member.id) === index);
+    .filter((member, index, list) => list.findIndex(item => item.id === member.id) === index), [resolveMember]);
 
-  const sameGroup = (member, group) => {
-    const memberGroup = norm(member.group);
-    const groupName = norm(group.name);
-    return Boolean(memberGroup && groupName && (
-      memberGroup === groupName ||
-      groupName.includes(memberGroup) ||
-      memberGroup.includes(groupName) ||
-      (group.scheduleDay && memberGroup === norm(group.scheduleDay) && groupName.includes(norm(group.scheduleDay)))
-    ));
-  };
+  const rootGroups = useMemo(() => {
+    if (scopeMember) {
+      return groups.filter(group => leadersOf(group).some(leader => leader.id === scopeMember.id));
+    }
+    const roots = groups.filter(group => /martes|jueves/i.test(group.name || '')).slice(0, 2);
+    return roots.length ? roots : groups.slice(0, 2);
+  }, [groups, scopeMember, leadersOf]);
 
-  const membersOf = group => {
+  const membersOf = useCallback(group => {
     const leaders = leadersOf(group);
     const leaderIds = new Set(leaders.map(member => member.id));
     const leaderNames = new Set(leaders.flatMap(member => [norm(displayName(member)), norm(`${member.lastName} ${member.firstName}`)]));
@@ -109,23 +117,15 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     }
 
     return direct.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
-  };
+  }, [leadersOf, resolveMember, members, scopeMember, groups, rootGroups, byId]);
 
-  const rootGroups = useMemo(() => {
-    if (scopeMember) {
-      return groups.filter(group => leadersOf(group).some(leader => leader.id === scopeMember.id));
-    }
-    const roots = groups.filter(group => /martes|jueves/i.test(group.name || '')).slice(0, 2);
-    return roots.length ? roots : groups.slice(0, 2);
-  }, [groups, scopeMember]);
-
-  const childGroupsOf = group => {
+  const childGroupsOf = useCallback(group => {
     const parentMembers = membersOf(group);
     return groups.filter(candidate => {
       if (candidate.id === group.id || rootGroups.some(root => root.id === candidate.id)) return false;
       return leadersOf(candidate).some(leader => parentMembers.some(member => member.id === leader.id));
     });
-  };
+  }, [membersOf, groups, rootGroups, leadersOf]);
 
   const graph = useMemo(() => {
     const nodeMap = new Map();
@@ -276,7 +276,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     });
 
     return { nodes, edges, positions, width, height: viewMode === 'pyramid' ? Math.max(760, levelKeys.length * 155 + 130) : 760 };
-  }, [groups, members, rootGroups, expanded, viewMode, scopeMember, showAll]);
+  }, [groups, rootGroups, expanded, viewMode, scopeMember, showAll, leadersOf, membersOf, childGroupsOf]);
 
   useEffect(() => {
     setManualPositions({});
@@ -351,7 +351,6 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     event.stopPropagation();
     // El nodo tocado pasa al frente para que el tap no caiga en otro superpuesto.
     setFrontNodeId(nodeId);
-    const current = positions[nodeId];
     const descendants = new Set();
     const pending = [nodeId];
     while (pending.length) {
@@ -549,15 +548,6 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     // Solo al montar y al cambiar de vista para no moverle la vista al usuario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
-
-  const handleGroupClick = group => {
-    // Si venía arrastrando el nodo, el click posterior se ignora.
-    if (justDragged.current) {
-      justDragged.current = false;
-      return;
-    }
-    selectGroup(group);
-  };
 
   const handleNodeClick = node => {
     // Si venía arrastrando el nodo, el click posterior se ignora.

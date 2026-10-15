@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../services/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
@@ -37,6 +37,7 @@ const rgbaToHsl = ({ r, g, b }) => {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const applyPrimaryColor = (hex) => {
   const rgba = hexToRgba(hex);
   if (!rgba) return;
@@ -113,6 +114,11 @@ export function SettingsProvider({ children }) {
   const [userPreferences, setUserPreferences] = useState(null);
 
   useEffect(() => {
+    if (!currentUser) {
+      setLoading(false);
+      return undefined;
+    }
+
     const fetchSettings = async () => {
       try {
         const docRef = doc(db, 'settings', 'general');
@@ -133,7 +139,7 @@ export function SettingsProvider({ children }) {
     };
 
     fetchSettings();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     const uid = currentUser?.uid;
@@ -162,7 +168,7 @@ export function SettingsProvider({ children }) {
     return () => { mounted = false; };
   }, [currentUser?.uid]);
 
-  const updateUserPreference = async (patch) => {
+  const updateUserPreference = useCallback(async (patch) => {
     const next = { ...(userPreferences || {}), ...patch };
     setUserPreferences(next);
     if (patch.theme !== undefined) applyTheme(patch.theme);
@@ -175,9 +181,9 @@ export function SettingsProvider({ children }) {
         throw e;
       }
     }
-  };
+  }, [userPreferences, currentUser?.uid]);
 
-  const updateSettings = async (newSettings) => {
+  const updateSettings = useCallback(async (newSettings) => {
     setSettings(newSettings);
     if (newSettings.theme?.primaryColor) {
       applyPrimaryColor(newSettings.theme.primaryColor);
@@ -188,15 +194,15 @@ export function SettingsProvider({ children }) {
       console.error("Error saving settings", e);
       throw e;
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     settings,
     updateSettings,
     loading,
     userPreferences,
     updateUserPreference
-  };
+  }), [settings, updateSettings, loading, userPreferences, updateUserPreference]);
 
   return (
     <SettingsContext.Provider value={value}>

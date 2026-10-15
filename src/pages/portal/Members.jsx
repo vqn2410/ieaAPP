@@ -124,6 +124,9 @@ const Members = () => {
       const madeChanges = await runMemberMigration();
       if (madeChanges) loadMembers();
     })();
+    // loadMembers se recrea en cada render y su cierre ya refleja el estado
+    // actual; las dependencias correctas son el usuario y el campus activo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, activeCampusId]);
 
   useEffect(() => {

@@ -13,8 +13,6 @@ import { getMembers } from '../../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import EmptyState from '../../components/common/EmptyState';
 import RadarChart from '../../components/common/RadarChart';
 import { SkeletonCard } from '../../components/common/Skeleton';
@@ -662,6 +660,10 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
             recordsByGroup[r.groupId].push(r);
         });
 
+        const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+            import('jspdf'),
+            import('jspdf-autotable'),
+        ]);
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
         let logoDataUrl = null;
         try {
@@ -1100,6 +1102,8 @@ const AttendanceListTab = ({ myGroups, myMembers }) => {
 
     useEffect(() => {
         if (!selectedGroupId) return;
+        // Sincronización deliberada con la carga asíncrona de asistencias.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(true);
         const end = new Date();
         const start = new Date();

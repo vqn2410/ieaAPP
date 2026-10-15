@@ -1,5 +1,7 @@
 import { db } from './firebase';
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, runTransaction, where } from 'firebase/firestore';
+import { reciprocalRelationship, normalizeFamilyLinks, upsertFamilyLink, removeFamilyLink } from '../utils/familyHelpers';
+import { recordAudit } from './auditService';
 
 const COLLECTION_NAME = 'members';
 
@@ -8,19 +10,21 @@ export const getMembers = async (groupId = null, campusId = null) => {
     try {
         let q;
         if (groupId && campusId) {
-            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId), where('campusId', '==', campusId), orderBy('lastName'));
+            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId), where('campusId', '==', campusId));
         } else if (groupId) {
             // Filtrar por grupo si el usuario es facilitador
-            q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId), orderBy('lastName'));
+            q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId));
         } else if (campusId) {
-            q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId), orderBy('lastName'));
+            q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId));
         } else {
             // Todos los miembros
-            q = query(collection(db, COLLECTION_NAME), orderBy('lastName'));
+            q = query(collection(db, COLLECTION_NAME));
         }
         
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return querySnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .sort((a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')));
     } catch (e) {
         console.error("Error obteniendo miembros", e);
         return [];
@@ -42,6 +46,16 @@ export const getMember = async (id) => {
     }
 };
 
+export const getMemberByEmail = async email => {
+    if (!email) return null;
+    const snapshot = await getDocs(query(
+        collection(db, COLLECTION_NAME),
+        where('email', '==', email.trim().toLowerCase()),
+    ));
+    const result = snapshot.docs[0];
+    return result ? { id: result.id, ...result.data() } : null;
+};
+
 // Agregar un miembro nuevo
 export const createMember = async (memberData) => {
     try {
@@ -49,6 +63,7 @@ export const createMember = async (memberData) => {
             ...memberData,
             createdAt: new Date()
         });
+        void recordAudit({ action: 'create', entity: COLLECTION_NAME, entityId: docRef.id }).catch(() => {});
         return { id: docRef.id, ...memberData };
     } catch (e) {
         console.error("Error creando miembro", e);
@@ -61,16 +76,70 @@ export const updateMember = async (id, memberData) => {
     try {
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, { ...memberData, updatedAt: new Date() });
+        void recordAudit({ action: 'update', entity: COLLECTION_NAME, entityId: id, metadata: { fields: Object.keys(memberData) } }).catch(() => {});
     } catch (e) {
         console.error("Error actualizando miembro", e);
         throw e;
     }
 };
 
+export const linkFamilyMembers = async (memberId, relatedMemberId, relationship) => {
+    if (!memberId || !relatedMemberId || memberId === relatedMemberId || !reciprocalRelationship[relationship]) {
+        throw new Error('Vínculo familiar inválido.');
+    }
+
+    const memberRef = doc(db, COLLECTION_NAME, memberId);
+    const relatedRef = doc(db, COLLECTION_NAME, relatedMemberId);
+    await runTransaction(db, async transaction => {
+        const [memberSnap, relatedSnap] = await Promise.all([
+            transaction.get(memberRef),
+            transaction.get(relatedRef),
+        ]);
+        if (!memberSnap.exists() || !relatedSnap.exists()) throw new Error('No se encontró uno de los miembros.');
+
+        const memberLinks = upsertFamilyLink(
+            normalizeFamilyLinks(memberSnap.data().familyLinks),
+            relatedMemberId,
+            relationship,
+        );
+        const relatedLinks = upsertFamilyLink(
+            normalizeFamilyLinks(relatedSnap.data().familyLinks),
+            memberId,
+            reciprocalRelationship[relationship],
+        );
+        transaction.update(memberRef, { familyLinks: memberLinks, updatedAt: new Date() });
+        transaction.update(relatedRef, { familyLinks: relatedLinks, updatedAt: new Date() });
+    });
+};
+
+export const unlinkFamilyMembers = async (memberId, relatedMemberId) => {
+    if (!memberId || !relatedMemberId || memberId === relatedMemberId) return;
+
+    const memberRef = doc(db, COLLECTION_NAME, memberId);
+    const relatedRef = doc(db, COLLECTION_NAME, relatedMemberId);
+    await runTransaction(db, async transaction => {
+        const [memberSnap, relatedSnap] = await Promise.all([
+            transaction.get(memberRef),
+            transaction.get(relatedRef),
+        ]);
+        if (!memberSnap.exists() || !relatedSnap.exists()) return;
+
+        transaction.update(memberRef, {
+            familyLinks: removeFamilyLink(memberSnap.data().familyLinks, relatedMemberId),
+            updatedAt: new Date(),
+        });
+        transaction.update(relatedRef, {
+            familyLinks: removeFamilyLink(relatedSnap.data().familyLinks, memberId),
+            updatedAt: new Date(),
+        });
+    });
+};
+
 // Eliminar un miembro
 export const deleteMember = async (id) => {
     try {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
+        void recordAudit({ action: 'delete', entity: COLLECTION_NAME, entityId: id }).catch(() => {});
     } catch (e) {
         console.error("Error eliminando miembro", e);
         throw e;

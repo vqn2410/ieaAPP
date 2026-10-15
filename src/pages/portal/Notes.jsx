@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -30,14 +30,16 @@ const Notes = () => {
 
   const canShare = hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const data = await getNotes(currentUser?.uid, userData?.role);
     setNotes(data);
     setLoading(false);
-  };
+  }, [currentUser?.uid, userData?.role]);
 
-  useEffect(() => { if (currentUser) load(); }, [currentUser, userData?.role]);
+  // Carga inicial/resync al cambiar de usuario o rol.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (currentUser) load(); }, [currentUser, load]);
 
   const categories = ['Todas', ...new Set([...DEFAULT_CATEGORIES, ...notes.map(n => n.category).filter(Boolean)])];
 
@@ -84,7 +86,7 @@ const Notes = () => {
       }
       setShowModal(false);
       load();
-    } catch (e) {
+    } catch {
       alert('Error al guardar la nota.');
     }
   };

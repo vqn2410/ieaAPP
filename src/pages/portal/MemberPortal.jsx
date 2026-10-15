@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { User, Mail, Phone, MapPin, BookOpen, Users, Save } from 'lucide-react';
+import Modal from '../../components/common/Modal';
+import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getMembers, updateMember } from '../../services/memberService';
+import { getMemberByEmail, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
+import { getEvents, setEventRegistration } from '../../services/eventService';
 import { getArray } from '../../utils/helpers';
 import './MemberPortal.css';
 
@@ -17,24 +19,30 @@ const initialAvatar = (firstName, lastName) => {
 
 const MemberPortal = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, hasRole } = useAuth();
   const [member, setMember] = useState(null);
   const [groups, setGroups] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [rsvp, setRsvp] = useState({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ phone: '', address: '' });
   const [saving, setSaving] = useState(false);
+  const [rsvpEvent, setRsvpEvent] = useState(null);
+  const [rsvpData, setRsvpData] = useState({});
+  const [rsvpSaving, setRsvpSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [members, gs] = await Promise.all([getMembers(), getGroups()]);
+      const me = await getMemberByEmail(currentUser?.email);
+      const [gs, upcomingEvents] = await Promise.all([
+        hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) ? getGroups() : Promise.resolve([]),
+        getEvents(),
+      ]);
       if (!mounted) return;
       setGroups(gs);
-      const me = members.find(m =>
-        m.email && currentUser?.email &&
-        m.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
-      );
+      setEvents(upcomingEvents.filter(event => event.date && event.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`)).slice(0, 5));
       if (me) {
         setMember(me);
         setFormData({ phone: me.phone || '', address: me.address || '' });
@@ -42,7 +50,7 @@ const MemberPortal = () => {
       setLoading(false);
     })();
     return () => { mounted = false; };
-  }, [currentUser]);
+  }, [currentUser, hasRole]);
 
   const handleSave = async () => {
     if (!member) return;
@@ -51,6 +59,37 @@ const MemberPortal = () => {
     setMember(prev => ({ ...prev, phone: formData.phone, address: formData.address }));
     setSaving(false);
     setEditing(false);
+  };
+
+  const confirmRsvp = async (event, data = {}) => {
+    if (!member) return;
+    const registered = !rsvp[event.id];
+    await setEventRegistration(event.id, member.id, registered, data);
+    setRsvp(previous => ({ ...previous, [event.id]: registered }));
+  };
+
+  const toggleRsvp = async event => {
+    if (rsvp[event.id]) {
+      await confirmRsvp(event);
+      return;
+    }
+    const fields = Array.isArray(event.registrationFields) ? event.registrationFields : [];
+    if (fields.length === 0) {
+      await confirmRsvp(event);
+      return;
+    }
+    setRsvpEvent(event);
+    setRsvpData({});
+  };
+
+  const submitRsvp = async submitEvent => {
+    setRsvpSaving(true);
+    try {
+      await confirmRsvp(submitEvent, rsvpData);
+      setRsvpEvent(null);
+    } finally {
+      setRsvpSaving(false);
+    }
   };
 
   const myGroups = groups.filter(g => {
@@ -166,6 +205,13 @@ const MemberPortal = () => {
         <div className="portal-main">
           <Card>
             <div className="portal-section-title">
+              <CalendarDays size={16} />
+              <span>Próximas reuniones</span>
+            </div>
+            {events.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: '.8125rem' }}>No hay reuniones próximas registradas.</p> : <div className="portal-events-list">{events.map(event => <div className="portal-event-item" key={event.id}><button type="button" className="portal-event-link" onClick={() => navigate('/dashboard/eventos')}><span><strong>{event.title}</strong><small>{event.date}{event.time ? ` · ${event.time}` : ''}</small></span><CalendarDays size={15} /></button><Button size="sm" variant={rsvp[event.id] ? 'primary' : 'outline'} onClick={() => toggleRsvp(event)}>{rsvp[event.id] ? 'Anotado' : 'Me anoto'}</Button></div>)}</div>}
+          </Card>
+          <Card>
+            <div className="portal-section-title">
               <BookOpen size={16} />
               <span>Mis caminos de crecimiento</span>
             </div>
@@ -192,6 +238,12 @@ const MemberPortal = () => {
           </Card>
         </div>
       </div>
+      <Modal isOpen={Boolean(rsvpEvent)} onClose={() => { if (!rsvpSaving) setRsvpEvent(null); }} title={rsvpEvent ? `Inscripción · ${rsvpEvent.title}` : 'Inscripción'}>
+        {rsvpEvent && <form onSubmit={event => { event.preventDefault(); submitRsvp(rsvpEvent); }} style={{ display: 'grid', gap: '1rem' }}>
+          {rsvpEvent.registrationFields.map((field, index) => <label key={`${field.label}-${index}`}>{field.label}{field.type === 'textarea' ? <textarea className="form-input" rows="3" required={field.required === true} value={rsvpData[field.label] || ''} onChange={event => setRsvpData(previous => ({ ...previous, [field.label]: event.target.value }))} /> : field.type === 'select' ? <select className="form-input" required={field.required === true} value={rsvpData[field.label] || ''} onChange={event => setRsvpData(previous => ({ ...previous, [field.label]: event.target.value }))}><option value="">Seleccioná una opción</option>{(field.options || []).map(option => <option key={option} value={option}>{option}</option>)}</select> : <input className="form-input" required={field.required === true} value={rsvpData[field.label] || ''} onChange={event => setRsvpData(previous => ({ ...previous, [field.label]: event.target.value }))} />}</label>)}
+          <div className="d-flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setRsvpEvent(null)} disabled={rsvpSaving}>Cancelar</Button><Button type="submit" disabled={rsvpSaving}>{rsvpSaving ? 'Guardando...' : 'Confirmar inscripción'}</Button></div>
+        </form>}
+      </Modal>
     </div>
   );
 };

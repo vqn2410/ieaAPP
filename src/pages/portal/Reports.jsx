@@ -7,8 +7,6 @@ import { isBaptised } from '../../utils/helpers';
 import { getGroups } from '../../services/groupService';
 import { getVisitors } from '../../services/visitorService';
 import { getAllFollowUps } from '../../services/followUpService';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import './Reports.css';
 
 const Reports = () => {
@@ -63,6 +61,10 @@ const Reports = () => {
   });
 
   const exportPdf = async (title, headers, rows, filename) => {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const pdf = new jsPDF({ orientation: headers.length > 5 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
     try {
       const response = await fetch('/img/logo-iea.png');

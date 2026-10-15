@@ -23,19 +23,15 @@ const ChangePassword = () => {
     setLoading(true);
     setError('');
     try {
-      console.log('Intentando actualizar contraseña para:', currentUser.email);
-      
       // 1. Update Password in Firebase Auth
       await updatePassword(currentUser, newPassword);
-      console.log('Auth password updated');
-      
+
       // 2. Update flag in Firestore
       const userDocRef = doc(db, 'users', currentUser.uid);
       await updateDoc(userDocRef, {
         needsPasswordChange: false,
         lastPasswordChange: new Date()
       });
-      console.log('Firestore flag updated');
 
       alert('¡Contraseña actualizada con éxito! Serás redirigido al panel.');
       

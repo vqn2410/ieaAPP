@@ -2,3 +2,34 @@
 .btn-icon {
   display: inline-flex;
 }
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-spinner {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+  opacity: 0.9;
+}
+
+.btn.is-loading {
+  cursor: progress;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner {
+    animation-duration: 1.4s;
+  }
+}

@@ -18,7 +18,6 @@ const TransferRequests = ({ myGroups = [], allMembers = [], currentUser, myMembe
     const [saving, setSaving] = useState(false);
     const [actingId, setActingId] = useState('');
 
-    const myGroupIds = new Set(myGroups.map(g => g.id));
     const requesterEmail = currentUser?.email?.trim().toLowerCase();
     const requesterName = myMemberProfile
         ? `${myMemberProfile.firstName} ${myMemberProfile.lastName}`

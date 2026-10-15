@@ -5,8 +5,6 @@ import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import { createKid, deleteKid, getKids, getKidsAttendance, saveKidsAttendance, updateKid } from '../../services/kidService';
 import { normalizeString } from '../../utils/helpers';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import './Kids.css';
 
 const ROOMS = ['Sala 4 a 6', 'Sala 7 a 9', 'Sala 10 a 12'];
@@ -146,8 +144,12 @@ export default function Kids() {
     finally { setLoadingReport(false); }
   };
 
-  const downloadReportPdf = () => {
+  const downloadReportPdf = async () => {
     if (!report) return;
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const periodLabels = { monthly: 'Mensual', quarterly: 'Trimestral', semester: 'Semestral', annual: 'Anual' };
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     pdf.setFont('helvetica', 'bold');

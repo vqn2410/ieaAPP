@@ -75,7 +75,10 @@ const FloatingAssistant = () => {
         ]);
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `No pude responder: ${e.message}` }]);
+      const message = e instanceof TypeError && e.message === 'Failed to fetch'
+        ? 'El backend IA no está disponible. Iniciá `npx vercel dev --listen 3005` en otra terminal.'
+        : `No pude responder: ${e.message}`;
+      setMessages(prev => [...prev, { role: 'assistant', content: message }]);
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users } from 'lucide-react';
-import FloatingAssistant from '../../components/common/FloatingAssistant';
 import './Home.css';
 
 const Home = () => {
@@ -33,7 +32,7 @@ const Home = () => {
     { day: 'Lunes', title: 'I.E.T.E. — Estudia Teología con nosotros', time: '20:00 hs', icon: BookOpen, image: '/anuncios/iete.jpg', description: 'Formación bíblica para crecer en la Palabra.' },
     { day: 'Martes', title: 'Reunión de Oración', time: '19:00 hs', icon: HeartHandshake, image: '/anuncios/reu_oracion.jepg.jpg', description: 'Un espacio para buscar a Dios juntos.' },
     { day: 'Viernes', title: 'La Tribu — Adolescentes', time: '19:00 hs', icon: Users, image: '/anuncios/LA-TRIBU.jpg', description: 'Una comunidad para crecer, compartir y encontrarse.' },
-    { day: 'Sábado', title: 'Reunión General', time: '19:30 hs', icon: Heart, image: '/anuncios/reu_general.jpg', description: 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.' },
+    { day: 'Sábado', title: 'Reunión general', time: '19:30 hs', icon: Heart, image: '/anuncios/reu_general.jpg', description: 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.' },
     { date: '2026-09-17', day: 'Jueves 17 de septiembre', title: 'Reunión de Voluntarios', time: '19:30 hs', icon: Users, image: '/anuncios/reu_de_voluntarios.jpg', description: 'Nos reunimos para servir mejor y caminar juntos.' },
     { date: '2026-09-19', day: 'Sábado 19 de septiembre', title: 'Presentación de Niños', time: '19:30 hs', icon: Sparkles, image: '/anuncios/presentacion_de_ninos.PNG', description: 'Una celebración especial para nuestra familia.' },
     { date: santaCenaIso, day: santaCenaLabel, title: 'Santa Cena', time: '19:30 hs', icon: Heart, image: '/anuncios/santacena.jpg', description: 'Un momento especial para recordar juntos el amor de Jesús.' },
@@ -333,7 +332,7 @@ const Home = () => {
             </a>
             <strong>Unión de las Asambleas de Dios</strong>
             <span>Región 8</span>
-            <span>Fichero de culto Nº 14</span>
+            <span>Fichero de reunión general Nº 14</span>
           </div>
           <div className="iea-footer-cols">
             <div className="iea-footer-col">
@@ -366,7 +365,6 @@ const Home = () => {
           </div>
         </div>
       </footer>
-      <FloatingAssistant />
     </div>
   );
 };

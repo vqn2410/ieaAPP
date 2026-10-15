@@ -13,13 +13,25 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data[field];
     }
 
+    function isOwnPreAssignment(userId) {
+      return isAuth()
+        && request.auth.token.email != null
+        && userId == 'pre-' + request.auth.token.email.lower();
+    }
+
     // Función auxiliar: verifica si el usuario tiene un rol específico
     function hasRole(role) {
-      return isAuth() && (getUserField('role')).hasAny([role]);
+      return isAuth() && (
+        (getUserField('role') is list && getUserField('role').hasAny([role]))
+        || (getUserField('role') is string && getUserField('role') == role)
+      );
     }
 
     function hasAnyRole(roles) {
-      return isAuth() && (getUserField('role')).hasAny(roles);
+      return isAuth() && (
+        (getUserField('role') is list && getUserField('role').hasAny(roles))
+        || (getUserField('role') is string && roles.hasAny([getUserField('role')]))
+      );
     }
 
     function isGlobalManager() {
@@ -27,7 +39,10 @@ service cloud.firestore {
     }
 
     function hasCampus(campusId) {
-      return isAuth() && campusId != null && getUserField('campusIds').hasAny([campusId]);
+      return isAuth() && campusId != null && (
+        (getUserField('campusIds') is list && getUserField('campusIds').hasAny([campusId]))
+        || (getUserField('campusIds') is string && getUserField('campusIds') == campusId)
+      );
     }
 
     function canAccessCampus(campusId) {
@@ -46,11 +61,31 @@ service cloud.firestore {
         || (hasAnyRole(['Facilitator', 'CoFacilitator']) && managesGroup(groupId));
     }
 
+    function isOwnMember(member) {
+      return isAuth()
+        && request.auth.token.email != null
+        && member.data.email != null
+        && member.data.email.lower() == request.auth.token.email.lower();
+    }
+
+    function isOwnMemberId(memberId) {
+      return isAuth()
+        && request.auth.token.email != null
+        && get(/databases/$(database)/documents/members/$(memberId)).data.email != null
+        && get(/databases/$(database)/documents/members/$(memberId)).data.email.lower() == request.auth.token.email.lower();
+    }
+
     // === Colección: users ===
     // Cada usuario solo puede leer su propio documento
-    // Los admins pueden leer/escribir cualquier documento de usuario
+    // Los admins pueden leer/escribir cualquier documento de usuario.
+    // Un usuario nuevo puede leer únicamente su pre-asignación, identificada
+    // por el email almacenado en el documento; nunca puede modificarla.
     match /users/{userId} {
-      allow read: if isAuth() && (request.auth.uid == userId || hasRole('Admin'));
+      allow read: if isAuth() && (
+        request.auth.uid == userId
+        || isOwnPreAssignment(userId)
+        || hasRole('Admin')
+      );
       allow create: if isAuth() && request.auth.uid == userId;
       allow update: if isAuth() && (request.auth.uid == userId || hasRole('Admin'));
       allow delete: if isAuth() && hasRole('Admin');
@@ -65,9 +100,12 @@ service cloud.firestore {
     // Solo usuarios autenticados pueden leer
     // Admins y pastores gestionan cualquier miembro; facilitadores solo su grupo.
     match /members/{memberId} {
-      allow read: if isAuth() && canAccessCampus(resource.data.campusId);
+      allow read: if isAuth() && (isOwnMember(resource) || canAccessCampus(resource.data.campusId));
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
-      allow update: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
+      allow update: if isAuth() && (
+        (isOwnMember(resource) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'address', 'updatedAt']))
+        || canManageMemberGroup(request.resource.data.groupId)
+      );
       allow delete: if isGlobalManager() || (hasRole('CampusAdmin') && canAccessCampus(resource.data.campusId));
     }
 
@@ -101,6 +139,71 @@ service cloud.firestore {
       allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
       allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
       allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
+    }
+
+    // === Colección: notifications ===
+    // Son registros dirigidos: cada usuario solo puede consultar y marcar
+    // como leídas sus propias notificaciones.
+    match /notifications/{notificationId} {
+      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth()
+        && hasAnyRole(['Admin', 'Pastor'])
+        && request.resource.data.userId is string
+        && request.resource.data.userId != '';
+      allow update: if isAuth()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // === Colección: visitors ===
+    // Los visitantes contienen datos de contacto y solo son gestionados por
+    // roles pastorales, encargados de campus y líderes de grupos.
+    match /visitors/{visitorId} {
+      allow read, create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin']);
+    }
+
+    match /eventAttendance/{attendanceId} {
+      allow read, create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isGlobalManager();
+    }
+
+    match /eventRegistrations/{registrationId} {
+      allow read: if isAuth() && (
+        hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'])
+        || isOwnMemberId(resource.data.memberId)
+      );
+      allow create: if isAuth() && (
+        hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'])
+        || (isOwnMemberId(request.resource.data.memberId) && request.resource.data.eventId is string)
+      );
+      allow update: if isAuth() && (
+        hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'])
+        || (isOwnMemberId(resource.data.memberId) && request.resource.data.memberId == resource.data.memberId && request.resource.data.eventId == resource.data.eventId)
+      );
+      allow delete: if isGlobalManager();
+    }
+
+    match /eventVolunteers/{volunteerId} {
+      allow read, create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow delete: if isGlobalManager();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isGlobalManager();
+      allow create: if isAuth() && request.resource.data.actorId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // === Colección: followups ===
+    // Los seguimientos solo están disponibles para roles pastorales y de grupos.
+    match /followups/{followupId} {
+      allow read: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'CampusAdmin']);
+      allow create: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'CampusAdmin']);
+      allow update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'CampusAdmin']);
+      allow delete: if isGlobalManager();
     }
 
     // === Colección: group_attendance ===

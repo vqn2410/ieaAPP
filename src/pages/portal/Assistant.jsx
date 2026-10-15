@@ -18,7 +18,7 @@ const TRAINING = [
   { topic: 'Misión y visión', q: '¿Cuál es la misión y la visión de IEA? Contáme con tus palabras.' },
   { topic: 'Historia y origen', q: '¿Cuándo y cómo comenzó IEA? Contáme la historia de la iglesia.' },
   { topic: 'Valores', q: '¿Cuáles son los valores que definen a IEA y a su comunidad?' },
-  { topic: 'Cultos y reuniones', q: '¿Cuáles son los días, horarios y lugares de los cultos y reuniones?' },
+  { topic: 'Reuniones', q: '¿Cuáles son los días, horarios y lugares de las reuniones?' },
   { topic: 'Ministerios', q: '¿Qué ministerios o áreas de servicio tiene la iglesia y a quién van dirigidos?' },
   { topic: 'Contacto y sedes', q: '¿Cuál es la información de contacto, sedes o direcciones de la iglesia?' },
   { topic: 'Protocolos del portal', q: 'Contáme cómo se maneja en el día a día la asistencia y los seguimientos.' },
@@ -69,7 +69,10 @@ const send = async (text) => {
       }
       pushMsg('assistant', data.answer);
     } catch (e) {
-      pushMsg('assistant', `No pude responder: ${e.message}`);
+      const message = e instanceof TypeError && e.message === 'Failed to fetch'
+        ? 'El backend IA no está disponible. En desarrollo iniciá `npx vercel dev --listen 3005` en otra terminal.'
+        : `No pude responder: ${e.message}`;
+      pushMsg('assistant', message);
     } finally {
       setLoading(false);
     }
@@ -230,7 +233,7 @@ const send = async (text) => {
           <input
             className="form-input"
             placeholder={chatMode
-              ? 'Contáme algo sobre IEA, por ejemplo: "los cultos de mujeres son los miércoles a las 15"...'
+              ? 'Contáme algo sobre IEA, por ejemplo: "Un Break entre nosotras es los miércoles a las 15"...'
               : training ? (selectedTopic ? 'Respondé la pregunta y toca Guardar...' : 'Elegí un tema de la lista de arriba...') : 'Escribí tu pregunta, por ejemplo: "¿cómo está la asistencia este mes?"'}
             value={input}
             onChange={e => setInput(e.target.value)}

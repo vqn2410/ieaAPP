@@ -1,5 +1,24 @@
 /* Common Components Styles */
 
+/* Card primitives */
+.card-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.card-header--divided {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-footer {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
 .badge {
   padding: 0.375rem 0.875rem;
   border-radius: 9999px; /* radius-full */
@@ -49,6 +68,17 @@
 }
 
 /* StatCard */
+.stat-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.stat-card-content {
+  min-width: 0;
+  flex: 1;
+}
+
 .stat-card-icon-container {
   width: 50px;
   height: 50px;
@@ -62,9 +92,21 @@
 .stat-card-value {
   margin: 0;
   font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
 }
 
 .stat-card-label {
+  display: block;
   font-size: 0.875rem;
   color: var(--color-text-muted);
+}
+
+.stat-card-hint {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  opacity: 0.8;
 }

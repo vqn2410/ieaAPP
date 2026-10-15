@@ -1,0 +1,20 @@
+.event-checkin-member,
+.event-plan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+  padding: .65rem .75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.event-checkin-member { cursor: pointer; }
+.event-checkin-member.is-present { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
+.event-checkin-member span:first-child, .event-plan-item strong { display: grid; gap: .15rem; }
+.event-checkin-member small, .event-plan-item span { color: var(--color-text-muted); font-size: .7rem; }
+.event-plan-item button { border: 0; color: var(--color-danger); background: transparent; font-size: 1.1rem; cursor: pointer; }

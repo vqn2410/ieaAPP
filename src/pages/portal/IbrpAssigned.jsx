@@ -5,12 +5,11 @@ import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import EmptyState from '../../components/common/EmptyState';
 import { createIbrpAssigned, deleteIbrpAssigned, getIbrpAssigned, updateIbrpAssigned } from '../../services/ibrpService';
-import { getIbrpEvaluation, getIbrpEvaluationsForAssigned, saveIbrpEvaluation } from '../../services/ibrpEvaluationService';
+import { getIbrpEvaluation, saveIbrpEvaluation } from '../../services/ibrpEvaluationService';
 import { normalizeString } from '../../utils/helpers';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import RadarChart from '../../components/common/RadarChart';
-import { jsPDF } from 'jspdf';
 import './IbrpAssigned.css';
 
 const emptyRecord = { lastName: '', firstName: '', dni: '', studyYear: '1', fourthTrack: '', previousStudies: '', discipleship: 'No', baptized: 'No', serviceAreas: [], previousChurch: '', active: true, performanceStatus: 'En seguimiento', performanceScore: '', performanceNotes: '' };
@@ -45,11 +44,10 @@ export default function IbrpAssigned() {
   const [loading, setLoading] = useState(true);
   const [selectedAssignedId, setSelectedAssignedId] = useState('');
   const [selectedArea, setSelectedArea] = useState('');
-  const [evaluationMonth, setEvaluationMonth] = useState(new Date().toISOString().slice(0, 7));
+  const evaluationMonth = new Date().toISOString().slice(0, 7);
   const [evaluationValues, setEvaluationValues] = useState(() => Object.fromEntries(EVALUATION_DIMENSIONS.map(item => [item.key, 0])));
   const [evaluationNotes, setEvaluationNotes] = useState('');
   const [savingEvaluation, setSavingEvaluation] = useState(false);
-  const [generatedEvaluations, setGeneratedEvaluations] = useState([]);
   const [openActionId, setOpenActionId] = useState(null);
   const [profileRecord, setProfileRecord] = useState(null);
   const load = async () => { setLoading(true); try { setRecords(await getIbrpAssigned()); } finally { setLoading(false); } };
@@ -74,35 +72,11 @@ export default function IbrpAssigned() {
     });
   }, [selectedAssignedId, selectedArea, evaluationMonth]);
 
-  useEffect(() => {
-    if (selectedAssignedId) getIbrpEvaluationsForAssigned(selectedAssignedId).then(setGeneratedEvaluations);
-    else setGeneratedEvaluations([]);
-  }, [selectedAssignedId]);
-
   const saveEvaluation = async () => {
     if (!selectedAssignedId || !selectedArea) return;
     setSavingEvaluation(true);
     try { await saveIbrpEvaluation(selectedAssignedId, selectedArea, evaluationMonth, { values: evaluationValues, notes: evaluationNotes, evaluatorId: userData?.uid || '', evaluatorName: userData?.name || '' }); alert('Evaluación mensual guardada correctamente.'); }
     finally { setSavingEvaluation(false); }
-  };
-
-  const downloadEvaluation = () => {
-    if (!selectedAssigned || !selectedArea) return;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(16);
-    pdf.text('IEA - Reporte privado de desempeño IBRP', 14, 18);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(10);
-    pdf.text(`Asignado: ${selectedAssigned.lastName}, ${selectedAssigned.firstName}`, 14, 28);
-    pdf.text(`Área: ${selectedArea}`, 14, 35);
-    pdf.text(`Evaluador: ${userData?.name || 'Encargado del área'}`, 14, 42);
-    EVALUATION_DIMENSIONS.forEach((dimension, index) => pdf.text(`${dimension.label}: ${evaluationValues[dimension.key]}/10`, 18, 56 + index * 8));
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Observaciones privadas', 14, 112);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(pdf.splitTextToSize(evaluationNotes || 'Sin observaciones.', 180), 14, 120);
-    pdf.save(`ibrp-${selectedAssigned.lastName}-${selectedArea.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   return <div className="ibrp-page animate-fade-in"><div className="ibrp-header"><div><p className="ibrp-eyebrow">Formación y servicio</p><h1>Asignados IBRP</h1><p>Registro privado de estudiantes asignados al IBRP.</p></div><Button icon={<Plus size={16} />} onClick={() => { setEditing({}); setTab('list'); }}>Nuevo asignado</Button></div><div className="ibrp-tabs"><button className={tab === 'list' ? 'active' : ''} onClick={() => setTab('list')}><Users size={15} />Listado</button><button className={tab === 'report' ? 'active' : ''} onClick={() => setTab('report')}><FileBarChart size={15} />Reporte de desempeño</button></div><div className="ibrp-summary"><div><strong>{records.length}</strong><span>Total asignados</span></div><div><strong>{records.filter(record => record.active !== false).length}</strong><span>Activos</span></div><div><strong>{new Set(records.flatMap(record => record.serviceAreas || [])).size}</strong><span>Áreas vinculadas</span></div><div><strong>{records.filter(record => record.studyYear === '4').length}</strong><span>En 4º año</span></div></div>

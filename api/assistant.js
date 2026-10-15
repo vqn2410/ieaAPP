@@ -54,7 +54,7 @@ function initializeFirebaseAdmin() {
   return true;
 }
 
-async function callAssistant(question) {
+async function callAssistant(question, knowledge = []) {
   const apiUrl = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
   const apiKey = process.env.AI_API_KEY;
   const model = process.env.AI_MODEL || 'gpt-4o-mini';
@@ -64,7 +64,10 @@ async function callAssistant(question) {
     'Respondés en español rioplatense, de forma breve, amable y útil.',
     'Solo respondés con información de IEA que se te dé en esta conversación. No usés conocimiento general, internet ni datos externos.',
     'Si la información no está disponible, decilo con honestidad y no inventes.',
-    'No compartas información sensible o interna (cantidad de miembros, bautizados, nombres, seguencias, finanzas, estadísticas).',
+    'No compartas información sensible o interna (nombres, seguimientos, finanzas o estadísticas) salvo que el rol autenticado tenga autorización.',
+    knowledge.length > 0
+      ? `Usá también este conocimiento oficial de IEA cuando sea relevante:\n${knowledge.map(item => `Tema: ${item.topic}\nPregunta: ${item.question}\nRespuesta: ${item.answer}`).join('\n\n')}`
+      : 'No hay conocimiento adicional cargado por la iglesia.',
   ].join(' ');
 
   const headers = {
@@ -149,7 +152,12 @@ export default async function handler(req, res) {
   const trimmedQuestion = question.trim().slice(0, 1000);
 
   try {
-    const answer = await callAssistant(trimmedQuestion);
+    const knowledgeSnapshot = await admin.firestore().collection('knowledge').get();
+    const knowledge = knowledgeSnapshot.docs
+      .map(item => item.data())
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      .slice(0, 30);
+    const answer = await callAssistant(trimmedQuestion, knowledge);
     res.status(200).json({ answer });
   } catch (error) {
     console.error('Assistant error:', error);

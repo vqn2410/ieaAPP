@@ -9,6 +9,7 @@ const isImmutableAsset = (url) => url.pathname.startsWith('/assets/');
 const isNavigation = (request) => request.mode === 'navigate';
 
 self.addEventListener('install', () => {
+  // No precachear aquí: Vite genera assets con hash y el HTML debe revalidarse.
   self.skipWaiting();
 });
 
@@ -52,7 +53,7 @@ async function cacheFirst(request, cacheName) {
   const response = await fetch(request);
   if (response.ok) {
     const cache = await caches.open(cacheName);
-    cache.put(request, response.clone());
+    await cache.put(request, response.clone());
   }
   return response;
 }
@@ -62,7 +63,7 @@ async function staleWhileRevalidate(request, cacheName) {
   const cached = await cache.match(request);
   const refresh = fetch(request)
     .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
+      if (response.ok) return cache.put(request, response.clone()).then(() => response);
       return response;
     })
     .catch(() => null);
@@ -74,7 +75,7 @@ async function networkFirst(request, cacheName, fallbackToIndex) {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {

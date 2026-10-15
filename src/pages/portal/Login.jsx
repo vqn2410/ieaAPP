@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
+import { Eye, EyeOff, Instagram, Facebook, Youtube, Twitter } from 'lucide-react';
 import Logo from '../../components/common/Logo';
 import './Login.css';
 
@@ -11,7 +10,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [showReset, setShowReset] = useState(false);
@@ -84,35 +83,45 @@ const Login = () => {
 
           {!showReset && (
             <div className="login-greeting animate-fade-in">
-              <h2>¡Hola de nuevo! 👋</h2>
+              <h2>¡Hola de nuevo!</h2>
               <p>Bienvenido a Portal IEA</p>
             </div>
           )}
 
-          {error && <div className="alert alert-danger mb-4" style={{ borderRadius: '12px' }}>{error}</div>}
+          {error && (
+            <div className="alert alert-danger mb-4 login-alert" role="alert" aria-live="assertive">
+              {error}
+            </div>
+          )}
 
           {showReset ? (
             <div className="animate-fade-in">
               <div className="login-greeting">
                 <h2>Recuperar Clave</h2>
-                <p onClick={() => { setShowReset(false); setResetSent(false); setError(''); }} style={{ cursor: 'pointer', color: 'var(--color-primary)' }}>
+                <button
+                  type="button"
+                  className="login-back-link"
+                  onClick={() => { setShowReset(false); setResetSent(false); setError(''); }}
+                >
                   Volver al inicio de sesión
-                </p>
+                </button>
               </div>
 
               <form onSubmit={handleResetSubmit}>
                 {resetSent ? (
-                  <div className="alert alert-success" style={{ borderRadius: '12px' }}>
+                  <div className="alert alert-success login-alert" role="status" aria-live="polite">
                     ¡Correo enviado! Revisa tu bandeja de entrada para continuar.
                   </div>
                 ) : (
                   <>
                     <div className="login-field">
-                      <label>Correo Electrónico</label>
+                      <label htmlFor="reset-email">Correo Electrónico</label>
                       <div className="login-input-wrapper">
-                        <input 
+                        <input
                           className="login-input"
-                          type="email" 
+                          type="email"
+                          id="reset-email"
+                          autoComplete="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="tu@email.com"
@@ -132,10 +141,11 @@ const Login = () => {
               <div className="login-field">
                 <label htmlFor="email">Usuario o Email</label>
                 <div className="login-input-wrapper">
-                  <input 
+                  <input
                     className="login-input"
-                    type="email" 
-                    id="email" 
+                    type="email"
+                    id="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ejemplo@iglesia.com"
@@ -143,39 +153,42 @@ const Login = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="login-field">
                 <label htmlFor="password">Contraseña</label>
                 <div className="login-input-wrapper">
-                  <input 
+                  <input
                     className="login-input"
-                    type={showPassword ? "text" : "password"} 
-                    id="password" 
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="input-icon-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-pressed={showPassword}
                   >
-                    <i className={showPassword ? "ri-eye-off-line" : "ri-eye-line"}></i>
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
-              
-              <button 
-                type="submit" 
+
+              <button
+                type="submit"
                 className="login-btn-primary"
                 disabled={loading}
               >
                 {loading ? 'INGRESANDO...' : 'INGRESAR'}
               </button>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="login-recover-link"
                 onClick={() => setShowReset(true)}
               >
@@ -186,10 +199,10 @@ const Login = () => {
         </div>
 
         <div className="social-links">
-          <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Instagram"><i className="ri-instagram-line"></i></a>
-          <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Facebook"><i className="ri-facebook-box-line"></i></a>
-          <a href="#" className="social-icon" aria-label="X"><i className="ri-twitter-x-line"></i></a>
-          <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="YouTube"><i className="ri-youtube-line"></i></a>
+          <a href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Instagram"><Instagram size={20} /></a>
+          <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="Facebook"><Facebook size={20} /></a>
+          <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="X (Twitter)"><Twitter size={20} /></a>
+          <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-icon" aria-label="YouTube"><Youtube size={20} /></a>
         </div>
 
         <div className="login-footer">

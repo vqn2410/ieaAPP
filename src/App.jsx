@@ -16,6 +16,7 @@ const GroupDetails = lazy(() => import('./pages/portal/GroupDetails'));
 const GrowthGroups = lazy(() => import('./pages/portal/GrowthGroups'));
 const Reports = lazy(() => import('./pages/portal/Reports'));
 const Settings = lazy(() => import('./pages/portal/Settings'));
+const Finances = lazy(() => import('./pages/portal/Finances'));
 const Home = lazy(() => import('./pages/landing/Home'));
 const Login = lazy(() => import('./pages/portal/Login'));
 const ChangePassword = lazy(() => import('./pages/portal/ChangePassword'));
@@ -24,8 +25,8 @@ const Visitors = lazy(() => import('./pages/portal/Visitors'));
 const MemberPortal = lazy(() => import('./pages/portal/MemberPortal'));
 const SessionExpired = lazy(() => import('./pages/portal/SessionExpired'));
 const Notes = lazy(() => import('./pages/portal/Notes'));
+const AuditLogs = lazy(() => import('./pages/portal/AuditLogs'));
 const FocusTimer = lazy(() => import('./pages/portal/FocusTimer'));
-const Assistant = lazy(() => import('./pages/portal/Assistant'));
 const Kids = lazy(() => import('./pages/portal/Kids'));
 const IbrpAssigned = lazy(() => import('./pages/portal/IbrpAssigned'));
 const IeaMockup = lazy(() => import('./pages/landing/IeaMockup'));
@@ -48,13 +49,6 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   }
 
   return children;
-};
-
-const FinanceRedirect = () => {
-  useEffect(() => {
-    window.location.assign('https://iea-finanzas.vercel.app/');
-  }, []);
-  return <Loading />;
 };
 
 function App() {
@@ -100,14 +94,7 @@ function App() {
             <Route path="eventos" element={<Events />} />
             <Route path="noticias" element={<News />} />
             <Route path="transmisiones" element={<Live />} />
-            <Route 
-              path="finanzas" 
-              element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor']}>
-                  <FinanceRedirect />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="finanzas" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor']}><Finances /></ProtectedRoute>} />
             <Route 
               path="grupos" 
               element={
@@ -132,6 +119,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="auditoria" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor']}><AuditLogs /></ProtectedRoute>} />
             <Route path="cambio-clave" element={<ChangePassword />} />
             <Route path="seguimientos" element={<Navigate to="/dashboard/grupos?section=seguimientos" replace />} />
             <Route path="clases" element={<Navigate to="/dashboard/grupos?section=clases" replace />} />
@@ -154,14 +142,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="asistente"
-              element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader']}>
-                  <Assistant />
-                </ProtectedRoute>
-              }
-            />
           </Route>
         </Routes>
         </Suspense>
@@ -170,5 +150,4 @@ function App() {
   );
 }
 
-const Loading = () => <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
 export default App;

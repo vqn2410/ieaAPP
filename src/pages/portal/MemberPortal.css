@@ -213,3 +213,9 @@
     width: 100%;
   }
 }
+.portal-events-list { display: grid; gap: .45rem; }
+.portal-event-item { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; padding: .65rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text); background: var(--color-surface); text-align: left; }
+.portal-event-link { display: flex; align-items: center; flex: 1; gap: .75rem; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
+.portal-event-link:hover { color: var(--color-primary); }
+.portal-event-item span { display: grid; gap: .15rem; }
+.portal-event-item small { color: var(--color-text-muted); font-size: .7rem; }

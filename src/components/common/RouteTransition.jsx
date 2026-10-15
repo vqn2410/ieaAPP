@@ -4,6 +4,9 @@ import './RouteTransition.css';
 
 const COVER_MS = 1500;
 const TOTAL_MS = 3000;
+const PREFERS_REDUCED_MOTION = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Transición de pantalla completa entre rutas, estilo "video":
 // paneles escalonados barren la pantalla, muestran la marca y revelan
@@ -13,13 +16,10 @@ export default function RouteTransition({ mode = 'navigation' }) {
   const [phase, setPhase] = useState('cover');
   const timers = useRef([]);
   const previousPath = useRef(pathname);
-  const reduced = useRef(
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
 
   const isHome = pathname === '/';
+  // El valor previo de la ruta es intencionalmente una lectura estable (no dispara render).
+  // eslint-disable-next-line react-hooks/refs
   const isPortalEntry = previousPath.current === '/' || previousPath.current === '/login';
   const shouldAnimate = mode === 'loading' || (mode === 'navigation' && isPortalEntry && pathname.startsWith('/dashboard'));
 
@@ -27,7 +27,7 @@ export default function RouteTransition({ mode = 'navigation' }) {
     const oldPath = previousPath.current;
     previousPath.current = pathname;
     const enteringPortal = oldPath === '/' || oldPath === '/login';
-    if (reduced.current || isHome || (mode === 'navigation' && !(enteringPortal && pathname.startsWith('/dashboard')))) return undefined;
+    if (PREFERS_REDUCED_MOTION || isHome || (mode === 'navigation' && !(enteringPortal && pathname.startsWith('/dashboard')))) return undefined;
     timers.current.forEach(clearTimeout);
     timers.current = [];
     document.body.style.overflow = 'hidden';
@@ -44,7 +44,7 @@ export default function RouteTransition({ mode = 'navigation' }) {
     };
   }, [pathname, mode, isHome]);
 
-  if (reduced.current || isHome || !shouldAnimate || phase === 'idle') return null;
+  if (PREFERS_REDUCED_MOTION || isHome || !shouldAnimate || phase === 'idle') return null;
 
   return (
     <div className={`rt-overlay rt-${phase}`} aria-hidden="true">

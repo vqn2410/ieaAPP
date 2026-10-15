@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
 const STORAGE_KEY = 'portal-iea-active-campus';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCampus = () => useContext(CampusContext);
 
 export function CampusProvider({ children }) {
@@ -19,6 +20,8 @@ export function CampusProvider({ children }) {
   useEffect(() => {
     if (authLoading || !userData) return undefined;
     let mounted = true;
+    // Sincronización deliberada con la carga asíncrona de campus.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     getCampuses()
       .then(async data => {
@@ -51,13 +54,13 @@ export function CampusProvider({ children }) {
     [campuses, activeCampusId]
   );
 
-  const selectCampus = (campusId) => {
+  const selectCampus = useCallback((campusId) => {
     if (!campuses.some(campus => campus.id === campusId)) return;
     localStorage.setItem(STORAGE_KEY, campusId);
     setActiveCampusId(campusId);
-  };
+  }, [campuses]);
 
-  const value = {
+  const value = useMemo(() => ({
     campuses,
     activeCampus,
     activeCampusId,
@@ -65,7 +68,7 @@ export function CampusProvider({ children }) {
     isGlobal,
     isCampusAdmin,
     loading: authLoading || loading,
-  };
+  }), [campuses, activeCampus, activeCampusId, selectCampus, isGlobal, isCampusAdmin, authLoading, loading]);
 
   return <CampusContext.Provider value={value}>{children}</CampusContext.Provider>;
 }

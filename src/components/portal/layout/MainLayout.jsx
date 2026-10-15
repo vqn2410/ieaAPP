@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users, 
+   Users, Baby,
   Calendar, 
   LayoutDashboard, 
   Settings, 
@@ -22,15 +22,15 @@ import {
    Sun,
    StickyNote,
    Timer,
-   Bot,
    Search, SlidersHorizontal, Bell
 } from 'lucide-react';
 import Logo from '../../common/Logo';
 import Onboarding, { HelpButton } from '../../common/Onboarding';
-import FloatingAssistant from '../../common/FloatingAssistant';
 import { useAuth } from '../../../context/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
 import { useCampus } from '../../../context/CampusContext';
+import { getEvents, syncPendingEventAttendance } from '../../../services/eventService';
+import { getNotifications, markNotificationRead } from '../../../services/notificationService';
 import './MainLayout.css';
 
 const MainLayout = () => {
@@ -43,6 +43,9 @@ const MainLayout = () => {
   const [openMenu, setOpenMenu] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const isDarkMode = userPreferences
     ? userPreferences.theme === 'dark'
     : (localStorage.getItem('portal-iea-theme') === 'dark');
@@ -57,6 +60,70 @@ const MainLayout = () => {
     document.body.style.overflow = showMobileMenu ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [showMobileMenu]);
+
+  // Los próximos eventos alimentan el centro de recordatorios del portal.
+  useEffect(() => {
+    let mounted = true;
+    getEvents().then(events => {
+      if (!mounted) return;
+      const today = new Date().toISOString().slice(0, 10);
+      setUpcomingEvents(events
+        .filter(event => event.date && event.date >= today)
+        .sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`))
+        .slice(0, 3));
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (currentUser?.uid && navigator.onLine) void syncPendingEventAttendance();
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => setIsOffline(false);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser?.uid) {
+      return () => { mounted = false; };
+    }
+
+    getNotifications(currentUser.uid)
+      .then(items => {
+        if (mounted) setNotifications(items);
+      })
+      .catch(() => {
+        if (mounted) setNotifications([]);
+      });
+
+    return () => { mounted = false; };
+  }, [currentUser?.uid]);
+
+  const unreadNotifications = notifications.filter(notification => notification.read !== true);
+  const notificationItems = notifications.length > 0 ? notifications : upcomingEvents;
+
+  const handleNotificationClick = async notification => {
+    if (notification.userId && notification.read !== true) {
+      try {
+        await markNotificationRead(notification.id);
+        setNotifications(items => items.map(item => item.id === notification.id
+          ? { ...item, read: true }
+          : item));
+      } catch (error) {
+        console.error('Error marcando notificación como leída', error);
+      }
+    }
+    setShowNotifications(false);
+    if (notification.link) navigate(notification.link);
+  };
 
   const toggleTheme = () => updateUserPreference({ theme: isDarkMode ? 'light' : 'dark' });
 
@@ -77,10 +144,10 @@ const MainLayout = () => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
-    { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'], children: [
-      { name: 'Listado de Miembros', path: '/dashboard/miembros', roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
-      { name: 'Agregar Miembros', path: '/dashboard/miembros?nuevo=1', roles: ['Admin', 'Pastor'] },
-      { name: 'Kids', path: '/dashboard/kids', roles: ['Admin', 'Pastor', 'MinistryLeader', 'Maestro'] },
+     { name: 'Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'], children: [
+       { name: 'Listado de Miembros', path: '/dashboard/miembros', icon: <Users size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'] },
+       { name: 'Agregar Miembros', path: '/dashboard/miembros?nuevo=1', icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor'] },
+       { name: 'Kids', path: '/dashboard/kids', icon: <Baby size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Maestro'] },
     ] },
     { name: 'Grupos', path: '/dashboard/grupos', icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator'] },
     { name: 'Asignados IBRP', path: '/dashboard/ibrp', icon: <img className="ibrp-menu-icon" src="/img/ibrp-logo.svg" alt="" />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader'] },
@@ -91,9 +158,9 @@ const MainLayout = () => {
     { name: 'Noticias', path: '/dashboard/noticias', icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor'] },
     { name: 'Anotaciones', path: '/dashboard/notas', icon: <StickyNote size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Enfoque', path: '/dashboard/enfoque', icon: <Timer size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Member'] },
-    { name: 'Asistente', path: '/dashboard/asistente', icon: <Bot size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
     { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin'] },
+    { name: 'Auditoría', path: '/dashboard/auditoria', icon: <FileText size={20} />, roles: ['Admin', 'Pastor'] },
   ].filter(item => hasRole(item.roles));
   const mobilePrimaryItems = menuItems
     .filter(item => item.path !== '/dashboard/mi-perfil')
@@ -160,10 +227,10 @@ const MainLayout = () => {
       <main className="main-content">
         <header className="desktop-topbar">
           <form className="desktop-search" onSubmit={submitGlobalSearch}><Search size={15} /><input aria-label="Buscar" value={globalSearch} onChange={event => setGlobalSearch(event.target.value)} placeholder="Buscar miembros, grupos, reuniones" /><button type="button" onClick={() => navigate('/dashboard/miembros')}><SlidersHorizontal size={13} /> Filtros</button><kbd>⌘K</kbd></form>
-          <div className="desktop-account">{campuses.length > 0 && <select className="campus-selector" value={activeCampus?.id || ''} onChange={event => selectCampus(event.target.value)} aria-label="Campus activo">{isGlobal && <option value="">Todos los campus</option>}{campuses.map(campus => <option key={campus.id} value={campus.id}>{campus.name}</option>)}</select>}<div className="desktop-notification-wrap"><button type="button" className="desktop-bell" aria-label="Notificaciones" onClick={() => setShowNotifications(value => !value)}><Bell size={16} /></button>{showNotifications && <div className="desktop-notification-panel"><strong>Notificaciones</strong><p>No hay notificaciones nuevas.</p></div>}</div><button type="button" className="desktop-profile-trigger" onClick={() => navigate('/dashboard/mi-perfil')}><div className="desktop-account-avatar">{userData?.name?.slice(0, 1) || 'N'}</div><div><strong>{userData?.name || 'Nicolás'}</strong><small>{settings?.roles?.[userData?.role] || 'Administrador de la cuenta'}</small></div><ChevronDown size={14} /></button></div>
+            <div className="desktop-account">{campuses.length > 0 && <select className="campus-selector" value={activeCampus?.id || ''} onChange={event => selectCampus(event.target.value)} aria-label="Campus activo">{isGlobal && <option value="">Todos los campus</option>}{campuses.map(campus => <option key={campus.id} value={campus.id}>{campus.name}</option>)}</select>}<div className="desktop-notification-wrap"><button type="button" className="desktop-bell" aria-label="Notificaciones" onClick={() => setShowNotifications(value => !value)}><Bell size={16} />{(unreadNotifications.length || (!notifications.length && upcomingEvents.length)) > 0 && <span className="desktop-bell-count">{unreadNotifications.length || upcomingEvents.length}</span>}</button>{showNotifications && <div className="desktop-notification-panel"><strong>{notifications.length > 0 ? 'Notificaciones' : 'Próximos eventos'}</strong>{notificationItems.length === 0 ? <p>No hay notificaciones ni próximos eventos.</p> : notificationItems.map(item => <button type="button" className={`desktop-notification-item ${item.read === false ? 'unread' : ''}`} key={item.id} onClick={() => item.userId ? handleNotificationClick(item) : handleNotificationClick({ ...item, link: '/dashboard/eventos' })}><span>{item.title}</span><small>{item.message || `${item.date}${item.time ? ` · ${item.time}` : ''}`}</small></button>)}</div>}</div><button type="button" className="desktop-profile-trigger" onClick={() => navigate('/dashboard/mi-perfil')}><div className="desktop-account-avatar">{userData?.name?.slice(0, 1) || 'N'}</div><div><strong>{userData?.name || 'Nicolás'}</strong><small>{settings?.roles?.[userData?.role] || 'Administrador de la cuenta'}</small></div><ChevronDown size={14} /></button></div>
         </header>
         {/* Top Header for Mobile */}
-        <header className="mobile-header">
+         <header className="mobile-header">
            {/* Left side: Back Button */}
            <div className="mobile-header-left">
               {location.pathname !== '/dashboard' && (
@@ -187,9 +254,10 @@ const MainLayout = () => {
                  {userData?.name?.charAt(0) || 'U'}
                </button>
            </div>
-        </header>
+         </header>
+         {campuses.length > 0 && <div className="mobile-campus-bar"><span>Campus</span><select value={activeCampus?.id || ''} onChange={event => selectCampus(event.target.value)} aria-label="Campus activo">{isGlobal && <option value="">Todos los campus</option>}{campuses.map(campus => <option key={campus.id} value={campus.id}>{campus.name}</option>)}</select></div>}
 
-        {/* Dynamic Navigation for Mobile (Bottom Bar) */}
+         {/* Dynamic Navigation for Mobile (Bottom Bar) */}
         <nav className="bottom-nav">
            {mobilePrimaryItems.map((item) => (
             <NavLink 
@@ -229,7 +297,7 @@ const MainLayout = () => {
                    item.children ? (
                      <div key={item.path} className="mobile-nav-group">
                        <div className="nav-item mobile-nav-card mobile-nav-heading">{React.cloneElement(item.icon, { size: 24 })}<span>{item.name}</span></div>
-                       {item.children.filter(child => !child.roles || hasRole(child.roles)).map(child => <NavLink key={child.path} to={child.path} className="nav-item mobile-nav-card mobile-nav-subitem">{child.name}</NavLink>)}
+                        {item.children.filter(child => !child.roles || hasRole(child.roles)).map(child => <NavLink key={child.path} to={child.path} className="nav-item mobile-nav-card mobile-nav-subitem">{child.icon && React.cloneElement(child.icon, { size: 24 })}<span>{child.name}</span></NavLink>)}
                      </div>
                    ) : item.external ? (
                     <a key={item.path} href={item.path} className="nav-item mobile-nav-card">
@@ -247,12 +315,12 @@ const MainLayout = () => {
           </div>
         )}
 
-        <div className="content-wrapper">
-          <Outlet />
+         <div className={`content-wrapper ${campuses.length > 0 ? 'has-campus-bar' : ''}`}>
+           {isOffline && <div className="offline-banner" role="status">Sin conexión. Los check-ins se guardarán y sincronizarán al volver online.</div>}
+           <Outlet />
         </div>
       </main>
       <Onboarding />
-      <FloatingAssistant />
     </div>
   );
 };

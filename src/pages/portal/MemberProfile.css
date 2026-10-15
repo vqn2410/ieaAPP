@@ -484,3 +484,12 @@
 :root[data-theme='dark'] .profile-growth-stage span { color: #e7e7ea; background: #2a2a33; }
 :root[data-theme='dark'] .profile-growth-stage.active span { color: #0b0b0b; background: #f4f4f6; }
 :root[data-theme='dark'] .profile-tab-empty svg { color: #ffffff; }
+
+.profile-family-links { display: grid; gap: .55rem; margin-top: 1rem; }
+.profile-family-links .profile-tab-item { display: flex; align-items: center; gap: .75rem; }
+.profile-family-links .profile-tab-item span { flex: 1; }
+.profile-family-editor { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); }
+.profile-family-candidates { display: grid; gap: .35rem; margin: -.25rem 0 .8rem; }
+.profile-family-candidates button { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface); text-align: left; cursor: pointer; }
+.profile-family-candidates button.selected { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
+.profile-family-candidates small { color: var(--color-text-muted); }

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Check, LayoutDashboard, Users, MessageSquare, Sparkles, Clock, HelpCircle } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import './Onboarding.css';
@@ -29,34 +28,33 @@ const steps = [
 
 const Onboarding = ({ open: controlledOpen, onClose }) => {
   const { userPreferences, updateUserPreference } = useSettings();
-  const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
 
   const isManual = controlledOpen !== undefined;
+  const isVisible = isManual ? Boolean(controlledOpen) : visible;
 
   useEffect(() => {
-    if (isManual) {
-      setVisible(controlledOpen);
-      setStep(0);
-      return;
-    }
+    if (isManual) return;
     if (userPreferences === null) return;
     if (!userPreferences.onboardingDone && !visible) {
+      // Sincronización deliberada con el estado asíncrono de preferencias.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(true);
       setStep(0);
     }
-  }, [userPreferences, isManual, controlledOpen, visible]);
+  }, [userPreferences, isManual, visible]);
 
   const finish = async () => {
     setVisible(false);
+    setStep(0);
     if (!isManual) {
       try { await updateUserPreference({ onboardingDone: true }); } catch { /* ignore */ }
     }
     onClose?.();
   };
 
-  if (!visible) return null;
+  if (!isVisible) return null;
 
   const current = steps[step];
   const Icon = current.icon;
