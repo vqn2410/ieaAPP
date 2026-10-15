@@ -5,16 +5,17 @@ import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
 import MemberForm from '../../components/portal/members/MemberForm';
-import { getMember, deleteMember, updateMember } from '../../services/memberService';
+import { getMember, deleteMember, updateMember, linkFamilyMembers, unlinkFamilyMembers } from '../../services/memberService';
 import { getMembers } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
-import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake, Wallet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { useSettings } from '../../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../../services/followUpService';
 import { getMemberAttendanceStats } from '../../services/attendanceService';
 import { isBaptised } from '../../utils/helpers';
+import { getMemberFinanceHistory } from '../../services/financeIntegrationService';
 import { collection, getDocs, query, where, updateDoc, doc as firestoreDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import './MemberProfile.css';
@@ -24,6 +25,8 @@ const initialAvatar = (firstName, lastName) => {
   const l = (lastName || '?')[0];
   return `${f}${l}`.toUpperCase();
 };
+
+const FAMILY_RELATIONSHIPS = ['Padre/madre', 'Hijo/a', 'Cónyuge', 'Hermano/a', 'Tutor', 'Tutelado/a'];
 
 const ProfileField = ({ icon: Icon, label, value }) => (
   <div className="profile-field">
@@ -50,17 +53,40 @@ const MemberProfile = () => {
   const [followUpType, setFollowUpType] = useState('note');
   const [showFollowUpForm, setShowFollowUpForm] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState(null);
+  const [assignedGroups, setAssignedGroups] = useState([]);
   const [profileTab, setProfileTab] = useState('groups');
+  const [financeHistory, setFinanceHistory] = useState(null);
+  const [financeHistoryError, setFinanceHistoryError] = useState('');
+  const [financeHistoryLoading, setFinanceHistoryLoading] = useState(false);
+  const [familySearch, setFamilySearch] = useState('');
+  const [familyMemberId, setFamilyMemberId] = useState('');
+  const [familyRelationship, setFamilyRelationship] = useState('Hijo/a');
+  const [familySaving, setFamilySaving] = useState(false);
 
-  const canTransfer = ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(userData?.role);
-  const isAdmin = userData?.role?.includes('Admin');
+  const currentRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+  const canTransfer = currentRoles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
+  const isAdmin = currentRoles.includes('Admin');
+
+  useEffect(() => {
+    if (profileTab !== 'finance' || !member?.id) return;
+    let cancelled = false;
+    setFinanceHistoryLoading(true);
+    getMemberFinanceHistory(member.id)
+      .then(data => { if (!cancelled) { setFinanceHistory(data); setFinanceHistoryError(''); } })
+      .catch(error => { if (!cancelled) { setFinanceHistory(null); setFinanceHistoryError(error.message); } })
+      .finally(() => { if (!cancelled) setFinanceHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [profileTab, member?.id]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [m, members, fups, attendance, allGroups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id), getGroups()]);
         const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
         const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
+        const groupsPromise = isPrivileged
+          ? getGroups()
+          : getGroups(null, userData?.email);
+        const [m, members, fups, attendance, allGroups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id), groupsPromise]);
         if (userData?.email && !isPrivileged && m) {
           const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
           const selfEmail = userData?.email?.trim().toLowerCase();
@@ -83,6 +109,17 @@ const MemberProfile = () => {
         setAllMembers(members.filter(other => other.id !== id));
         setFollowUps(fups);
         setAttendanceStats(attendance);
+        const normalizedEmail = m?.email?.trim().toLowerCase();
+        const normalizedName = `${m?.firstName || ''} ${m?.lastName || ''}`.trim().toLowerCase();
+        const normalizedReverseName = `${m?.lastName || ''}, ${m?.firstName || ''}`.trim().toLowerCase();
+        setAssignedGroups((allGroups || []).filter(group => {
+          const leaders = [
+            ...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]),
+            ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators]),
+            ...(Array.isArray(group.facilitatorEmails) ? group.facilitatorEmails : []),
+          ].filter(Boolean).map(value => String(value).trim().toLowerCase());
+          return leaders.some(value => value === id || value === normalizedEmail || value === normalizedName || value === normalizedReverseName);
+        }));
       } catch {
         navigate('/dashboard/miembros');
       } finally {
@@ -151,6 +188,29 @@ const MemberProfile = () => {
     setFollowUps(prev => prev.filter(f => f.id !== fup.id));
   };
 
+  const handleLinkFamily = async () => {
+    if (!familyMemberId) return;
+    setFamilySaving(true);
+    try {
+      await linkFamilyMembers(id, familyMemberId, familyRelationship);
+      const updated = await getMember(id);
+      setMember(updated);
+      setFamilyMemberId('');
+      setFamilySearch('');
+    } finally {
+      setFamilySaving(false);
+    }
+  };
+
+  const handleUnlinkFamily = async (relatedMemberId) => {
+    if (!window.confirm('¿Desvincular este familiar?')) return;
+    await unlinkFamilyMembers(id, relatedMemberId);
+    setMember(prev => ({
+      ...prev,
+      familyLinks: (prev.familyLinks || []).filter(link => link.memberId !== relatedMemberId),
+    }));
+  };
+
   const followUpStatusIcon = (status) => {
     if (status === 'completed') return <CheckCircle size={14} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />;
     if (status === 'pending') return <Clock size={14} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />;
@@ -189,6 +249,15 @@ const MemberProfile = () => {
     { label: 'Servidor', active: roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role)) },
     { label: 'Líder', active: roles.some(role => ['Admin', 'Pastor', 'MinistryLeader'].includes(role)) },
   ];
+  const familyLinks = Array.isArray(member.familyLinks) ? member.familyLinks : [];
+  const familyCandidates = allMembers
+    .filter(candidate => !familyLinks.some(link => link.memberId === candidate.id))
+    .filter(candidate => {
+      const query = familySearch.trim().toLowerCase();
+      if (!query) return true;
+      return `${candidate.firstName || ''} ${candidate.lastName || ''} ${candidate.dni || ''} ${candidate.email || ''}`.toLowerCase().includes(query);
+    })
+    .slice(0, 8);
 
   return (
     <div className="profile animate-fade-in">
@@ -206,10 +275,12 @@ const MemberProfile = () => {
         </div>
       </Card>
 
-      <Card className="profile-family-card"><div className="profile-modern-card-title"><div><h2><Users size={17} /> Gestión familiar</h2><p>Menores a tu cargo (hijos, nietos, etc.). Si ya fueron registrados buscálos por documento y vinculalos.</p></div></div><label className="profile-family-label">Buscar menor por nombre o documento<input className="form-input" placeholder="Nombre o número de documento..." /></label><Button variant="outline" size="sm">Registrar menor y vincularlo a mi familia</Button></Card>
+      <Card className="profile-family-card"><div className="profile-modern-card-title"><div><h2><Users size={17} /> Gestión familiar</h2><p>Vinculá personas ya registradas para construir el grupo familiar.</p></div></div>{familyLinks.length > 0 ? <div className="profile-family-links">{familyLinks.map(link => { const relative = allMembers.find(candidate => candidate.id === link.memberId); return <div className="profile-tab-item" key={link.memberId}><strong>{relative ? `${relative.firstName} ${relative.lastName}` : 'Miembro no disponible'}</strong><span>{link.relationship}</span>{canTransfer && <Button variant="outline" size="sm" onClick={() => handleUnlinkFamily(link.memberId)}>Desvincular</Button>}</div>; })}</div> : <div className="profile-tab-empty"><Users size={28} /><strong>Sin vínculos familiares</strong><span>Agregá padres, hijos, cónyuge o hermanos.</span></div>}{canTransfer && <div className="profile-family-editor"><label className="profile-family-label">Buscar persona<input className="form-input" value={familySearch} onChange={event => setFamilySearch(event.target.value)} placeholder="Nombre, DNI o email..." /></label><label className="profile-family-label">Relación<select className="form-input" value={familyRelationship} onChange={event => setFamilyRelationship(event.target.value)}>{FAMILY_RELATIONSHIPS.map(relation => <option key={relation}>{relation}</option>)}</select></label>{familySearch && <div className="profile-family-candidates">{familyCandidates.map(candidate => <button type="button" key={candidate.id} className={familyMemberId === candidate.id ? 'selected' : ''} onClick={() => setFamilyMemberId(candidate.id)}>{candidate.firstName} {candidate.lastName}<small>{candidate.dni || candidate.email || 'Sin identificador'}</small></button>)}</div>}<Button variant="outline" size="sm" disabled={!familyMemberId || familySaving} onClick={handleLinkFamily}>{familySaving ? 'Vinculando...' : 'Vincular familiar'}</Button></div>}</Card>
 
-      <div className="profile-tabs"><button className={profileTab === 'groups' ? 'active' : ''} onClick={() => setProfileTab('groups')}><Users size={14} /> Grupos ({member.group ? 1 : 0})</button><button className={profileTab === 'ministries' ? 'active' : ''} onClick={() => setProfileTab('ministries')}><HeartHandshake size={14} /> Ministerios ({roles.includes('MinistryLeader') ? 1 : 0})</button><button className={profileTab === 'schools' ? 'active' : ''} onClick={() => setProfileTab('schools')}><GraduationCap size={14} /> Escuelas ({growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? 1 : 0})</button></div>
-      <Card className="profile-tab-card">{profileTab === 'groups' && <><div className="profile-tab-heading"><Users size={16} /><strong>Grupos</strong></div>{member.group ? <div className="profile-tab-item"><strong>{member.group}</strong><span>Grupo de pertenencia</span></div> : <div className="profile-tab-empty"><Users size={32} /><strong>Sin grupos</strong><span>No estás en ningún grupo actualmente.</span></div>}</>}{profileTab === 'ministries' && <><div className="profile-tab-heading"><HeartHandshake size={16} /><strong>Ministerios</strong></div>{roles.includes('MinistryLeader') ? <div className="profile-tab-item"><strong>Liderazgo de ministerio</strong><span>{memberRoles.join(', ')}</span></div> : <div className="profile-tab-empty"><HeartHandshake size={32} /><strong>Sin ministerios</strong><span>No hay ministerios registrados para esta persona.</span></div>}</>}{profileTab === 'schools' && <><div className="profile-tab-heading"><GraduationCap size={16} /><strong>Escuelas</strong></div>{growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? <div className="profile-tab-item"><strong>IETE</strong><span>{growthPaths.IETE.status}</span></div> : <div className="profile-tab-empty"><GraduationCap size={32} /><strong>Sin escuelas</strong><span>No hay escuelas registradas para esta persona.</span></div>}</>}</Card>
+      {assignedGroups.length > 0 && <Card className="profile-family-card"><div className="profile-modern-card-title"><div><h2><Users size={17} /> Grupos a cargo</h2><p>Grupos en los que esta persona figura como facilitador o cofacilitador.</p></div></div><div className="profile-family-links">{assignedGroups.map(group => <button type="button" className="profile-assigned-group" key={group.id} onClick={() => navigate(`/dashboard/grupos/${group.id}`)}><span><strong>{group.name}</strong><small>{group.scheduleDay || 'Horario no definido'}{group.scheduleTime ? ` · ${group.scheduleTime}` : ''}</small></span><Users size={16} /></button>)}</div></Card>}
+
+      <div className="profile-tabs"><button className={profileTab === 'groups' ? 'active' : ''} onClick={() => setProfileTab('groups')}><Users size={14} /> Grupos ({member.group ? 1 : 0})</button><button className={profileTab === 'ministries' ? 'active' : ''} onClick={() => setProfileTab('ministries')}><HeartHandshake size={14} /> Ministerios ({roles.includes('MinistryLeader') ? 1 : 0})</button><button className={profileTab === 'schools' ? 'active' : ''} onClick={() => setProfileTab('schools')}><GraduationCap size={14} /> Escuelas ({growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? 1 : 0})</button><button className={profileTab === 'finance' ? 'active' : ''} onClick={() => setProfileTab('finance')}><Wallet size={14} /> Aportes</button></div>
+      <Card className="profile-tab-card">{profileTab === 'groups' && <><div className="profile-tab-heading"><Users size={16} /><strong>Grupos</strong></div>{member.group ? <div className="profile-tab-item"><strong>{member.group}</strong><span>Grupo de pertenencia</span></div> : <div className="profile-tab-empty"><Users size={32} /><strong>Sin grupos</strong><span>No estás en ningún grupo actualmente.</span></div>}</>}{profileTab === 'ministries' && <><div className="profile-tab-heading"><HeartHandshake size={16} /><strong>Ministerios</strong></div>{roles.includes('MinistryLeader') ? <div className="profile-tab-item"><strong>Liderazgo de ministerio</strong><span>{memberRoles.join(', ')}</span></div> : <div className="profile-tab-empty"><HeartHandshake size={32} /><strong>Sin ministerios</strong><span>No hay ministerios registrados para esta persona.</span></div>}</>}{profileTab === 'schools' && <><div className="profile-tab-heading"><GraduationCap size={16} /><strong>Escuelas</strong></div>{growthPaths.IETE?.status && growthPaths.IETE.status !== 'Sin información' ? <div className="profile-tab-item"><strong>IETE</strong><span>{growthPaths.IETE.status}</span></div> : <div className="profile-tab-empty"><GraduationCap size={32} /><strong>Sin escuelas</strong><span>No hay escuelas registradas para esta persona.</span></div>}</>}{profileTab === 'finance' && <><div className="profile-tab-heading"><Wallet size={16} /><strong>Aportes registrados en IEA Finanzas</strong></div>{financeHistoryLoading ? <p>Cargando historial autorizado…</p> : financeHistoryError ? <p>{financeHistoryError}</p> : financeHistory?.linked ? <><p>Total: {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(financeHistory.summary.total)} · {financeHistory.summary.count} movimientos</p>{financeHistory.contributions.map(row => <div className="profile-tab-item" key={row.id}><strong>{new Date(row.date).toLocaleDateString('es-AR')} · {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(row.amount)}</strong><span>{row.category || row.description}</span></div>)}</> : <div className="profile-tab-empty"><Wallet size={32} /><strong>Sin vínculo financiero</strong><span>El registro debe vincularse manualmente desde IEA Finanzas.</span></div>}</>}</Card>
 
       <div className="profile-grid profile-legacy-grid">
         <div className="profile-sidebar">
