@@ -10,7 +10,7 @@ export const getMembers = async (groupId = null, campusId = null) => {
     try {
         let q;
         if (groupId && campusId) {
-            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId), where('campusId', '==', campusId));
+            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId));
         } else if (groupId) {
             // Filtrar por grupo si el usuario es facilitador
             q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId));

@@ -132,13 +132,29 @@ const GrowthGroups = () => {
     const load = async () => {
         setLoading(true);
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
-        const scopedMembers = centralLegacy ? await getMembers() : await getMembers(null, activeCampusId || null);
         const ownMember = await getMemberByEmail(currentUser?.email);
-        const members = ownMember && !scopedMembers.some(member => member.id === ownMember.id)
-            ? [ownMember, ...scopedMembers]
-            : scopedMembers;
+        let groups = centralLegacy
+            ? await getGroups()
+            : await getGroups(isAdmin ? activeCampusId || null : null, isAdmin ? null : currentUser?.email);
+        if (!isAdmin && activeCampusId) {
+            groups = groups.filter(group => !group.campusId || group.campusId === activeCampusId);
+        }
+        let members;
+
+        if (isAdmin) {
+            members = centralLegacy ? await getMembers() : await getMembers(null, activeCampusId || null);
+        } else if (ownMember) {
+            const assignedGroups = groups.filter(group => {
+                const facilitators = getArray(group.facilitators);
+                const coFacilitators = getArray(group.coFacilitators);
+                return isLegacyMatch(facilitators, ownMember) || isLegacyMatch(coFacilitators, ownMember);
+            });
+            const groupMembers = await Promise.all(assignedGroups.map(group => getMembers(group.id, group.campusId || activeCampusId || null)));
+            members = [ownMember, ...groupMembers.flat().filter(member => member.id !== ownMember.id)];
+        } else {
+            members = [];
+        }
         setAllMembers(members);
-        let groups = centralLegacy ? await getGroups() : await getGroups(activeCampusId || null);
 
         if (isAdmin) {
             const updates = groups.map(async group => {

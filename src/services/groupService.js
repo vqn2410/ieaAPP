@@ -3,11 +3,12 @@ import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, 
 
 const COLLECTION_NAME = 'groups';
 
-export const getGroups = async (campusId = null) => {
+export const getGroups = async (campusId = null, facilitatorEmail = null) => {
     try {
-        const q = campusId
-            ? query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId))
-            : query(collection(db, COLLECTION_NAME));
+        const constraints = [];
+        if (campusId) constraints.push(where('campusId', '==', campusId));
+        if (facilitatorEmail) constraints.push(where('facilitatorEmails', 'array-contains', facilitatorEmail.trim().toLowerCase()));
+        const q = constraints.length > 0 ? query(collection(db, COLLECTION_NAME), ...constraints) : query(collection(db, COLLECTION_NAME));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))

@@ -100,7 +100,11 @@ service cloud.firestore {
     // Solo usuarios autenticados pueden leer
     // Admins y pastores gestionan cualquier miembro; facilitadores solo su grupo.
     match /members/{memberId} {
-      allow read: if isAuth() && (isOwnMember(resource) || canAccessCampus(resource.data.campusId));
+      allow read: if isAuth() && (
+        isOwnMember(resource)
+        || canAccessCampus(resource.data.campusId)
+        || (hasAnyRole(['Facilitator', 'CoFacilitator']) && resource.data.groupId != null && managesGroup(resource.data.groupId))
+      );
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
       allow update: if isAuth() && (
         (isOwnMember(resource) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'address', 'updatedAt']))
@@ -208,8 +212,14 @@ service cloud.firestore {
 
     // === Colección: group_attendance ===
     match /group_attendance/{recordId} {
-      allow read: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId);
-      allow create, update: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']);
+      allow read: if isAuth() && (
+        canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId)
+        || managesGroup(resource.data.groupId)
+      );
+      allow create, update: if isAuth() && (
+        canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId)
+        || managesGroup(request.resource.data.groupId)
+      ) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']);
       allow delete: if isGlobalManager() || hasRole('CampusAdmin');
     }
 
@@ -281,8 +291,14 @@ service cloud.firestore {
 
     // === Colección: groupEvaluations ===
     match /groupEvaluations/{docId} {
-      allow read: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId);
-      allow create, update: if isAuth() && canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow read: if isAuth() && (
+        canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId)
+        || managesGroup(resource.data.groupId)
+      );
+      allow create, update: if isAuth() && (
+        canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId)
+        || managesGroup(request.resource.data.groupId)
+      ) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
       allow delete: if isGlobalManager() || hasRole('CampusAdmin');
     }
 
