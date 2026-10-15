@@ -56,7 +56,7 @@ service cloud.firestore {
     function managesGroup(groupId) {
       let group = get(/databases/$(database)/documents/groups/$(groupId)).data;
       return isAuth() && (
-        (('facilitatorUids' in group) && group.facilitatorUids is list && group.facilitatorUids.hasAny([request.auth.uid]))
+        (('facilitatorUids' in group) && group.facilitatorUids is list && request.auth.uid in group.facilitatorUids)
         || (request.auth.token.email != null && ('facilitatorEmails' in group) && group.facilitatorEmails is list && group.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
       );
     }
@@ -238,7 +238,7 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if isAuth() && (
         canAccessCampus(resource.data.campusId)
-        || (('facilitatorUids' in resource.data) && resource.data.facilitatorUids is list && resource.data.facilitatorUids.hasAny([request.auth.uid]))
+        || (('facilitatorUids' in resource.data) && resource.data.facilitatorUids is list && request.auth.uid in resource.data.facilitatorUids)
         || (request.auth.token.email != null && ('facilitatorEmails' in resource.data) && resource.data.facilitatorEmails is list
           && resource.data.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
       );
