@@ -5,6 +5,7 @@ import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCampus } from '../../context/CampusContext';
 import { getMemberByEmail, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
@@ -21,6 +22,7 @@ const initialAvatar = (firstName, lastName) => {
 const MemberPortal = () => {
   const navigate = useNavigate();
   const { currentUser, hasRole } = useAuth();
+  const { activeCampusId } = useCampus();
   const [member, setMember] = useState(null);
   const [groups, setGroups] = useState([]);
   const [events, setEvents] = useState([]);
@@ -37,10 +39,11 @@ const MemberPortal = () => {
     let mounted = true;
     (async () => {
       const me = await getMemberByEmail(currentUser?.email);
-      const canSeeAllGroups = hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader']);
+      const canSeeAllGroups = hasRole(['Admin', 'Pastor']);
+      const isCampusAdmin = hasRole(['CampusAdmin']);
       const isFacilitator = hasRole(['Facilitator', 'CoFacilitator']);
       const [gs, upcomingEvents] = await Promise.all([
-        canSeeAllGroups ? getGroups() : isFacilitator ? getAssignedGroups().then(data => data.groups || []) : Promise.resolve([]),
+        canSeeAllGroups ? getGroups() : isCampusAdmin ? getGroups(activeCampusId || null) : isFacilitator ? getAssignedGroups().then(data => data.groups || []) : Promise.resolve([]),
         getEvents(),
       ]);
       if (!mounted) return;
@@ -53,7 +56,7 @@ const MemberPortal = () => {
       setLoading(false);
     })();
     return () => { mounted = false; };
-  }, [currentUser, hasRole]);
+  }, [currentUser, hasRole, activeCampusId]);
 
   const handleSave = async () => {
     if (!member) return;
