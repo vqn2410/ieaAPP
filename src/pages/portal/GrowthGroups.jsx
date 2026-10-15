@@ -551,7 +551,8 @@ const AttendanceTab = ({ myGroups, myMembers, currentUser }) => {
     const [viewingRecord, setViewingRecord] = useState(null);
 
     const selectedGroup = myGroups.find(g => g.id === selectedGroupId);
-    const groupMembers = myMembers.filter(m => selectedGroup && m.group === selectedGroup.name && !['Inactivo', 'Baja'].includes(m.extraData?.active)).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+    const normalizeGroupName = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const groupMembers = myMembers.filter(m => selectedGroup && (m.groupId === selectedGroup.id || normalizeGroupName(m.group) === normalizeGroupName(selectedGroup.name)) && !['Inactivo', 'Baja'].includes(m.extraData?.active)).sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
     const groupMemberIds = groupMembers.map(member => member.id).join(',');
     // Los inactivos no se contabilizan en asistencia, aunque figuren en registros viejos.
     const inactiveIds = new Set(myMembers.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).map(m => m.id));
