@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
+import { getGroups } from '../services/groupService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
@@ -16,6 +17,7 @@ export function CampusProvider({ children }) {
 
   const isGlobal = hasRole(['Admin', 'Pastor']);
   const isCampusAdmin = hasRole(['CampusAdmin']);
+  const isFacilitator = hasRole(['Facilitator', 'CoFacilitator']);
 
   useEffect(() => {
     if (authLoading || !userData) return undefined;
@@ -23,8 +25,16 @@ export function CampusProvider({ children }) {
     // Sincronización deliberada con la carga asíncrona de campus.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    getCampuses()
-      .then(async data => {
+    Promise.all([
+      getCampuses(),
+      isFacilitator && userData.email
+        ? getGroups(null, userData.email).catch(error => {
+          console.error('Error buscando campus de grupos asignados:', error);
+          return [];
+        })
+        : Promise.resolve([]),
+    ])
+      .then(async ([data, assignedGroups]) => {
         if (!mounted) return;
         const central = data.find(campus => /central/i.test(campus.name || ''));
         if (isGlobal && central) {
@@ -32,7 +42,11 @@ export function CampusProvider({ children }) {
           // Se completa una sola vez; luego el servicio no encuentra legacy pendientes.
           await migrateLegacyRecordsToCampus(central.id).catch(error => console.error('Error migrando Sede Central:', error));
         }
-        const allowedIds = Array.isArray(userData.campusIds) ? userData.campusIds : [];
+        const assignedCampusIds = assignedGroups.map(group => group.campusId).filter(Boolean);
+        const allowedIds = [...new Set([
+          ...(Array.isArray(userData.campusIds) ? userData.campusIds : []),
+          ...assignedCampusIds,
+        ])];
         const visible = isGlobal ? data : data.filter(campus => allowedIds.includes(campus.id));
         setCampuses(visible.filter(campus => campus.active !== false));
         setActiveCampusId(previous => {
@@ -47,7 +61,7 @@ export function CampusProvider({ children }) {
       .catch(error => console.error('Error cargando campus:', error))
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
-  }, [authLoading, userData, isGlobal]);
+  }, [authLoading, userData, isGlobal, isFacilitator]);
 
   const activeCampus = useMemo(
     () => campuses.find(campus => campus.id === activeCampusId) || null,
