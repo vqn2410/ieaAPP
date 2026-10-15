@@ -108,6 +108,7 @@ test('allows facilitators to read only assigned groups and their members by UID'
       name: 'Grupo Uno',
       campusId: 'campus-1',
       facilitatorUids: ['facilitator-uid'],
+      facilitatorEmails: ['facilitator@example.com'],
     });
     await setDoc(doc(firestore, 'members/member-1'), {
       firstName: 'Miembro',
@@ -120,7 +121,11 @@ test('allows facilitators to read only assigned groups and their members by UID'
   const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });
   const otherUser = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' });
   await assertSucceeds(getDoc(doc(facilitator.firestore(), 'groups/group-1')));
+  await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'groups'), where('facilitatorUids', 'array-contains', 'facilitator-uid'))));
+  await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'groups'), where('facilitatorEmails', 'array-contains', 'facilitator@example.com'))));
   await assertSucceeds(getDoc(doc(facilitator.firestore(), 'members/member-1')));
+  await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'members'), where('groupId', '==', 'group-1'))));
   await assertFails(getDoc(doc(otherUser.firestore(), 'groups/group-1')));
   await assertFails(getDoc(doc(otherUser.firestore(), 'members/member-1')));
+  await assertFails(getDocs(query(collection(otherUser.firestore(), 'groups'), where('facilitatorUids', 'array-contains', 'facilitator-uid'))));
 });
