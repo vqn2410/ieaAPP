@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
-import { getMembers } from '../../services/memberService';
+import { getMemberByEmail, getMembers } from '../../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
@@ -115,6 +115,8 @@ const GrowthGroups = () => {
             const txt = String(acc).toLowerCase();
             const l = String(m.lastName || '').trim().toLowerCase();
             const f = String(m.firstName || '').trim().toLowerCase();
+            const email = String(m.email || '').trim().toLowerCase();
+            if (email && txt === email) return true;
             if (l.length > 2 && txt.includes(l)) return true;
             if (f.length > 2 && txt.includes(f)) return true;
             return false;
@@ -130,7 +132,11 @@ const GrowthGroups = () => {
     const load = async () => {
         setLoading(true);
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
-        const members = centralLegacy ? await getMembers() : await getMembers(null, activeCampusId || null);
+        const scopedMembers = centralLegacy ? await getMembers() : await getMembers(null, activeCampusId || null);
+        const ownMember = await getMemberByEmail(currentUser?.email);
+        const members = ownMember && !scopedMembers.some(member => member.id === ownMember.id)
+            ? [ownMember, ...scopedMembers]
+            : scopedMembers;
         setAllMembers(members);
         let groups = centralLegacy ? await getGroups() : await getGroups(activeCampusId || null);
 
