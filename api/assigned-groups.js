@@ -17,10 +17,10 @@ function initAdmin() {
 const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
 const asArray = value => Array.isArray(value) ? value : value ? [value] : [];
 
-function matchesMemberReference(value, member, email) {
+function matchesMemberReference(value, member, email, uid) {
   const reference = normalize(typeof value === 'object' ? value.id || value.email || `${value.firstName || ''} ${value.lastName || ''}` : value);
   if (!reference) return false;
-  if (reference === normalize(member.id) || reference === normalize(email) || reference === normalize(member.email)) return true;
+  if (reference === normalize(uid) || reference === normalize(member.authUid) || reference === normalize(member.id) || reference === normalize(email) || reference === normalize(member.email)) return true;
   const fullName = normalize(`${member.firstName || ''} ${member.lastName || ''}`);
   const reversedName = normalize(`${member.lastName || ''} ${member.firstName || ''}`);
   if (reference === fullName || reference === reversedName) return true;
@@ -28,13 +28,14 @@ function matchesMemberReference(value, member, email) {
   return parts.length > 0 && parts.some(part => fullName.includes(part) || reversedName.includes(part));
 }
 
-function isAssignedLeader(group, member, email) {
+function isAssignedLeader(group, member, email, uid) {
   const assignments = [
+    ...asArray(group.facilitatorUids),
     ...asArray(group.facilitators),
     ...asArray(group.coFacilitators),
     ...asArray(group.facilitatorEmails),
   ];
-  return assignments.some(value => matchesMemberReference(value, member, email));
+  return assignments.some(value => matchesMemberReference(value, member, email, uid));
 }
 
 function isGroupMember(group, member) {
@@ -59,7 +60,8 @@ export default async function handler(req, res) {
     const roles = Array.isArray(user.role) ? user.role : [user.role];
     const email = String(token.email || '').trim().toLowerCase();
     const memberCollection = db.collection('members');
-    let ownSnapshot = email ? await memberCollection.where('email', '==', email).limit(1).get() : { empty: true, docs: [] };
+    let ownSnapshot = await memberCollection.where('authUid', '==', token.uid).limit(1).get();
+    if (ownSnapshot.empty && email) ownSnapshot = await memberCollection.where('email', '==', email).limit(1).get();
     if (ownSnapshot.empty && email) {
       // Compatibilidad temporal con emails históricos guardados con mayúsculas/espacios.
       const memberSnapshot = await memberCollection.get();
@@ -70,6 +72,10 @@ export default async function handler(req, res) {
     }
     const ownDoc = ownSnapshot.docs[0];
     const own = ownDoc ? { id: ownDoc.id, ...ownDoc.data() } : null;
+    if (own && own.authUid !== token.uid) {
+      await memberCollection.doc(own.id).update({ authUid: token.uid, updatedAt: admin.firestore.Timestamp.now() });
+      own.authUid = token.uid;
+    }
     const ownMemberRoles = Array.isArray(own?.role) ? own.role : [own?.role];
     const isLeader = roles.some(role => ['Facilitator', 'CoFacilitator'].includes(role))
       || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
@@ -83,16 +89,20 @@ export default async function handler(req, res) {
     const groups = groupSnapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     const assignedGroups = isGlobal
       ? groups
-      : own ? groups.filter(group => isAssignedLeader(group, own, email)) : [];
+      : own ? groups.filter(group => isAssignedLeader(group, own, email, token.uid)) : [];
 
     // Backfill facilitatorEmails en grupos históricos para que las reglas de
     // Firestore autoricen después sus lecturas/escrituras directas de asistencia.
     if (isLeader && own && email) {
       await Promise.all(assignedGroups.map(async group => {
         const emails = Array.isArray(group.facilitatorEmails) ? group.facilitatorEmails.map(value => String(value).toLowerCase()) : [];
-        if (emails.includes(email)) return;
-        await db.collection('groups').doc(group.id).update({ facilitatorEmails: [...new Set([...emails, email])] });
-        group.facilitatorEmails = [...new Set([...emails, email])];
+        const uids = Array.isArray(group.facilitatorUids) ? group.facilitatorUids : [];
+        if (emails.includes(email) && uids.includes(token.uid)) return;
+        const updatedEmails = [...new Set([...emails, ...(email ? [email] : [])])];
+        const updatedUids = [...new Set([...uids, token.uid])];
+        await db.collection('groups').doc(group.id).update({ facilitatorEmails: updatedEmails, facilitatorUids: updatedUids });
+        group.facilitatorEmails = updatedEmails;
+        group.facilitatorUids = updatedUids;
       }));
     }
     let assignedMembers;

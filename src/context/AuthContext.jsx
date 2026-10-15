@@ -68,6 +68,10 @@ export function AuthProvider({ children }) {
           const memberRoles = Array.isArray(memberSnap.docs[0]?.data()?.role)
             ? memberSnap.docs[0].data().role
             : [memberSnap.docs[0]?.data()?.role];
+          const ownMemberDoc = memberSnap.docs[0];
+          if (ownMemberDoc && ownMemberDoc.data().authUid !== user.uid) {
+            await updateDoc(doc(db, 'members', ownMemberDoc.id), { authUid: user.uid, updatedAt: new Date() });
+          }
           const hasAssignedGroup = memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
           const docSnap = await getDoc(docRef);
           

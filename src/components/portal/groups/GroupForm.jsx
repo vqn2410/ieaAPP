@@ -57,6 +57,10 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                 facilitatorEmails: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
                     const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
                     return member?.email?.trim().toLowerCase();
+                }).filter(Boolean))],
+                facilitatorUids: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
+                    const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
+                    return member?.authUid;
                 }).filter(Boolean))]
             };
             if (isScheduledGroup) {
