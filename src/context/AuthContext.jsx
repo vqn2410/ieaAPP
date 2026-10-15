@@ -70,7 +70,11 @@ export function AuthProvider({ children }) {
             : [memberSnap.docs[0]?.data()?.role];
           const ownMemberDoc = memberSnap.docs[0];
           if (ownMemberDoc && ownMemberDoc.data().authUid !== user.uid) {
-            await updateDoc(doc(db, 'members', ownMemberDoc.id), { authUid: user.uid, updatedAt: new Date() });
+            try {
+              await updateDoc(doc(db, 'members', ownMemberDoc.id), { authUid: user.uid, updatedAt: new Date() });
+            } catch (error) {
+              console.warn('No se pudo vincular la ficha con el UID:', error.message);
+            }
           }
           const hasAssignedGroup = memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
           const docSnap = await getDoc(docRef);
@@ -81,7 +85,15 @@ export function AuthProvider({ children }) {
             storedData.name = storedData.name || user.displayName || user.email?.split('@')[0] || 'Usuario';
             storedData.role = storedData.role || ['Member'];
             const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
-            const preDocSnap = await getDoc(preDocRef);
+            let preData = null;
+            try {
+              const preDocSnap = await getDoc(preDocRef);
+              if (preDocSnap.exists()) preData = preDocSnap.data();
+            } catch (error) {
+              // Las reglas pueden negar la pre-asignación en instalaciones que
+              // todavía no desplegaron esa regla; no debe perderse el perfil real.
+              console.warn('No se pudo consultar la pre-asignación:', error.message);
+            }
             const storedRoles = Array.isArray(storedData.role) ? storedData.role : [storedData.role];
             const hasCampusAssignment = Array.isArray(storedData.campusIds) && storedData.campusIds.length > 0;
 
@@ -93,12 +105,11 @@ export function AuthProvider({ children }) {
 
             // Complete pre-assignments created before the current migration flow.
             if (
-              preDocSnap.exists()
-              && preDocSnap.data().isPending === true
+              preData?.isPending === true
               && !storedData.preAssignmentAppliedAt
               && (!hasCampusAssignment || storedRoles.includes('Member'))
             ) {
-              const assignment = buildUserDataFromPreAssignment(preDocSnap.data(), user.email, user.displayName);
+              const assignment = buildUserDataFromPreAssignment(preData, user.email, user.displayName);
               const assignmentPatch = {
                 role: assignment.role,
                 campusIds: assignment.campusIds,
