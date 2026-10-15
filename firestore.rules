@@ -13,6 +13,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data[field];
     }
 
+    function hasUserDocument() {
+      return isAuth() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function isOwnPreAssignment(userId) {
       return isAuth()
         && request.auth.token.email != null
@@ -21,14 +25,14 @@ service cloud.firestore {
 
     // Función auxiliar: verifica si el usuario tiene un rol específico
     function hasRole(role) {
-      return isAuth() && (
+      return hasUserDocument() && (
         (getUserField('role') is list && getUserField('role').hasAny([role]))
         || (getUserField('role') is string && getUserField('role') == role)
       );
     }
 
     function hasAnyRole(roles) {
-      return isAuth() && (
+      return hasUserDocument() && (
         (getUserField('role') is list && getUserField('role').hasAny(roles))
         || (getUserField('role') is string && roles.hasAny([getUserField('role')]))
       );
@@ -39,7 +43,7 @@ service cloud.firestore {
     }
 
     function hasCampus(campusId) {
-      return isAuth() && campusId != null && (
+      return hasUserDocument() && campusId != null && (
         (getUserField('campusIds') is list && getUserField('campusIds').hasAny([campusId]))
         || (getUserField('campusIds') is string && getUserField('campusIds') == campusId)
       );
@@ -52,8 +56,8 @@ service cloud.firestore {
     function managesGroup(groupId) {
       let group = get(/databases/$(database)/documents/groups/$(groupId)).data;
       return isAuth() && (
-        (group.facilitatorUids is list && group.facilitatorUids.hasAny([request.auth.uid]))
-        || (request.auth.token.email != null && group.facilitatorEmails is list && group.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
+        (('facilitatorUids' in group) && group.facilitatorUids is list && group.facilitatorUids.hasAny([request.auth.uid]))
+        || (request.auth.token.email != null && ('facilitatorEmails' in group) && group.facilitatorEmails is list && group.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
       );
     }
 
@@ -234,8 +238,8 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if isAuth() && (
         canAccessCampus(resource.data.campusId)
-        || (resource.data.facilitatorUids is list && resource.data.facilitatorUids.hasAny([request.auth.uid]))
-        || (request.auth.token.email != null && resource.data.facilitatorEmails is list
+        || (('facilitatorUids' in resource.data) && resource.data.facilitatorUids is list && resource.data.facilitatorUids.hasAny([request.auth.uid]))
+        || (request.auth.token.email != null && ('facilitatorEmails' in resource.data) && resource.data.facilitatorEmails is list
           && resource.data.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
       );
       allow create: if isAuth() && canAccessCampus(request.resource.data.campusId);

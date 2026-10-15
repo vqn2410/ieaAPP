@@ -99,6 +99,11 @@ test('allows a member to query only their own member profile by exact email', as
 test('allows facilitators to read only assigned groups and their members by UID', async () => {
   await testEnv.withSecurityRulesDisabled(async context => {
     const firestore = context.firestore();
+    await setDoc(doc(firestore, 'users/facilitator-uid'), {
+      email: 'facilitator@example.com',
+      role: ['Facilitator'],
+      campusIds: [],
+    });
     await setDoc(doc(firestore, 'groups/group-1'), {
       name: 'Grupo Uno',
       campusId: 'campus-1',
