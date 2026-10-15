@@ -7,6 +7,7 @@ import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save } from '
 import { useAuth } from '../../context/AuthContext';
 import { getMemberByEmail, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { getEvents, setEventRegistration } from '../../services/eventService';
 import { getArray } from '../../utils/helpers';
 import './MemberPortal.css';
@@ -36,8 +37,10 @@ const MemberPortal = () => {
     let mounted = true;
     (async () => {
       const me = await getMemberByEmail(currentUser?.email);
+      const canSeeAllGroups = hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader']);
+      const isFacilitator = hasRole(['Facilitator', 'CoFacilitator']);
       const [gs, upcomingEvents] = await Promise.all([
-        hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) ? getGroups() : Promise.resolve([]),
+        canSeeAllGroups ? getGroups() : isFacilitator ? getAssignedGroups().then(data => data.groups || []) : Promise.resolve([]),
         getEvents(),
       ]);
       if (!mounted) return;
