@@ -7,7 +7,7 @@ import Modal from '../../components/common/Modal';
 import MemberForm from '../../components/portal/members/MemberForm';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { getGroup, getGroups } from '../../services/groupService';
-import { getMembers, updateMember } from '../../services/memberService';
+import { getMembers, getMembersByGroupId, updateMember } from '../../services/memberService';
 import { useAuth } from '../../context/AuthContext';
 import { getAssignedGroups } from '../../services/assignedGroupService';
 import { useDebounce } from '../../utils/useDebounce';
@@ -74,10 +74,11 @@ const GroupDetails = () => {
         });
     };
 
-    const groupMembers = membersList.filter(m => m.group === group.name);
+    const normalizeGroup = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const groupMembers = membersList.filter(m => m.groupId === group.id || normalizeGroup(m.group) === normalizeGroup(group.name));
     const currentMember = membersList.find(member => member.email?.trim().toLowerCase() === currentUser?.email?.trim().toLowerCase());
     const isGroupLeader = currentMember && isLegacyMatch([...facilitatorsIds, ...coFacilitatorsIds], currentMember);
-    const canManage = hasRole(['Admin', 'Pastor']) || (hasRole(['Facilitator', 'CoFacilitator']) && isGroupLeader);
+    const canManage = hasRole(['Admin', 'Pastor', 'CampusAdmin']) || (hasRole(['Facilitator', 'CoFacilitator']) && isGroupLeader);
     if (!hasRole(['Admin', 'Pastor']) && !isGroupLeader) {
         return <Navigate to="/dashboard/grupos" replace />;
     }
@@ -95,7 +96,10 @@ const GroupDetails = () => {
         .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
 
     const refreshMembers = async () => {
-        const data = await getMembers();
+        const isScoped = hasRole(['Facilitator', 'CoFacilitator', 'CampusAdmin']);
+        const data = isScoped
+            ? await getMembersByGroupId(group.id)
+            : await getMembers();
         setMembersList(data);
     };
 
