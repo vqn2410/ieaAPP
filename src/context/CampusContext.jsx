@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
-import { getAssignedGroups } from '../services/assignedGroupService';
+import { getGroupsByFacilitatorUid } from '../services/groupService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
@@ -10,7 +10,7 @@ const STORAGE_KEY = 'portal-iea-active-campus';
 export const useCampus = () => useContext(CampusContext);
 
 export function CampusProvider({ children }) {
-  const { userData, loading: authLoading, hasRole } = useAuth();
+  const { currentUser, userData, loading: authLoading, hasRole } = useAuth();
   const [campuses, setCampuses] = useState([]);
   const [activeCampusId, setActiveCampusId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
   const [loading, setLoading] = useState(true);
@@ -27,8 +27,8 @@ export function CampusProvider({ children }) {
     setLoading(true);
     Promise.all([
       getCampuses(),
-      isFacilitator && userData.email
-        ? getAssignedGroups().then(result => result.groups || []).catch(() => [])
+      isFacilitator && currentUser?.uid
+        ? getGroupsByFacilitatorUid(currentUser.uid).catch(() => [])
         : Promise.resolve([]),
     ])
       .then(async ([data, assignedGroups]) => {
@@ -58,7 +58,7 @@ export function CampusProvider({ children }) {
       .catch(error => console.error('Error cargando campus:', error))
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
-  }, [authLoading, userData, isGlobal, isFacilitator]);
+  }, [authLoading, currentUser?.uid, userData, isGlobal, isFacilitator]);
 
   const activeCampus = useMemo(
     () => campuses.find(campus => campus.id === activeCampusId) || null,

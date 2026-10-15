@@ -56,6 +56,17 @@ export const getMemberByEmail = async email => {
     return result ? { id: result.id, ...result.data() } : null;
 };
 
+export const getMembersByGroupId = async groupId => {
+    if (!groupId) return [];
+    const snapshot = await getDocs(query(
+        collection(db, COLLECTION_NAME),
+        where('groupId', '==', groupId),
+    ));
+    return snapshot.docs
+        .map(item => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')));
+};
+
 // Agregar un miembro nuevo
 export const createMember = async (memberData) => {
     try {

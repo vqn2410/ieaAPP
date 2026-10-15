@@ -8,9 +8,8 @@ import TransferRequests from '../../components/portal/groups/TransferRequests';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
-import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
-import { getMemberByEmail, getMembers, updateMember } from '../../services/memberService';
-import { getAssignedGroups } from '../../services/assignedGroupService';
+import { getGroups, getGroupsByFacilitatorUid, deleteGroup, updateGroup } from '../../services/groupService';
+import { getMemberByEmail, getMembers, getMembersByGroupId, updateMember } from '../../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
@@ -90,6 +89,15 @@ const getFacilitatorEmails = (group, members) => {
     }).filter(Boolean))].sort();
 };
 
+const getFacilitatorUids = (group, members) => {
+    const leaders = [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators].filter(Boolean)), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators].filter(Boolean))];
+    return [...new Set(leaders.map(value => {
+        const normalized = String(value).trim().toLowerCase();
+        const member = members.find(item => item.id === value || `${item.firstName} ${item.lastName}`.trim().toLowerCase() === normalized || `${item.lastName}, ${item.firstName}`.trim().toLowerCase() === normalized);
+        return member?.authUid;
+    }).filter(Boolean))].sort();
+};
+
 const GrowthGroups = () => {
     const { currentUser, hasRole } = useAuth();
     const { activeCampusId, activeCampus, isCampusAdmin, isGlobal } = useCampus();
@@ -138,13 +146,18 @@ const GrowthGroups = () => {
         const ownMember = await getMemberByEmail(currentUser?.email);
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
-                const assigned = await getAssignedGroups();
-                setAssignedGroupsError(assigned.warning || '');
-                setAssignedGroupsDiagnostics(assigned.diagnostics || null);
-                setAllMembers(assigned.members || []);
+                let assignedGroups = await getGroupsByFacilitatorUid(currentUser?.uid);
+                if (assignedGroups.length === 0 && currentUser?.email) {
+                    assignedGroups = await getGroups(null, currentUser.email);
+                }
+                const membersByGroup = await Promise.all(assignedGroups.map(group => getMembersByGroupId(group.id)));
+                const assignedMembers = [...new Map(membersByGroup.flat().map(member => [member.id, member])).values()];
+                setAssignedGroupsError(assignedGroups.length === 0 ? 'No encontramos grupos vinculados al UID/email de esta cuenta. Pedile a un administrador que vuelva a guardar tu asignación como facilitador.' : '');
+                setAssignedGroupsDiagnostics({ assignedGroups: assignedGroups.length, assignedMembers: assignedMembers.length });
+                setAllMembers(assignedMembers);
                 setMyMemberProfile(ownMember);
-                setMyGroups(assigned.groups || []);
-                setMyMembers(assigned.members || []);
+                setMyGroups(assignedGroups);
+                setMyMembers(assignedMembers);
                 setLoading(false);
                 return;
             } catch (error) {
@@ -192,9 +205,11 @@ const GrowthGroups = () => {
             }));
             const updates = groups.map(async group => {
                 const facilitatorEmails = getFacilitatorEmails(group, members);
-                if (JSON.stringify(group.facilitatorEmails || []) !== JSON.stringify(facilitatorEmails)) {
-                    await updateGroup(group.id, { facilitatorEmails });
-                    return { ...group, facilitatorEmails };
+                const facilitatorUids = getFacilitatorUids(group, members);
+                if (JSON.stringify(group.facilitatorEmails || []) !== JSON.stringify(facilitatorEmails)
+                    || JSON.stringify(group.facilitatorUids || []) !== JSON.stringify(facilitatorUids)) {
+                    await updateGroup(group.id, { facilitatorEmails, facilitatorUids });
+                    return { ...group, facilitatorEmails, facilitatorUids };
                 }
                 return group;
             });
