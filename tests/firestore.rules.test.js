@@ -61,7 +61,7 @@ test('keeps pre-assignments read-only for the invited user', async () => {
 test('allows the invited user to create their own user document', async () => {
   const context = testEnv.authenticatedContext('new-user', { email: preEmail });
 
-  await assertSucceeds(setDoc(doc(context.firestore(), 'new-user'), {
+  await assertSucceeds(setDoc(doc(context.firestore(), 'users', 'new-user'), {
     email: preEmail,
     role: ['CampusAdmin'],
     campusIds: ['campus-1'],
