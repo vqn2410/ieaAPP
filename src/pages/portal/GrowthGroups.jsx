@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
-import { getMemberByEmail, getMembers } from '../../services/memberService';
+import { getMemberByEmail, getMembers, updateMember } from '../../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
@@ -160,6 +160,13 @@ const GrowthGroups = () => {
         setAllMembers(members);
 
         if (isAdmin) {
+            const groupByName = new Map(groups.map(group => [String(group.name || '').trim().toLowerCase(), group]));
+            await Promise.all(members.map(async member => {
+                const group = groupByName.get(String(member.group || '').trim().toLowerCase());
+                if (!group || member.groupId === group.id) return;
+                await updateMember(member.id, { groupId: group.id });
+                member.groupId = group.id;
+            }));
             const updates = groups.map(async group => {
                 const facilitatorEmails = getFacilitatorEmails(group, members);
                 if (JSON.stringify(group.facilitatorEmails || []) !== JSON.stringify(facilitatorEmails)) {
