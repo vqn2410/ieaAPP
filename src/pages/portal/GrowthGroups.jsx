@@ -136,6 +136,9 @@ const GrowthGroups = () => {
         let groups = centralLegacy
             ? await getGroups()
             : await getGroups(isAdmin ? activeCampusId || null : null, isAdmin ? null : currentUser?.email);
+        if (!isAdmin && groups.length === 0) {
+            groups = await getGroups(activeCampusId || null);
+        }
         if (!isAdmin && activeCampusId) {
             groups = groups.filter(group => !group.campusId || group.campusId === activeCampusId);
         }

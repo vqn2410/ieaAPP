@@ -60,7 +60,14 @@ export function AuthProvider({ children }) {
           const assignedGroupsSnap = normalizedEmail
             ? await getDocs(query(collection(db, 'groups'), where('facilitatorEmails', 'array-contains', normalizedEmail)))
             : { empty: true };
-          const hasAssignedGroup = !assignedGroupsSnap.empty;
+          const memberSnap = normalizedEmail
+            ? await getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail)))
+            : { empty: true, docs: [] };
+          const memberRoles = Array.isArray(memberSnap.docs[0]?.data()?.role)
+            ? memberSnap.docs[0].data().role
+            : [memberSnap.docs[0]?.data()?.role];
+          const hasAssignedGroup = !assignedGroupsSnap.empty
+            || memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {

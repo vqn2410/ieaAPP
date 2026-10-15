@@ -227,6 +227,7 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if isAuth() && (
         canAccessCampus(resource.data.campusId)
+        || hasAnyRole(['Facilitator', 'CoFacilitator'])
         || (request.auth.token.email != null
           && resource.data.facilitatorEmails is list
           && resource.data.facilitatorEmails.hasAny([request.auth.token.email.lower()]))
