@@ -1,10 +1,10 @@
 # Chat IA local
 
-Para desarrollo local, ejecutá Vercel Dev como servidor de funciones API y Vite
-como servidor de frontend. Vite proxifica `/api` hacia el puerto 3005.
+Para desarrollo local, el frontend Vite proxifica `/api` al puerto 3005. El API
+local de grupos asignados carga las credenciales privadas desde `.env.local`.
 
 ```bash
-npm run dev:vercel
+npm run dev:api
 ```
 
 En una segunda terminal, ejecutá:
@@ -13,8 +13,8 @@ En una segunda terminal, ejecutá:
 npm run dev
 ```
 
-Abrí `http://localhost:5173`. No abras el frontend servido internamente por
-Vercel Dev: algunas rutas de módulos Vite pueden recibir la reescritura SPA.
+Abrí `http://localhost:5173`. No hace falta ejecutar `vercel dev` para probar
+el API local de grupos asignados.
 
 El backend necesita estas variables en el entorno local:
 
