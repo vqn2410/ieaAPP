@@ -10,6 +10,7 @@ import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
 import { getMemberByEmail, getMembers, updateMember } from '../../services/memberService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
@@ -133,6 +134,15 @@ const GrowthGroups = () => {
         setLoading(true);
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
         const ownMember = await getMemberByEmail(currentUser?.email);
+        if (!isAdmin && !isGlobal && !isCampusAdmin) {
+            const assigned = await getAssignedGroups();
+            setAllMembers(assigned.members || []);
+            setMyMemberProfile(ownMember);
+            setMyGroups(assigned.groups || []);
+            setMyMembers(assigned.members || []);
+            setLoading(false);
+            return;
+        }
         let groups = centralLegacy
             ? await getGroups()
             : await getGroups(isAdmin ? activeCampusId || null : null, isAdmin ? null : currentUser?.email);
