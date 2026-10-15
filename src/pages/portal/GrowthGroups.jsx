@@ -104,6 +104,7 @@ const GrowthGroups = () => {
     const [myMembers, setMyMembers] = useState([]);
     const [allMembers, setAllMembers] = useState([]); // Added for the form
     const [loading, setLoading] = useState(true);
+    const [assignedGroupsError, setAssignedGroupsError] = useState('');
 
     // Group CRUD state
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -137,6 +138,7 @@ const GrowthGroups = () => {
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
                 const assigned = await getAssignedGroups();
+                setAssignedGroupsError('');
                 setAllMembers(assigned.members || []);
                 setMyMemberProfile(ownMember);
                 setMyGroups(assigned.groups || []);
@@ -145,6 +147,7 @@ const GrowthGroups = () => {
                 return;
             } catch (error) {
                 console.error('No se pudo cargar el gateway de grupos asignados:', error);
+                setAssignedGroupsError(error.message || 'No se pudieron cargar tus grupos asignados.');
                 setAllMembers([]);
                 setMyMemberProfile(ownMember);
                 setMyGroups([]);
@@ -156,9 +159,6 @@ const GrowthGroups = () => {
         let groups = centralLegacy
             ? await getGroups()
             : await getGroups(isAdmin ? activeCampusId || null : null, isAdmin ? null : currentUser?.email);
-        if (!isAdmin && groups.length === 0) {
-            groups = await getGroups(activeCampusId || null);
-        }
         if (!isAdmin && activeCampusId) {
             groups = groups.filter(group => !group.campusId || group.campusId === activeCampusId);
         }
@@ -443,13 +443,7 @@ const GrowthGroups = () => {
                     )}
 
 
-                    {activeTab === 'asistencia' && (
-                        <AttendanceTab
-                            myGroups={myGroups}
-                            myMembers={myMembers}
-                            currentUser={currentUser}
-                        />
-                    )}
+                    {activeTab === 'asistencia' && (assignedGroupsError ? <Card><p>{assignedGroupsError}</p><small>Verificá que el backend API esté desplegado y que las variables Firebase Admin estén configuradas.</small></Card> : <AttendanceTab myGroups={myGroups} myMembers={myMembers} currentUser={currentUser} />)}
                     {activeTab === 'rueda' && (
                         <WheelOfLifeTab
                             myGroups={myGroups}
