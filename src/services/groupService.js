@@ -30,6 +30,17 @@ export const getGroupsByFacilitatorUid = async uid => {
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 };
 
+export const getGroupsByFacilitatorEmail = async email => {
+    if (!email) return [];
+    const snapshot = await getDocs(query(
+        collection(db, COLLECTION_NAME),
+        where('facilitatorEmails', 'array-contains', email.trim().toLowerCase()),
+    ));
+    return snapshot.docs
+        .map(item => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+};
+
 export const getGroup = async (id) => {
     try {
         const docRef = doc(db, COLLECTION_NAME, id);

@@ -8,7 +8,7 @@ import TransferRequests from '../../components/portal/groups/TransferRequests';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
-import { getGroups, getGroupsByFacilitatorUid, deleteGroup, updateGroup } from '../../services/groupService';
+import { getGroups, getGroupsByFacilitatorEmail, getGroupsByFacilitatorUid, deleteGroup, updateGroup } from '../../services/groupService';
 import { getMemberByEmail, getMembers, getMembersByGroupId, updateMember } from '../../services/memberService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
@@ -147,16 +147,22 @@ const GrowthGroups = () => {
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
                 let assignedGroups = [];
+                let uidMatches = 0;
+                let emailMatches = 0;
                 try {
                     assignedGroups = await getGroupsByFacilitatorUid(currentUser?.uid);
+                    uidMatches = assignedGroups.length;
                 } catch (error) {
                     console.warn('Aún no se pudo consultar por UID; intentando el email de facilitador:', error.message);
                 }
-                if (assignedGroups.length === 0 && currentUser?.email) assignedGroups = await getGroups(null, currentUser.email);
+                if (assignedGroups.length === 0 && currentUser?.email) {
+                    assignedGroups = await getGroupsByFacilitatorEmail(currentUser.email);
+                    emailMatches = assignedGroups.length;
+                }
                 const membersByGroup = await Promise.all(assignedGroups.map(group => getMembersByGroupId(group.id)));
                 const assignedMembers = [...new Map(membersByGroup.flat().map(member => [member.id, member])).values()];
-                setAssignedGroupsError(assignedGroups.length === 0 ? 'No encontramos grupos vinculados al email de esta cuenta. Un Admin/Pastor debe editar y guardar el grupo para sincronizar facilitatorEmails.' : assignedMembers.length === 0 ? 'El grupo ya está vinculado, pero todavía no encontramos miembros con groupId. Un Admin/Pastor debe abrir Grupos una vez para sincronizar las membresías históricas.' : '');
-                setAssignedGroupsDiagnostics({ assignedGroups: assignedGroups.length, assignedMembers: assignedMembers.length });
+                setAssignedGroupsError(assignedGroups.length === 0 ? 'No se encontró asignación por UID ni por email. Si una consulta fue denegada, falta desplegar reglas; si ambas devolvieron cero, Admin debe volver a guardar la asignación del grupo.' : assignedMembers.length === 0 ? 'El grupo está vinculado, pero no encontramos miembros por groupId. Admin debe abrir Grupos una vez para completar las membresías históricas.' : '');
+                setAssignedGroupsDiagnostics({ uidMatches, emailMatches, assignedGroups: assignedGroups.length, assignedMembers: assignedMembers.length });
                 setAllMembers(assignedMembers);
                 setMyMemberProfile(ownMember);
                 setMyGroups(assignedGroups);
@@ -312,7 +318,7 @@ const GrowthGroups = () => {
                 )}
              </div>
 
-            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p>{assignedGroupsDiagnostics && <small>Perfil: {assignedGroupsDiagnostics.memberProfileFound ? 'encontrado' : 'no encontrado'} · Rol facilitador: {assignedGroupsDiagnostics.facilitatorRoleFound ? 'sí' : 'no'} · Grupos revisados: {assignedGroupsDiagnostics.groupsScanned} · Asignados: {assignedGroupsDiagnostics.assignedGroups} · Miembros: {assignedGroupsDiagnostics.assignedMembers}</small>}</Card>}
+            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p>{assignedGroupsDiagnostics && <small>UID: {assignedGroupsDiagnostics.uidMatches} · Email: {assignedGroupsDiagnostics.emailMatches} · Grupos: {assignedGroupsDiagnostics.assignedGroups} · Miembros: {assignedGroupsDiagnostics.assignedMembers}</small>}</Card>}
 
             {!activeTab ? (
                 <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem', marginTop: '1rem' }}>
