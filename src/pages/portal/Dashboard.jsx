@@ -10,6 +10,7 @@ import { getMembers } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
 import { getEvents } from '../../services/eventService';
 import { getPendingFollowUps } from '../../services/followUpService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { isBaptised } from '../../utils/helpers';
 import { Users, Calendar, Activity, ListTodo, ArrowRight, ChevronLeft, ChevronRight, UserPlus, BookOpen, Target, Clock, MessageSquare, Cake } from 'lucide-react';
 import EmptyState from '../../components/common/EmptyState';
@@ -252,11 +253,17 @@ const Dashboard = () => {
     const load = async () => {
       try {
         const centralLegacy = hasRole(['Admin', 'Pastor']) && /central/i.test(activeCampus?.name || '');
-        const [members, groups, events, pendingFups] = await Promise.all([
-          centralLegacy ? getMembers() : getMembers(null, activeCampusId || null),
-          centralLegacy ? getGroups() : getGroups(activeCampusId || null), getEvents(), getPendingFollowUps()
-        ]);
         const isAdminOrPastor = hasRole(['Admin', 'Pastor']) || isCampusAdmin;
+        const isAssignedFacilitator = !isAdminOrPastor && hasRole(['Facilitator', 'CoFacilitator']);
+        const [assignedData, directMembers, directGroups, events, pendingFups] = await Promise.all([
+          isAssignedFacilitator ? getAssignedGroups() : Promise.resolve(null),
+          isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
+          isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
+          getEvents(),
+          getPendingFollowUps(),
+        ]);
+        const members = isAssignedFacilitator ? assignedData.members || [] : directMembers;
+        const groups = isAssignedFacilitator ? assignedData.groups || [] : directGroups;
         const currentMember = members.find(member =>
           member.email && currentUserEmail(userData) &&
           member.email.trim().toLowerCase() === currentUserEmail(userData).trim().toLowerCase()
@@ -264,12 +271,12 @@ const Dashboard = () => {
         const matchesLeader = (group, member) => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
           .filter(Boolean)
           .some(value => value === member?.id || normDashboard(value) === normDashboard(`${member?.lastName}, ${member?.firstName}`) || normDashboard(value) === normDashboard(`${member?.firstName} ${member?.lastName}`));
-        const visibleGroups = isAdminOrPastor || !currentMember
+        const visibleGroups = isAssignedFacilitator || isAdminOrPastor || !currentMember
           ? groups
           : groups.filter(group => matchesLeader(group, currentMember));
         const visibleGroupIds = new Set(visibleGroups.map(group => group.id));
         const visibleGroupNames = new Set(visibleGroups.map(group => normDashboard(group.name)));
-        const visibleMembers = isAdminOrPastor || !currentMember
+        const visibleMembers = isAssignedFacilitator || isAdminOrPastor || !currentMember
           ? members
           : members.filter(member => visibleGroups.some(group => {
               const memberGroup = normDashboard(member.group);
