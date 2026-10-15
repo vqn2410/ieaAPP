@@ -57,9 +57,19 @@ export default async function handler(req, res) {
     const db = admin.firestore();
     const user = (await db.collection('users').doc(token.uid).get()).data() || {};
     const roles = Array.isArray(user.role) ? user.role : [user.role];
-    const email = String(token.email || '').toLowerCase();
-    const members = (await db.collection('members').get()).docs.map(item => ({ id: item.id, ...item.data() }));
-    const own = members.find(member => String(member.email || '').toLowerCase() === email);
+    const email = String(token.email || '').trim().toLowerCase();
+    const memberCollection = db.collection('members');
+    let ownSnapshot = email ? await memberCollection.where('email', '==', email).limit(1).get() : { empty: true, docs: [] };
+    if (ownSnapshot.empty && email) {
+      // Compatibilidad temporal con emails históricos guardados con mayúsculas/espacios.
+      const memberSnapshot = await memberCollection.get();
+      ownSnapshot = {
+        empty: !memberSnapshot.docs.some(item => String(item.data().email || '').trim().toLowerCase() === email),
+        docs: memberSnapshot.docs.filter(item => String(item.data().email || '').trim().toLowerCase() === email).slice(0, 1),
+      };
+    }
+    const ownDoc = ownSnapshot.docs[0];
+    const own = ownDoc ? { id: ownDoc.id, ...ownDoc.data() } : null;
     const ownMemberRoles = Array.isArray(own?.role) ? own.role : [own?.role];
     const isLeader = roles.some(role => ['Facilitator', 'CoFacilitator'].includes(role))
       || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
@@ -69,7 +79,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ groups: [], members: [], warning: `No encontramos una ficha de miembro con el correo ${email}.` });
     }
 
-    const groups = (await db.collection('groups').get()).docs.map(item => ({ id: item.id, ...item.data() }));
+    const groupSnapshot = await db.collection('groups').get();
+    const groups = groupSnapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     const assignedGroups = isGlobal
       ? groups
       : own ? groups.filter(group => isAssignedLeader(group, own, email)) : [];
@@ -84,11 +95,35 @@ export default async function handler(req, res) {
         group.facilitatorEmails = [...new Set([...emails, email])];
       }));
     }
-    const assignedIds = new Set(assignedGroups.map(group => group.id));
-    const assignedNames = new Set(assignedGroups.map(group => normalize(group.name)));
-    const assignedMembers = isGlobal
-      ? members
-      : members.filter(member => assignedIds.has(member.groupId) || assignedNames.has(normalize(member.group)) || assignedGroups.some(group => isGroupMember(group, member)));
+    let assignedMembers;
+    if (isGlobal) {
+      assignedMembers = (await memberCollection.get()).docs.map(item => ({ id: item.id, ...item.data() }));
+    } else {
+      const memberSnapshots = await Promise.all(assignedGroups.flatMap(group => {
+        const queries = [];
+        queries.push(memberCollection.where('groupId', '==', group.id).get());
+        if (group.name) queries.push(memberCollection.where('group', '==', group.name).get());
+        return queries;
+      }));
+      const uniqueMembers = new Map();
+      for (const snapshot of memberSnapshots) {
+        for (const item of snapshot.docs) uniqueMembers.set(item.id, { id: item.id, ...item.data() });
+      }
+
+      // Los grupos más antiguos pueden almacenar las membresías como IDs sin
+      // groupId o group-name en el documento del miembro.
+      const explicitMemberIds = [...new Set(assignedGroups.flatMap(group => [
+        ...asArray(group.initialMemberIds),
+        ...asArray(group.memberIds),
+        ...asArray(group.members),
+      ]).filter(value => typeof value === 'string' && value.length > 0))];
+      const missingIds = explicitMemberIds.filter(id => !uniqueMembers.has(id));
+      const explicitSnapshots = await Promise.all(missingIds.map(id => memberCollection.doc(id).get()));
+      for (const item of explicitSnapshots) {
+        if (item.exists) uniqueMembers.set(item.id, { id: item.id, ...item.data() });
+      }
+      assignedMembers = [...uniqueMembers.values()];
+    }
 
     const warning = assignedGroups.length === 0
       ? 'Tu rol está activo, pero ningún grupo tiene tu ficha/email asignado como facilitador. Pedile a un administrador que vuelva a guardar tu asignación en el grupo.'
