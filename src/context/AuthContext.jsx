@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { auth, db } from '../services/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { buildUserDataFromPreAssignment } from '../utils/authHelpers';
 
 const AuthContext = createContext();
@@ -56,6 +56,11 @@ export function AuthProvider({ children }) {
         // Fetch custom user data from Firestore
         try {
           const docRef = doc(db, 'users', user.uid);
+          const normalizedEmail = user.email?.trim().toLowerCase();
+          const assignedGroupsSnap = normalizedEmail
+            ? await getDocs(query(collection(db, 'groups'), where('facilitatorEmails', 'array-contains', normalizedEmail)))
+            : { empty: true };
+          const hasAssignedGroup = !assignedGroupsSnap.empty;
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
@@ -64,6 +69,12 @@ export function AuthProvider({ children }) {
             const preDocSnap = await getDoc(preDocRef);
             const storedRoles = Array.isArray(storedData.role) ? storedData.role : [storedData.role];
             const hasCampusAssignment = Array.isArray(storedData.campusIds) && storedData.campusIds.length > 0;
+
+            if (hasAssignedGroup && storedRoles.includes('Member')) {
+              const rolePatch = { role: ['Facilitator'] };
+              await updateDoc(docRef, rolePatch);
+              Object.assign(storedData, rolePatch);
+            }
 
             // Complete pre-assignments created before the current migration flow.
             if (
@@ -106,7 +117,7 @@ export function AuthProvider({ children }) {
             } else {
               // No pre-assignment, create standard Member
               finalAuthData = { 
-                role: ['Member'],
+                role: hasAssignedGroup ? ['Facilitator'] : ['Member'],
                 email: user.email.toLowerCase(), 
                 name: user.displayName || 'Usuario', 
                 needsPasswordChange: true,
