@@ -1,13 +1,20 @@
 # Chat IA local
 
-Vercel Dev ejecuta el frontend Vite y las funciones serverless bajo el mismo
-origen. No ejecutes `npm run dev` en paralelo. Iniciá el proyecto completo con:
+Para desarrollo local, ejecutá Vercel Dev como servidor de funciones API y Vite
+como servidor de frontend. Vite proxifica `/api` hacia el puerto 3005.
 
 ```bash
 npm run dev:vercel
 ```
 
-Abrí la URL que imprima Vercel Dev (por defecto `http://localhost:3005`).
+En una segunda terminal, ejecutá:
+
+```bash
+npm run dev
+```
+
+Abrí `http://localhost:5173`. No abras el frontend servido internamente por
+Vercel Dev: algunas rutas de módulos Vite pueden recibir la reescritura SPA.
 
 El backend necesita estas variables en el entorno local:
 
