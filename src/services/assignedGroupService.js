@@ -1,5 +1,4 @@
 import { auth } from './firebase';
-import { iaUrl } from './iaClient';
 
 export const getAssignedGroups = async () => {
   const user = auth.currentUser;
@@ -7,7 +6,9 @@ export const getAssignedGroups = async () => {
   const token = await user.getIdToken();
   let response;
   try {
-    response = await fetch(iaUrl('/api/assigned-groups'), {
+    // Este endpoint pertenece a ieaAPP; no usar VITE_IA_BACKEND_URL, que puede
+    // apuntar a otro servicio externo dedicado al chat IA.
+    response = await fetch('/api/assigned-groups', {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch {
