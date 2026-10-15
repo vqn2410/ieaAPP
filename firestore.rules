@@ -66,7 +66,7 @@ service cloud.firestore {
     function isOwnMember(member) {
       return isAuth()
         && request.auth.token.email != null
-        && member.data.email != null
+        && ('email' in member.data)
         && (
           member.data.email == request.auth.token.email
           || member.data.email.lower() == request.auth.token.email.lower()
@@ -76,7 +76,7 @@ service cloud.firestore {
     function isOwnMemberId(memberId) {
       return isAuth()
         && request.auth.token.email != null
-        && get(/databases/$(database)/documents/members/$(memberId)).data.email != null
+        && ('email' in get(/databases/$(database)/documents/members/$(memberId)).data)
         && get(/databases/$(database)/documents/members/$(memberId)).data.email.lower() == request.auth.token.email.lower();
     }
 
