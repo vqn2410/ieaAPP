@@ -105,6 +105,7 @@ const GrowthGroups = () => {
     const [allMembers, setAllMembers] = useState([]); // Added for the form
     const [loading, setLoading] = useState(true);
     const [assignedGroupsError, setAssignedGroupsError] = useState('');
+    const [assignedGroupsDiagnostics, setAssignedGroupsDiagnostics] = useState(null);
 
     // Group CRUD state
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -139,6 +140,7 @@ const GrowthGroups = () => {
             try {
                 const assigned = await getAssignedGroups();
                 setAssignedGroupsError(assigned.warning || '');
+                setAssignedGroupsDiagnostics(assigned.diagnostics || null);
                 setAllMembers(assigned.members || []);
                 setMyMemberProfile(ownMember);
                 setMyGroups(assigned.groups || []);
@@ -148,6 +150,7 @@ const GrowthGroups = () => {
             } catch (error) {
                 console.error('No se pudo cargar el gateway de grupos asignados:', error);
                 setAssignedGroupsError(error.message || 'No se pudieron cargar tus grupos asignados.');
+                setAssignedGroupsDiagnostics(null);
                 setAllMembers([]);
                 setMyMemberProfile(ownMember);
                 setMyGroups([]);
@@ -291,7 +294,7 @@ const GrowthGroups = () => {
                 )}
              </div>
 
-            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p></Card>}
+            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p>{assignedGroupsDiagnostics && <small>Perfil: {assignedGroupsDiagnostics.memberProfileFound ? 'encontrado' : 'no encontrado'} · Rol facilitador: {assignedGroupsDiagnostics.facilitatorRoleFound ? 'sí' : 'no'} · Grupos revisados: {assignedGroupsDiagnostics.groupsScanned} · Asignados: {assignedGroupsDiagnostics.assignedGroups} · Miembros: {assignedGroupsDiagnostics.assignedMembers}</small>}</Card>}
 
             {!activeTab ? (
                 <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem', marginTop: '1rem' }}>

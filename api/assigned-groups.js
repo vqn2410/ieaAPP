@@ -141,7 +141,18 @@ export default async function handler(req, res) {
         ? 'Encontramos tus grupos, pero todavía no hay miembros vinculados. El administrador debe asignar miembros a esos grupos.'
         : '';
 
-    return res.status(200).json({ groups: assignedGroups, members: assignedMembers, warning });
+    return res.status(200).json({
+      groups: assignedGroups,
+      members: assignedMembers,
+      warning,
+      diagnostics: {
+        memberProfileFound: Boolean(own),
+        facilitatorRoleFound: isLeader,
+        groupsScanned: groups.length,
+        assignedGroups: assignedGroups.length,
+        assignedMembers: assignedMembers.length,
+      },
+    });
   } catch (error) {
     console.error('Assigned groups error:', error);
     return res.status(500).json({ error: error.message || 'No se pudieron cargar los grupos.' });
