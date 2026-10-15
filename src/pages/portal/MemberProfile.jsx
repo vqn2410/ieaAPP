@@ -7,7 +7,7 @@ import Badge from '../../components/common/Badge';
 import MemberForm from '../../components/portal/members/MemberForm';
 import { getMember, deleteMember, updateMember, linkFamilyMembers, unlinkFamilyMembers } from '../../services/memberService';
 import { getMembers } from '../../services/memberService';
-import { getGroups } from '../../services/groupService';
+import { getGroups, updateGroup } from '../../services/groupService';
 import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake, Wallet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { SkeletonCard } from '../../components/common/Skeleton';
@@ -112,14 +112,25 @@ const MemberProfile = () => {
         const normalizedEmail = m?.email?.trim().toLowerCase();
         const normalizedName = `${m?.firstName || ''} ${m?.lastName || ''}`.trim().toLowerCase();
         const normalizedReverseName = `${m?.lastName || ''}, ${m?.firstName || ''}`.trim().toLowerCase();
-        setAssignedGroups((allGroups || []).filter(group => {
+        const groupsAssignedToMember = (allGroups || []).filter(group => {
           const leaders = [
             ...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]),
             ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators]),
             ...(Array.isArray(group.facilitatorEmails) ? group.facilitatorEmails : []),
           ].filter(Boolean).map(value => String(value).trim().toLowerCase());
           return leaders.some(value => value === id || value === normalizedEmail || value === normalizedName || value === normalizedReverseName);
-        }));
+        });
+        setAssignedGroups(groupsAssignedToMember);
+
+        // Reparación única: los grupos antiguos pueden tener facilitadores por
+        // nombre, pero las reglas necesitan el email para autorizar el acceso.
+        if (isPrivileged && normalizedEmail) {
+          await Promise.all(groupsAssignedToMember.map(group => {
+            const emails = Array.isArray(group.facilitatorEmails) ? group.facilitatorEmails : [];
+            if (emails.includes(normalizedEmail)) return null;
+            return updateGroup(group.id, { facilitatorEmails: [...new Set([...emails, normalizedEmail])] });
+          }));
+        }
       } catch {
         navigate('/dashboard/miembros');
       } finally {
