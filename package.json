@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "npx vercel dev --listen 3005",
+    "dev:vercel": "vercel dev --listen 3005",
     "build": "vite build",
     "lint": "eslint .",
     "test": "node --test tests/authHelpers.test.js tests/familyHelpers.test.js tests/communication.test.js",

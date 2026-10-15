@@ -12,10 +12,5 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     base: './',
-    server: {
-      proxy: {
-        '/api': 'http://localhost:3005',
-      },
-    },
   };
 });

@@ -1,17 +1,13 @@
 # Chat IA local
 
-El frontend Vite corre en `localhost:5173` y proxifica `/api` hacia
-`localhost:3005`. Para probar las funciones serverless localmente, ejecutá:
+Vercel Dev ejecuta el frontend Vite y las funciones serverless bajo el mismo
+origen. No ejecutes `npm run dev` en paralelo. Iniciá el proyecto completo con:
 
 ```bash
-npx vercel dev --listen 3005
+npm run dev:vercel
 ```
 
-En otra terminal:
-
-```bash
-npm run dev
-```
+Abrí la URL que imprima Vercel Dev (por defecto `http://localhost:3005`).
 
 El backend necesita estas variables en el entorno local:
 
