@@ -135,13 +135,23 @@ const GrowthGroups = () => {
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
         const ownMember = await getMemberByEmail(currentUser?.email);
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
-            const assigned = await getAssignedGroups();
-            setAllMembers(assigned.members || []);
-            setMyMemberProfile(ownMember);
-            setMyGroups(assigned.groups || []);
-            setMyMembers(assigned.members || []);
-            setLoading(false);
-            return;
+            try {
+                const assigned = await getAssignedGroups();
+                setAllMembers(assigned.members || []);
+                setMyMemberProfile(ownMember);
+                setMyGroups(assigned.groups || []);
+                setMyMembers(assigned.members || []);
+                setLoading(false);
+                return;
+            } catch (error) {
+                console.error('No se pudo cargar el gateway de grupos asignados:', error);
+                setAllMembers([]);
+                setMyMemberProfile(ownMember);
+                setMyGroups([]);
+                setMyMembers([]);
+                setLoading(false);
+                return;
+            }
         }
         let groups = centralLegacy
             ? await getGroups()
