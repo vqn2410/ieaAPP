@@ -65,6 +65,9 @@ export function AuthProvider({ children }) {
           
           if (docSnap.exists()) {
             const storedData = docSnap.data();
+            storedData.email = storedData.email || user.email?.toLowerCase() || '';
+            storedData.name = storedData.name || user.displayName || user.email?.split('@')[0] || 'Usuario';
+            storedData.role = storedData.role || ['Member'];
             const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
             const preDocSnap = await getDoc(preDocRef);
             const storedRoles = Array.isArray(storedData.role) ? storedData.role : [storedData.role];
@@ -130,7 +133,11 @@ export function AuthProvider({ children }) {
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
-          setUserData({ role: ['Member'] });
+          setUserData({
+            role: ['Member'],
+            email: user.email?.toLowerCase() || '',
+            name: user.displayName || user.email?.split('@')[0] || 'Usuario',
+          });
         }
       } else {
         setUserData(null);
