@@ -90,7 +90,7 @@ const MemberProfile = () => {
       }
     };
     load();
-  }, [id, navigate]);
+  }, [id, navigate, userData]);
 
   const handleTransfer = async (newGroupName) => {
     setNewGroup(newGroupName);
