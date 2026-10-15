@@ -138,7 +138,7 @@ const GrowthGroups = () => {
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
                 const assigned = await getAssignedGroups();
-                setAssignedGroupsError('');
+                setAssignedGroupsError(assigned.warning || '');
                 setAllMembers(assigned.members || []);
                 setMyMemberProfile(ownMember);
                 setMyGroups(assigned.groups || []);
@@ -277,7 +277,7 @@ const GrowthGroups = () => {
 
     return (
         <div className="growth-groups-page animate-fade-in">
-            <div className="d-flex justify-between align-center mb-4">
+             <div className="d-flex justify-between align-center mb-4">
                 <div className="d-flex align-center gap-3">
                     {activeTab && (
                         <button className="btn btn-outline btn-sm" onClick={() => setActiveTab(null)} style={{ padding: '0.4rem' }}>
@@ -289,7 +289,9 @@ const GrowthGroups = () => {
                 {isAdmin && !activeTab && (
                     <Button icon={<Plus size={16} />} onClick={() => { setEditingGroup(null); setShowGroupModal(true); }}>Nuevo Grupo</Button>
                 )}
-            </div>
+             </div>
+
+            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p></Card>}
 
             {!activeTab ? (
                 <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem', marginTop: '1rem' }}>
@@ -443,7 +445,7 @@ const GrowthGroups = () => {
                     )}
 
 
-                    {activeTab === 'asistencia' && (assignedGroupsError ? <Card><p>{assignedGroupsError}</p><small>Verificá que el backend API esté desplegado y que las variables Firebase Admin estén configuradas.</small></Card> : <AttendanceTab myGroups={myGroups} myMembers={myMembers} currentUser={currentUser} />)}
+                    {activeTab === 'asistencia' && <AttendanceTab myGroups={myGroups} myMembers={myMembers} currentUser={currentUser} />}
                     {activeTab === 'rueda' && (
                         <WheelOfLifeTab
                             myGroups={myGroups}

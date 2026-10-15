@@ -65,6 +65,9 @@ export default async function handler(req, res) {
       || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
     const isGlobal = roles.some(role => ['Admin', 'Pastor'].includes(role));
     if (!isGlobal && !isLeader) return res.status(403).json({ error: 'Rol sin acceso a grupos asignados.' });
+    if (!isGlobal && !own) {
+      return res.status(200).json({ groups: [], members: [], warning: `No encontramos una ficha de miembro con el correo ${email}.` });
+    }
 
     const groups = (await db.collection('groups').get()).docs.map(item => ({ id: item.id, ...item.data() }));
     const assignedGroups = isGlobal
@@ -87,7 +90,13 @@ export default async function handler(req, res) {
       ? members
       : members.filter(member => assignedIds.has(member.groupId) || assignedNames.has(normalize(member.group)) || assignedGroups.some(group => isGroupMember(group, member)));
 
-    return res.status(200).json({ groups: assignedGroups, members: assignedMembers });
+    const warning = assignedGroups.length === 0
+      ? 'Tu rol está activo, pero ningún grupo tiene tu ficha/email asignado como facilitador. Pedile a un administrador que vuelva a guardar tu asignación en el grupo.'
+      : assignedMembers.length === 0
+        ? 'Encontramos tus grupos, pero todavía no hay miembros vinculados. El administrador debe asignar miembros a esos grupos.'
+        : '';
+
+    return res.status(200).json({ groups: assignedGroups, members: assignedMembers, warning });
   } catch (error) {
     console.error('Assigned groups error:', error);
     return res.status(500).json({ error: error.message || 'No se pudieron cargar los grupos.' });
