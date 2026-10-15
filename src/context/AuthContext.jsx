@@ -57,15 +57,7 @@ export function AuthProvider({ children }) {
         try {
           const docRef = doc(db, 'users', user.uid);
           const normalizedEmail = user.email?.trim().toLowerCase();
-          let assignedGroupsSnap = { empty: true };
           let memberSnap = { empty: true, docs: [] };
-          try {
-            if (normalizedEmail) {
-              assignedGroupsSnap = await getDocs(query(collection(db, 'groups'), where('facilitatorEmails', 'array-contains', normalizedEmail)));
-            }
-          } catch (error) {
-            console.warn('No se pudo sincronizar grupos del facilitador:', error.message);
-          }
           try {
             if (normalizedEmail) {
               memberSnap = await getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail)));
@@ -76,8 +68,7 @@ export function AuthProvider({ children }) {
           const memberRoles = Array.isArray(memberSnap.docs[0]?.data()?.role)
             ? memberSnap.docs[0].data().role
             : [memberSnap.docs[0]?.data()?.role];
-          const hasAssignedGroup = !assignedGroupsSnap.empty
-            || memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
+          const hasAssignedGroup = memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {

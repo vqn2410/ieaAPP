@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
-import { getGroups } from '../services/groupService';
+import { getAssignedGroups } from '../services/assignedGroupService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
@@ -28,10 +28,7 @@ export function CampusProvider({ children }) {
     Promise.all([
       getCampuses(),
       isFacilitator && userData.email
-        ? getGroups(null, userData.email).catch(error => {
-          console.error('Error buscando campus de grupos asignados:', error);
-          return [];
-        })
+        ? getAssignedGroups().then(result => result.groups || []).catch(() => [])
         : Promise.resolve([]),
     ])
       .then(async ([data, assignedGroups]) => {
