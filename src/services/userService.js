@@ -39,3 +39,16 @@ export const addUserRoleByEmail = async (email, role) => {
     return false;
   }
 };
+
+export const getUserUidByEmail = async email => {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) return null;
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('email', '==', key)));
+    return snap.docs[0]?.id || null;
+  } catch (e) {
+    // Esta lectura es best-effort para roles que no administran users.
+    console.warn('No se pudo resolver UID por email:', e.message);
+    return null;
+  }
+};

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Button from '../../common/Button';
 import { createGroup, updateGroup } from '../../../services/groupService';
 import { updateMember } from '../../../services/memberService';
-import { addUserRoleByEmail } from '../../../services/userService';
+import { addUserRoleByEmail, getUserUidByEmail } from '../../../services/userService';
 import { useCampus } from '../../../context/CampusContext';
 import './GroupForm.css';
 
@@ -31,10 +31,31 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
         return idOrName;
     };
 
+    const findMember = (idOrName) => {
+        if (!idOrName) return null;
+        const normalized = String(idOrName).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        return membersList.find(member => {
+            if (member.id === idOrName) return true;
+            const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            const reverseName = `${member.lastName || ''}, ${member.firstName || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            return normalized === fullName || normalized === reverseName;
+        }) || null;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
+            const selectedLeaders = [...new Set([...facilitators, ...coFacilitators])]
+                .map(findMember)
+                .filter(Boolean);
+            const facilitatorUids = [];
+            for (const member of selectedLeaders) {
+                const uid = member.authUid || await getUserUidByEmail(member.email);
+                if (!uid) continue;
+                facilitatorUids.push(uid);
+                if (member.authUid !== uid) await updateMember(member.id, { authUid: uid });
+            }
             const payload = {
                 name: groupName, 
                 campusId: initialData?.campusId || activeCampusId || null,
@@ -54,14 +75,8 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
                         return member?.id === memberId;
                     })
                 ),
-                facilitatorEmails: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
-                    const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
-                    return member?.email?.trim().toLowerCase();
-                }).filter(Boolean))],
-                facilitatorUids: [...new Set([...facilitators, ...coFacilitators].map(idOrName => {
-                    const member = membersList.find(member => member.id === idOrName || `${member.lastName}, ${member.firstName}`.toLowerCase() === String(idOrName).toLowerCase());
-                    return member?.authUid;
-                }).filter(Boolean))]
+                facilitatorEmails: [...new Set(selectedLeaders.map(member => member.email?.trim().toLowerCase()).filter(Boolean))],
+                facilitatorUids: [...new Set(facilitatorUids)]
             };
             if (isScheduledGroup) {
                 payload.scheduleDay = groupDay;
@@ -75,16 +90,6 @@ const GroupForm = ({ initialData, onSuccess, membersList }) => {
             }
 
             // Sync roles... (simplified version for now, matching groups.jsx logic)
-            const findMember = (idOrName) => {
-                let m = membersList.find(x => x.id === idOrName);
-                if (m) return m;
-                const normSearch = idOrName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-                return membersList.find(x => {
-                    const fullName = `${x.lastName}, ${x.firstName}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-                    return fullName === normSearch;
-                });
-            };
-
             const eliteRoles = ['Admin', 'Pastor', 'MinistryLeader'];
             const updateRole = async (memberId, targetRole) => {
                 const m = membersList.find(x => x.id === memberId);
