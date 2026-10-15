@@ -125,18 +125,6 @@ test('allows a facilitator to get an assigned group document by UID', async () =
   await assertSucceeds(getDoc(doc(facilitator.firestore(), 'groups/group-1')));
 });
 
-test('allows a facilitator to list groups constrained by facilitator UID', async () => {
-  await seedFacilitatorRecords();
-  const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });
-  await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'groups'), where('facilitatorUids', 'array-contains', 'facilitator-uid'))));
-});
-
-test('allows a facilitator to list groups constrained by legacy email', async () => {
-  await seedFacilitatorRecords();
-  const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });
-  await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'groups'), where('facilitatorEmails', 'array-contains', 'facilitator@example.com'))));
-});
-
 test('allows a facilitator to list only members assigned by groupId', async () => {
   await seedFacilitatorRecords();
   const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });

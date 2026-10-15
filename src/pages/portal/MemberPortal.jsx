@@ -7,7 +7,8 @@ import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save } from '
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { getMemberByEmail, updateMember } from '../../services/memberService';
-import { getGroups, getGroupsByFacilitatorUid } from '../../services/groupService';
+import { getGroups } from '../../services/groupService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { getEvents, setEventRegistration } from '../../services/eventService';
 import { getArray } from '../../utils/helpers';
 import './MemberPortal.css';
@@ -42,7 +43,7 @@ const MemberPortal = () => {
       const isCampusAdmin = hasRole(['CampusAdmin']);
       const isFacilitator = hasRole(['Facilitator', 'CoFacilitator']);
       const [gs, upcomingEvents] = await Promise.all([
-        canSeeAllGroups ? getGroups() : isCampusAdmin ? getGroups(activeCampusId || null) : isFacilitator ? getGroupsByFacilitatorUid(currentUser?.uid) : Promise.resolve([]),
+        canSeeAllGroups ? getGroups() : isCampusAdmin ? getGroups(activeCampusId || null) : isFacilitator ? getAssignedGroups().then(result => result.groups || []) : Promise.resolve([]),
         getEvents(),
       ]);
       if (!mounted) return;

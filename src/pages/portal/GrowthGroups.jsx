@@ -8,8 +8,9 @@ import TransferRequests from '../../components/portal/groups/TransferRequests';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
-import { getGroups, getGroupsByFacilitatorEmail, getGroupsByFacilitatorUid, deleteGroup, updateGroup } from '../../services/groupService';
-import { getMemberByEmail, getMembers, getMembersByGroupId, updateMember } from '../../services/memberService';
+import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
+import { getMemberByEmail, getMembers, updateMember } from '../../services/memberService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
 import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
@@ -146,23 +147,11 @@ const GrowthGroups = () => {
         const ownMember = await getMemberByEmail(currentUser?.email);
         if (!isAdmin && !isGlobal && !isCampusAdmin) {
             try {
-                let assignedGroups = [];
-                let uidMatches = 0;
-                let emailMatches = 0;
-                try {
-                    assignedGroups = await getGroupsByFacilitatorUid(currentUser?.uid);
-                    uidMatches = assignedGroups.length;
-                } catch (error) {
-                    console.warn('Aún no se pudo consultar por UID; intentando el email de facilitador:', error.message);
-                }
-                if (assignedGroups.length === 0 && currentUser?.email) {
-                    assignedGroups = await getGroupsByFacilitatorEmail(currentUser.email);
-                    emailMatches = assignedGroups.length;
-                }
-                const membersByGroup = await Promise.all(assignedGroups.map(group => getMembersByGroupId(group.id)));
-                const assignedMembers = [...new Map(membersByGroup.flat().map(member => [member.id, member])).values()];
-                setAssignedGroupsError(assignedGroups.length === 0 ? 'No se encontró asignación por UID ni por email. Si una consulta fue denegada, falta desplegar reglas; si ambas devolvieron cero, Admin debe volver a guardar la asignación del grupo.' : assignedMembers.length === 0 ? 'El grupo está vinculado, pero no encontramos miembros por groupId. Admin debe abrir Grupos una vez para completar las membresías históricas.' : '');
-                setAssignedGroupsDiagnostics({ uidMatches, emailMatches, assignedGroups: assignedGroups.length, assignedMembers: assignedMembers.length });
+                const assigned = await getAssignedGroups();
+                const assignedGroups = assigned.groups || [];
+                const assignedMembers = assigned.members || [];
+                setAssignedGroupsError(assigned.warning || '');
+                setAssignedGroupsDiagnostics(assigned.diagnostics || null);
                 setAllMembers(assignedMembers);
                 setMyMemberProfile(ownMember);
                 setMyGroups(assignedGroups);
@@ -472,7 +461,7 @@ const GrowthGroups = () => {
                     )}
 
 
-                    {activeTab === 'asistencia' && <AttendanceTab myGroups={myGroups} myMembers={myMembers} currentUser={currentUser} />}
+                    {activeTab === 'asistencia' && (assignedGroupsError ? <Card><p>{assignedGroupsError}</p></Card> : <AttendanceTab myGroups={myGroups} myMembers={myMembers} currentUser={currentUser} />)}
                     {activeTab === 'rueda' && (
                         <WheelOfLifeTab
                             myGroups={myGroups}

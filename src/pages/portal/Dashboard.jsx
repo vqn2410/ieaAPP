@@ -6,10 +6,11 @@ import Badge from '../../components/common/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
-import { getMembers, getMembersByGroupId } from '../../services/memberService';
-import { getGroups, getGroupsByFacilitatorUid } from '../../services/groupService';
+import { getMembers } from '../../services/memberService';
+import { getGroups } from '../../services/groupService';
 import { getEvents } from '../../services/eventService';
 import { getPendingFollowUps } from '../../services/followUpService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { isBaptised } from '../../utils/helpers';
 import { Users, Calendar, Activity, ListTodo, ArrowRight, ChevronLeft, ChevronRight, UserPlus, BookOpen, Target, Clock, MessageSquare, Cake } from 'lucide-react';
 import EmptyState from '../../components/common/EmptyState';
@@ -254,17 +255,15 @@ const Dashboard = () => {
         const centralLegacy = hasRole(['Admin', 'Pastor']) && /central/i.test(activeCampus?.name || '');
         const isAdminOrPastor = hasRole(['Admin', 'Pastor']) || isCampusAdmin;
         const isAssignedFacilitator = !isAdminOrPastor && hasRole(['Facilitator', 'CoFacilitator']);
-        const [directGroups, directMembers, events, pendingFups] = await Promise.all([
-          isAssignedFacilitator ? getGroupsByFacilitatorUid(currentUser?.uid) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
+        const [assignedData, directMembers, directGroups, events, pendingFups] = await Promise.all([
+          isAssignedFacilitator ? getAssignedGroups() : Promise.resolve(null),
           isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
+          isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
           getEvents(),
           getPendingFollowUps(),
         ]);
-        const assignedGroupMembers = isAssignedFacilitator
-          ? (await Promise.all(directGroups.map(group => getMembersByGroupId(group.id)))).flat()
-          : [];
-        const members = isAssignedFacilitator ? [...new Map(assignedGroupMembers.map(member => [member.id, member])).values()] : directMembers;
-        const groups = directGroups;
+        const members = isAssignedFacilitator ? assignedData.members || [] : directMembers;
+        const groups = isAssignedFacilitator ? assignedData.groups || [] : directGroups;
         const currentMember = members.find(member =>
           member.email && currentUserEmail(userData) &&
           member.email.trim().toLowerCase() === currentUserEmail(userData).trim().toLowerCase()

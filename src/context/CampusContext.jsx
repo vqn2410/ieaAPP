@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
-import { getGroupsByFacilitatorUid } from '../services/groupService';
+import { getAssignedGroups } from '../services/assignedGroupService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
@@ -28,7 +28,7 @@ export function CampusProvider({ children }) {
     Promise.all([
       getCampuses(),
       isFacilitator && currentUser?.uid
-        ? getGroupsByFacilitatorUid(currentUser.uid).catch(() => [])
+        ? getAssignedGroups().then(result => result.groups || []).catch(() => [])
         : Promise.resolve([]),
     ])
       .then(async ([data, assignedGroups]) => {
