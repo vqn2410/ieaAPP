@@ -2,14 +2,28 @@ import admin from 'firebase-admin';
 
 function initAdmin() {
   if (admin.apps.length) return;
+  let serviceAccount = null;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
     ? Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64.replace(/\s/g, ''), 'base64').toString('utf8')
     : process.env.FIREBASE_PRIVATE_KEY;
-  if (!process.env.FIREBASE_CLIENT_EMAIL || !privateKey) throw new Error('Firebase Admin no configurado.');
-  try { privateKey = JSON.parse(privateKey).private_key || privateKey; } catch { /* PEM directo */ }
+  try {
+    const parsed = JSON.parse(privateKey);
+    if (parsed?.private_key) {
+      serviceAccount = parsed;
+      privateKey = parsed.private_key;
+    }
+  } catch {
+    // FIREBASE_PRIVATE_KEY puede llegar como PEM en vez de JSON Base64.
+  }
+  const clientEmail = serviceAccount?.client_email || process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || 'iea-app-73f5f';
+  if (!clientEmail || !privateKey) throw new Error('Firebase Admin no configurado: falta email o clave privada.');
+  if (serviceAccount?.project_id && process.env.FIREBASE_PROJECT_ID && serviceAccount.project_id !== process.env.FIREBASE_PROJECT_ID) {
+    throw new Error('Firebase Admin mal configurado: FIREBASE_PROJECT_ID no coincide con el proyecto del JSON de servicio.');
+  }
   admin.initializeApp({ credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID || 'iea-app-73f5f',
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    projectId,
+    clientEmail,
     privateKey: String(privateKey).replace(/\\n/g, '\n').replace(/\r/g, ''),
   }) });
 }
