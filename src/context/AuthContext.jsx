@@ -57,12 +57,22 @@ export function AuthProvider({ children }) {
         try {
           const docRef = doc(db, 'users', user.uid);
           const normalizedEmail = user.email?.trim().toLowerCase();
-          const assignedGroupsSnap = normalizedEmail
-            ? await getDocs(query(collection(db, 'groups'), where('facilitatorEmails', 'array-contains', normalizedEmail)))
-            : { empty: true };
-          const memberSnap = normalizedEmail
-            ? await getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail)))
-            : { empty: true, docs: [] };
+          let assignedGroupsSnap = { empty: true };
+          let memberSnap = { empty: true, docs: [] };
+          try {
+            if (normalizedEmail) {
+              assignedGroupsSnap = await getDocs(query(collection(db, 'groups'), where('facilitatorEmails', 'array-contains', normalizedEmail)));
+            }
+          } catch (error) {
+            console.warn('No se pudo sincronizar grupos del facilitador:', error.message);
+          }
+          try {
+            if (normalizedEmail) {
+              memberSnap = await getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail)));
+            }
+          } catch (error) {
+            console.warn('No se pudo sincronizar la ficha del miembro:', error.message);
+          }
           const memberRoles = Array.isArray(memberSnap.docs[0]?.data()?.role)
             ? memberSnap.docs[0].data().role
             : [memberSnap.docs[0]?.data()?.role];
