@@ -11,6 +11,7 @@ import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
 import { getMembers, deleteMember, updateMember } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { normalizeString, isBaptised } from '../../utils/helpers';
 import { useDebounce } from '../../utils/useDebounce';
@@ -92,6 +93,14 @@ const Members = () => {
 
   const loadMembers = async () => {
     setLoading(true);
+    const scopedFacilitator = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role)) && !isGlobal && !isCampusAdmin;
+    if (scopedFacilitator) {
+      const assigned = await getAssignedGroups();
+      setMembers(assigned.members || []);
+      setFacilitatorGroups((assigned.groups || []).map(group => ({ id: group.id, name: group.name })));
+      setLoading(false);
+      return;
+    }
     const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
     const data = centralLegacy ? await getMembers() : await getMembers(null, activeCampusId || null);
     const isAdminOrPastor = roles.some(role => ['Admin', 'Pastor'].includes(role));
@@ -121,8 +130,10 @@ const Members = () => {
   useEffect(() => {
     (async () => {
       await loadMembers();
-      const madeChanges = await runMemberMigration();
-      if (madeChanges) loadMembers();
+      if (canCreate) {
+        const madeChanges = await runMemberMigration();
+        if (madeChanges) loadMembers();
+      }
     })();
     // loadMembers se recrea en cada render y su cierre ya refleja el estado
     // actual; las dependencias correctas son el usuario y el campus activo.

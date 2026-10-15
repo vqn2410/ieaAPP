@@ -6,6 +6,7 @@ import { Search, MessageSquare, Check, Trash2, Filter, User } from 'lucide-react
 import { getAllFollowUps, updateFollowUp, deleteFollowUp } from '../../services/followUpService';
 import { getMembers } from '../../services/memberService';
 import { getGroups } from '../../services/groupService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { normalizeString } from '../../utils/helpers';
@@ -40,9 +41,18 @@ const FollowUps = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [fups, mems, allGroups] = await Promise.all([getAllFollowUps(), getMembers(), getGroups()]);
-      if (!mounted) return;
       const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+      const facilitatorScope = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader', 'CampusAdmin'].includes(role));
+      let fups;
+      let mems;
+      let allGroups;
+      if (facilitatorScope) {
+        const assigned = await getAssignedGroups();
+        [fups, mems, allGroups] = await Promise.all([getAllFollowUps(), Promise.resolve(assigned.members || []), Promise.resolve(assigned.groups || [])]);
+      } else {
+        [fups, mems, allGroups] = await Promise.all([getAllFollowUps(), getMembers(), getGroups()]);
+      }
+      if (!mounted) return;
       const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
       if (!isPrivileged && userData?.email) {
         const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -84,7 +94,15 @@ const FollowUps = () => {
   });
 
   const refresh = async () => {
-    const [fups, mems] = await Promise.all([getAllFollowUps(), getMembers()]);
+    const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+    let mems;
+    let fups;
+    if (roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader', 'CampusAdmin'].includes(role))) {
+      const assigned = await getAssignedGroups();
+      [fups, mems] = await Promise.all([getAllFollowUps(), Promise.resolve(assigned.members || [])]);
+    } else {
+      [fups, mems] = await Promise.all([getAllFollowUps(), getMembers()]);
+    }
     setFollowUps(fups);
     setMembers(mems);
   };

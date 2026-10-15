@@ -3,7 +3,9 @@ import Button from '../../common/Button';
 import { createMember, updateMember } from '../../../services/memberService';
 import { syncUserByEmail } from '../../../services/userService';
 import { useCampus } from '../../../context/CampusContext';
+import { useAuth } from '../../../context/AuthContext';
 import { getGroups } from '../../../services/groupService';
+import { getAssignedGroups } from '../../../services/assignedGroupService';
 import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../common/toastContext';
 import './MemberForm.css';
@@ -25,6 +27,7 @@ const dateInputValue = (value) => {
 
 const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId, fixedCampusId }) => {
   const { activeCampusId } = useCampus();
+  const { hasRole } = useAuth();
   const { settings } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -56,8 +59,18 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId, fixedCam
   });
 
   useEffect(() => {
-    getGroups().then(setGroups);
-  }, []);
+    const loadGroups = async () => {
+      try {
+        if (hasRole(['Admin', 'Pastor'])) setGroups(await getGroups());
+        else if (hasRole(['CampusAdmin'])) setGroups(await getGroups(activeCampusId || null));
+        else if (hasRole(['Facilitator', 'CoFacilitator', 'MinistryLeader'])) setGroups((await getAssignedGroups()).groups || []);
+        else setGroups([]);
+      } catch {
+        setGroups([]);
+      }
+    };
+    loadGroups();
+  }, [activeCampusId, hasRole]);
 
   useEffect(() => {
     if (initialData) {

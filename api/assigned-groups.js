@@ -91,11 +91,12 @@ export default async function handler(req, res) {
       own.authUid = token.uid;
     }
     const ownMemberRoles = Array.isArray(own?.role) ? own.role : [own?.role];
-    const isLeader = roles.some(role => ['Facilitator', 'CoFacilitator'].includes(role))
-      || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
+    const isLeader = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role))
+      || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role));
     const isGlobal = roles.some(role => ['Admin', 'Pastor'].includes(role));
-    if (!isGlobal && !isLeader) return res.status(403).json({ error: 'Rol sin acceso a grupos asignados.' });
-    if (!isGlobal && !own) {
+    const isCampusManager = roles.includes('CampusAdmin');
+    if (!isGlobal && !isLeader && !isCampusManager) return res.status(403).json({ error: 'Rol sin acceso a grupos asignados.' });
+    if (!isGlobal && !isCampusManager && !own) {
       return res.status(200).json({ groups: [], members: [], warning: `No encontramos una ficha de miembro con el correo ${email}.` });
     }
 
@@ -103,7 +104,9 @@ export default async function handler(req, res) {
     const groups = groupSnapshot.docs.map(item => ({ id: item.id, ...item.data() }));
     const assignedGroups = isGlobal
       ? groups
-      : own ? groups.filter(group => isAssignedLeader(group, own, email, token.uid)) : [];
+      : isCampusManager
+        ? groups.filter(group => Array.isArray(user.campusIds) && user.campusIds.includes(group.campusId))
+        : own ? groups.filter(group => isAssignedLeader(group, own, email, token.uid)) : [];
 
     // Backfill facilitatorEmails en grupos históricos para que las reglas de
     // Firestore autoricen después sus lecturas/escrituras directas de asistencia.

@@ -9,6 +9,7 @@ import { SkeletonCard } from '../../components/common/Skeleton';
 import { getGroup, getGroups } from '../../services/groupService';
 import { getMembers, updateMember } from '../../services/memberService';
 import { useAuth } from '../../context/AuthContext';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { useDebounce } from '../../utils/useDebounce';
 import './GroupDetails.css';
 
@@ -28,18 +29,26 @@ const GroupDetails = () => {
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
-            const [gData, mData, gList] = await Promise.all([
-                getGroup(id),
-                getMembers(),
-                getGroups()
-            ]);
+            const isGlobal = hasRole(['Admin', 'Pastor']);
+            const isFacilitator = hasRole(['Facilitator', 'CoFacilitator', 'CampusAdmin']);
+            let gData;
+            let mData;
+            let gList;
+            if (isFacilitator && !isGlobal) {
+                const assigned = await getAssignedGroups();
+                gList = assigned.groups || [];
+                gData = gList.find(group => group.id === id) || null;
+                mData = assigned.members || [];
+            } else {
+                [gData, mData, gList] = await Promise.all([getGroup(id), getMembers(), getGroups()]);
+            }
             setGroup(gData);
             setMembersList(mData);
             setAllGroups(gList || []);
             setLoading(false);
         };
         loadData();
-    }, [id]);
+    }, [id, hasRole]);
 
     if (loading) return <div style={{ padding: '2rem' }}><SkeletonCard /></div>;
     if (!group) return <div style={{ padding: '2rem', textAlign: 'center' }}>Grupo no encontrado.</div>;

@@ -7,9 +7,12 @@ import { isBaptised } from '../../utils/helpers';
 import { getGroups } from '../../services/groupService';
 import { getVisitors } from '../../services/visitorService';
 import { getAllFollowUps } from '../../services/followUpService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
+import { useAuth } from '../../context/AuthContext';
 import './Reports.css';
 
 const Reports = () => {
+  const { hasRole } = useAuth();
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [visitors, setVisitors] = useState([]);
@@ -20,18 +23,21 @@ const Reports = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [mems, grps, vis, fups] = await Promise.all([
-        getMembers(), getGroups(), getVisitors(), getAllFollowUps()
+      const scopedLeader = hasRole(['MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      const [scope, vis, fups] = await Promise.all([
+        scopedLeader ? getAssignedGroups() : Promise.all([getMembers(), getGroups()]).then(([mems, grps]) => ({ members: mems, groups: grps })),
+        getVisitors(),
+        getAllFollowUps(),
       ]);
       if (!mounted) return;
-      setMembers(mems);
-      setGroups(grps);
+      setMembers(scope.members || []);
+      setGroups(scope.groups || []);
       setVisitors(vis);
       setFollowUps(fups);
       setLoading(false);
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [hasRole]);
 
   const baptised = members.filter(isBaptised).length;
   const withGrowthPaths = members.filter(m => m.growthPath && Object.keys(m.growthPath).length > 0).length;

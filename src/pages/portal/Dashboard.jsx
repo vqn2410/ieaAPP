@@ -240,7 +240,7 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
 
 const Dashboard = () => {
   const { currentUser, userData, hasRole } = useAuth();
-  const { activeCampusId, activeCampus, isCampusAdmin } = useCampus();
+  const { activeCampusId, activeCampus } = useCampus();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -253,17 +253,17 @@ const Dashboard = () => {
     const load = async () => {
       try {
         const centralLegacy = hasRole(['Admin', 'Pastor']) && /central/i.test(activeCampus?.name || '');
-        const isAdminOrPastor = hasRole(['Admin', 'Pastor']) || isCampusAdmin;
-        const isAssignedFacilitator = !isAdminOrPastor && hasRole(['Facilitator', 'CoFacilitator']);
+        const isAdminOrPastor = hasRole(['Admin', 'Pastor']);
+        const isScopedUser = !isAdminOrPastor;
         const [assignedData, directMembers, directGroups, events, pendingFups] = await Promise.all([
-          isAssignedFacilitator ? getAssignedGroups() : Promise.resolve(null),
-          isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
-          isAssignedFacilitator ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
+          isScopedUser ? getAssignedGroups() : Promise.resolve(null),
+          isScopedUser ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
+          isScopedUser ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
           getEvents(),
           getPendingFollowUps(),
         ]);
-        const members = isAssignedFacilitator ? assignedData.members || [] : directMembers;
-        const groups = isAssignedFacilitator ? assignedData.groups || [] : directGroups;
+        const members = isScopedUser ? assignedData.members || [] : directMembers;
+        const groups = isScopedUser ? assignedData.groups || [] : directGroups;
         const currentMember = members.find(member =>
           member.email && currentUserEmail(userData) &&
           member.email.trim().toLowerCase() === currentUserEmail(userData).trim().toLowerCase()
@@ -271,12 +271,12 @@ const Dashboard = () => {
         const matchesLeader = (group, member) => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
           .filter(Boolean)
           .some(value => value === member?.id || normDashboard(value) === normDashboard(`${member?.lastName}, ${member?.firstName}`) || normDashboard(value) === normDashboard(`${member?.firstName} ${member?.lastName}`));
-        const visibleGroups = isAssignedFacilitator || isAdminOrPastor || !currentMember
+        const visibleGroups = isScopedUser || isAdminOrPastor || !currentMember
           ? groups
           : groups.filter(group => matchesLeader(group, currentMember));
         const visibleGroupIds = new Set(visibleGroups.map(group => group.id));
         const visibleGroupNames = new Set(visibleGroups.map(group => normDashboard(group.name)));
-        const visibleMembers = isAssignedFacilitator || isAdminOrPastor || !currentMember
+        const visibleMembers = isScopedUser || isAdminOrPastor || !currentMember
           ? members
           : members.filter(member => visibleGroups.some(group => {
               const memberGroup = normDashboard(member.group);
@@ -322,7 +322,7 @@ const Dashboard = () => {
       }
     };
     load();
-  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampus?.name, isCampusAdmin]);
+  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampus?.name]);
 
   useEffect(() => {
     const timer = setInterval(() => {

@@ -4,8 +4,10 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useCampus } from '../../context/CampusContext';
 import { createEvent, deleteEvent, getEventAttendance, getEventRegistrations, getEventVolunteers, getEvents, setEventAttendance, setEventRegistration, setEventVolunteer, updateEvent } from '../../services/eventService';
 import { getMembers } from '../../services/memberService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import './Events.css';
 
 const emptyEvent = { title: '', date: '', time: '', location: '', description: '', registrationFields: [] };
@@ -13,8 +15,12 @@ const fieldTypes = ['text', 'select', 'textarea'];
 
 const Events = () => {
   const { hasRole } = useAuth();
+  const { activeCampusId } = useCampus();
   const canManage = hasRole(['Admin', 'Pastor']);
   const canCheckIn = hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+  const isGlobalManager = hasRole(['Admin', 'Pastor']);
+  const isCampusManager = hasRole(['CampusAdmin']);
+  const isGroupLeader = hasRole(['MinistryLeader', 'Facilitator', 'CoFacilitator']);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -39,6 +45,16 @@ const Events = () => {
   const [planEvent, setPlanEvent] = useState(null);
   const [planItems, setPlanItems] = useState([]);
   const [planForm, setPlanForm] = useState({ title: '', responsible: '', minutes: '' });
+
+  const getRosterMembers = async () => {
+    if (isGlobalManager) return getMembers();
+    if (isCampusManager) return getMembers(null, activeCampusId || null);
+    if (isGroupLeader) {
+      const assigned = await getAssignedGroups();
+      return assigned.members || [];
+    }
+    throw new Error('Tu rol no tiene acceso al listado de asistentes.');
+  };
 
   const load = async () => {
     setLoading(true);
@@ -110,7 +126,7 @@ const Events = () => {
     setCheckinSearch('');
     setCheckinLoading(true);
     try {
-      const [members, records] = await Promise.all([getMembers(), getEventAttendance(event.id)]);
+      const [members, records] = await Promise.all([getRosterMembers(), getEventAttendance(event.id)]);
       setCheckinMembers(members);
       setAttendance(Object.fromEntries(records.map(record => [record.memberId, record.present === true])));
     } finally {
@@ -134,7 +150,7 @@ const Events = () => {
     setRegistrationSearch('');
     setRegistrationLoading(true);
     try {
-      const [members, records] = await Promise.all([getMembers(), getEventRegistrations(event.id)]);
+      const [members, records] = await Promise.all([getRosterMembers(), getEventRegistrations(event.id)]);
       setRegistrationMembers(members);
       setRegistrations(Object.fromEntries(records.map(record => [record.memberId, record.registered === true])));
     } finally {
@@ -158,7 +174,7 @@ const Events = () => {
     setVolunteerSearch('');
     setVolunteerLoading(true);
     try {
-      const [members, records] = await Promise.all([getMembers(), getEventVolunteers(event.id)]);
+      const [members, records] = await Promise.all([getRosterMembers(), getEventVolunteers(event.id)]);
       setVolunteerMembers(members);
       setVolunteers(Object.fromEntries(records.filter(record => record.assigned !== false).map(record => [record.memberId, record.role || 'Voluntario'])));
     } finally {

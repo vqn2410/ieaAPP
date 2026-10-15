@@ -5,6 +5,7 @@ import EmptyState from '../../common/EmptyState';
 import { ArrowLeftRight, Search, Check, X, Send } from 'lucide-react';
 import { getTransferRequests, createTransferRequest, updateTransferRequest } from '../../../services/transferRequestService';
 import { getMembers, updateMember } from '../../../services/memberService';
+import { getAssignedGroups } from '../../../services/assignedGroupService';
 
 const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -94,7 +95,7 @@ const TransferRequests = ({ myGroups = [], allMembers = [], currentUser, myMembe
         if (!window.confirm(`¿Aceptar el traslado de ${req.memberName} a ${req.toGroupName}?`)) return;
         setActingId(req.id);
         try {
-            const fresh = await getMembers();
+            const fresh = isAdmin ? await getMembers() : (await getAssignedGroups()).members || [];
             const member = fresh.find(m => m.id === req.memberId);
             if (!member) {
                 alert('La persona ya no existe.');

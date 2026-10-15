@@ -14,6 +14,7 @@ import { SkeletonCard } from '../../components/common/Skeleton';
 import { useSettings } from '../../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../../services/followUpService';
 import { getMemberAttendanceStats } from '../../services/attendanceService';
+import { getAssignedGroups } from '../../services/assignedGroupService';
 import { isBaptised } from '../../utils/helpers';
 import { getMemberFinanceHistory } from '../../services/financeIntegrationService';
 import { collection, getDocs, query, where, updateDoc, doc as firestoreDoc } from 'firebase/firestore';
@@ -83,10 +84,15 @@ const MemberProfile = () => {
       try {
         const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
         const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
-        const groupsPromise = isPrivileged
-          ? getGroups()
-          : getGroups(null, userData?.email);
-        const [m, members, fups, attendance, allGroups] = await Promise.all([getMember(id), getMembers(), getFollowUpsByMember(id), getMemberAttendanceStats(id), groupsPromise]);
+        const isFacilitator = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role));
+        const assignedData = isFacilitator && !isPrivileged ? await getAssignedGroups() : null;
+        const [m, members, fups, attendance, allGroups] = await Promise.all([
+          getMember(id),
+          isPrivileged ? getMembers() : Promise.resolve(assignedData?.members || []),
+          getFollowUpsByMember(id),
+          getMemberAttendanceStats(id),
+          isPrivileged ? getGroups() : Promise.resolve(assignedData?.groups || []),
+        ]);
         if (userData?.email && !isPrivileged && m) {
           const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
           const selfEmail = userData?.email?.trim().toLowerCase();

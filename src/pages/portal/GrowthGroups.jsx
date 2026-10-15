@@ -145,7 +145,7 @@ const GrowthGroups = () => {
         setLoading(true);
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
         const ownMember = await getMemberByEmail(currentUser?.email);
-        if (!isAdmin && !isGlobal && !isCampusAdmin) {
+        if (!isAdmin && !isGlobal) {
             try {
                 const assigned = await getAssignedGroups();
                 const assignedGroups = assigned.groups || [];
@@ -258,7 +258,7 @@ const GrowthGroups = () => {
 
     if (loading) return <div className="p-4"><SkeletonCard /></div>;
 
-    if (!myMemberProfile && !isAdmin && !['clases', 'seguimientos'].includes(activeTab)) {
+    if (!myMemberProfile && !isAdmin && !isCampusAdmin && !['clases', 'seguimientos'].includes(activeTab)) {
         return (
             <div className="animate-fade-in p-4 text-center mt-4">
                 <Card>
