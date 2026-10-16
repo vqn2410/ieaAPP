@@ -112,7 +112,7 @@ service cloud.firestore {
       allow read: if isAuth() && (
         isOwnMember(resource)
         || canAccessCampus(resource.data.campusId)
-        || (hasAnyRole(['Facilitator', 'CoFacilitator']) && resource.data.groupId != null && managesGroup(resource.data.groupId))
+        || (resource.data.groupId != null && managesGroup(resource.data.groupId))
       );
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
       allow update: if isAuth() && (
@@ -228,9 +228,9 @@ service cloud.firestore {
         || managesGroup(resource.data.groupId)
       );
       allow create, update: if isAuth() && (
-        canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId)
-        || managesGroup(request.resource.data.groupId)
-      ) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']);
+        (request.resource.data.groupId != null && managesGroup(request.resource.data.groupId))
+        || (canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']))
+      );
       allow delete: if isGlobalManager() || hasRole('CampusAdmin');
     }
 

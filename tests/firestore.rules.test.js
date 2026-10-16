@@ -131,6 +131,32 @@ test('allows a facilitator to list only members assigned by groupId', async () =
   await assertSucceeds(getDocs(query(collection(facilitator.firestore(), 'members'), where('groupId', '==', 'group-1'))));
 });
 
+test('allows a facilitator to read and write attendance for their assigned group', async () => {
+  await seedFacilitatorRecords();
+  const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });
+  const firestore = facilitator.firestore();
+  await assertSucceeds(setDoc(doc(firestore, 'group_attendance/group-1_2026-10-14'), {
+    groupId: 'group-1',
+    groupName: 'Grupo Uno',
+    date: '2026-10-14',
+    presentMembers: ['member-1'],
+  }));
+  await assertSucceeds(getDoc(doc(firestore, 'group_attendance/group-1_2026-10-14')));
+  await assertSucceeds(getDocs(query(collection(firestore, 'group_attendance'), where('groupId', '==', 'group-1'))));
+});
+
+test('denies other users from facilitator attendance records', async () => {
+  await seedFacilitatorRecords();
+  const otherUser = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' });
+  const firestore = otherUser.firestore();
+  await assertFails(setDoc(doc(firestore, 'group_attendance/group-1_2026-10-14'), {
+    groupId: 'group-1',
+    date: '2026-10-14',
+    presentMembers: [],
+  }));
+  await assertFails(getDocs(query(collection(firestore, 'group_attendance'), where('groupId', '==', 'group-1'))));
+});
+
 test('denies other users from facilitator groups and members', async () => {
   await seedFacilitatorRecords();
   const otherUser = testEnv.authenticatedContext('other-uid', { email: 'other@example.com' });
