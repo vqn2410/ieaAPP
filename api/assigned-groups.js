@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     const isCampusManager = roles.includes('CampusAdmin');
     if (!isGlobal && !isLeader && !isCampusManager) return res.status(403).json({ error: 'Rol sin acceso a grupos asignados.' });
     if (!isGlobal && !isCampusManager && !own) {
-      return res.status(200).json({ groups: [], members: [], warning: `No encontramos una ficha de miembro con el correo ${email}.` });
+      return res.status(200).json({ groups: [], members: [], ownMember: null, warning: `No encontramos una ficha de miembro con el correo ${email}.` });
     }
 
     const groupSnapshot = await db.collection('groups').get();
@@ -161,6 +161,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       groups: assignedGroups,
       members: assignedMembers,
+      ownMember: own,
       warning,
       diagnostics: {
         memberProfileFound: Boolean(own),

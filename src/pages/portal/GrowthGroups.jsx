@@ -144,7 +144,6 @@ const GrowthGroups = () => {
     const load = async () => {
         setLoading(true);
         const centralLegacy = isGlobal && /central/i.test(activeCampus?.name || '');
-        const ownMember = await getMemberByEmail(currentUser?.email);
         if (!isAdmin && !isGlobal) {
             try {
                 const assigned = await getAssignedGroups();
@@ -153,7 +152,7 @@ const GrowthGroups = () => {
                 setAssignedGroupsError(assigned.warning || '');
                 setAssignedGroupsDiagnostics(assigned.diagnostics || null);
                 setAllMembers(assignedMembers);
-                setMyMemberProfile(ownMember);
+                setMyMemberProfile(assigned.ownMember || assignedMembers.find(member => member.authUid === currentUser?.uid) || null);
                 setMyGroups(assignedGroups);
                 setMyMembers(assignedMembers);
                 setLoading(false);
@@ -163,13 +162,14 @@ const GrowthGroups = () => {
                 setAssignedGroupsError(error.message || 'No se pudieron cargar tus grupos asignados.');
                 setAssignedGroupsDiagnostics(null);
                 setAllMembers([]);
-                setMyMemberProfile(ownMember);
+                setMyMemberProfile(null);
                 setMyGroups([]);
                 setMyMembers([]);
                 setLoading(false);
                 return;
             }
         }
+        const ownMember = await getMemberByEmail(currentUser?.email);
         let groups = centralLegacy
             ? await getGroups()
             : await getGroups(isAdmin ? activeCampusId || null : null, isAdmin ? null : currentUser?.email);

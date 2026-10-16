@@ -38,14 +38,22 @@ const MemberPortal = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const me = await getMemberByEmail(currentUser?.email);
       const canSeeAllGroups = hasRole(['Admin', 'Pastor']);
       const isCampusAdmin = hasRole(['CampusAdmin']);
       const isFacilitator = hasRole(['Facilitator', 'CoFacilitator']);
-      const [gs, upcomingEvents] = await Promise.all([
-        canSeeAllGroups ? getGroups() : isCampusAdmin ? getGroups(activeCampusId || null) : isFacilitator ? getAssignedGroups().then(result => result.groups || []) : Promise.resolve([]),
-        getEvents(),
-      ]);
+      let me;
+      let gs;
+      if (isFacilitator && !canSeeAllGroups) {
+        const assigned = await getAssignedGroups();
+        me = assigned.ownMember;
+        gs = assigned.groups || [];
+      } else {
+        [me, gs] = await Promise.all([
+          getMemberByEmail(currentUser?.email),
+          canSeeAllGroups ? getGroups() : isCampusAdmin ? getGroups(activeCampusId || null) : Promise.resolve([]),
+        ]);
+      }
+      const upcomingEvents = await getEvents();
       if (!mounted) return;
       setGroups(gs);
       setEvents(upcomingEvents.filter(event => event.date && event.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`)).slice(0, 5));
