@@ -68,7 +68,14 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido.' });
   try {
     initAdmin();
-    const token = await admin.auth().verifyIdToken(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+    const authorization = String(req.headers.authorization || '');
+    if (!authorization.startsWith('Bearer ')) return res.status(401).json({ error: 'Se requiere una sesión autenticada.' });
+    let token;
+    try {
+      token = await admin.auth().verifyIdToken(authorization.slice(7));
+    } catch {
+      return res.status(401).json({ error: 'La sesión no es válida. Cerrá sesión y volvé a entrar.' });
+    }
     const db = admin.firestore();
     const user = (await db.collection('users').doc(token.uid).get()).data() || {};
     const roles = Array.isArray(user.role) ? user.role : [user.role];
