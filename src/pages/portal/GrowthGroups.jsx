@@ -307,7 +307,7 @@ const GrowthGroups = () => {
                 )}
              </div>
 
-            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p>{assignedGroupsDiagnostics && <small>UID: {assignedGroupsDiagnostics.uidMatches} · Email: {assignedGroupsDiagnostics.emailMatches} · Grupos: {assignedGroupsDiagnostics.assignedGroups} · Miembros: {assignedGroupsDiagnostics.assignedMembers}</small>}</Card>}
+            {assignedGroupsError && <Card className="mb-3"><p style={{ margin: 0 }}>{assignedGroupsError}</p>{assignedGroupsDiagnostics && <small>Ficha: {assignedGroupsDiagnostics.memberProfileFound ? 'encontrada' : 'no encontrada'} · Rol de liderazgo: {assignedGroupsDiagnostics.facilitatorRoleFound ? 'reconocido' : 'no reconocido'} · Grupos revisados: {assignedGroupsDiagnostics.groupsScanned ?? '—'} · Asignados: {assignedGroupsDiagnostics.assignedGroups ?? 0} · Miembros: {assignedGroupsDiagnostics.assignedMembers ?? 0}</small>}</Card>}
 
             {!activeTab ? (
                 <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem', marginTop: '1rem' }}>
