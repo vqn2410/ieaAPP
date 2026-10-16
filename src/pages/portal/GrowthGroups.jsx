@@ -149,10 +149,13 @@ const GrowthGroups = () => {
                 const assigned = await getAssignedGroups();
                 const assignedGroups = assigned.groups || [];
                 const assignedMembers = assigned.members || [];
+                const facilitatorProfile = assigned.ownMember || assignedMembers.find(member => member.authUid === currentUser?.uid) || null;
                 setAssignedGroupsError(assigned.warning || '');
                 setAssignedGroupsDiagnostics(assigned.diagnostics || null);
-                setAllMembers(assignedMembers);
-                setMyMemberProfile(assigned.ownMember || assignedMembers.find(member => member.authUid === currentUser?.uid) || null);
+                setAllMembers(facilitatorProfile && !assignedMembers.some(member => member.id === facilitatorProfile.id)
+                    ? [...assignedMembers, facilitatorProfile]
+                    : assignedMembers);
+                setMyMemberProfile(facilitatorProfile);
                 setMyGroups(assignedGroups);
                 setMyMembers(assignedMembers);
                 setLoading(false);
