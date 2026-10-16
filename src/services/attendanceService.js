@@ -88,7 +88,14 @@ export const getMemberAttendanceStats = async (memberId) => {
 export const saveAttendance = async ({ groupId, groupName, date, presentMembers, absentDetails = {}, members, takenBy }) => {
     try {
         const recordRef = doc(db, COLLECTION_NAME, `${groupId}_${date}`);
-        const record = await getDoc(recordRef);
+        // La pre-lectura puede ser denegada si el documento aún no existe;
+        // no debe impedir la escritura autorizada por managesGroup.
+        let exists = false;
+        try {
+            exists = (await getDoc(recordRef)).exists();
+        } catch {
+            exists = false;
+        }
         await setDoc(recordRef, {
             groupId,
             groupName,
@@ -97,7 +104,7 @@ export const saveAttendance = async ({ groupId, groupName, date, presentMembers,
             absentDetails,
             members,
             takenBy,
-            ...(record.exists() ? {} : { createdAt: serverTimestamp() }),
+            ...(exists ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
         }, { merge: true });
         return true;
@@ -109,9 +116,14 @@ export const saveAttendance = async ({ groupId, groupName, date, presentMembers,
 
 export const getAttendance = async (groupId, date) => {
     try {
-        const recordRef = doc(db, COLLECTION_NAME, `${groupId}_${date}`);
-        const record = await getDoc(recordRef);
-        if (record.exists()) return { id: record.id, ...record.data() };
+        try {
+            const recordRef = doc(db, COLLECTION_NAME, `${groupId}_${date}`);
+            const record = await getDoc(recordRef);
+            if (record.exists()) return { id: record.id, ...record.data() };
+        } catch {
+            // Si la lectura directa es denegada (documento inexistente),
+            // continuar con la consulta por groupId + fecha.
+        }
 
         // Backward compatibility for records created before deterministic IDs.
         const q = query(
