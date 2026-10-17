@@ -355,3 +355,13 @@
 :root[data-theme='dark'] .social-links { background: #141419; border-color: rgba(255, 255, 255, 0.25); }
 :root[data-theme='dark'] .social-icon { color: #ffffff; }
 :root[data-theme='dark'] .input-icon-toggle { color: #ffffff; }
+:root[data-theme='dark'] .login-btn-primary {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 700;
+}
+:root[data-theme='dark'] .login-btn-primary:hover:not(:disabled) {
+  background: #e4e4e7 !important;
+  color: #000000 !important;
+}
+

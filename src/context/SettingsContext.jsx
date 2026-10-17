@@ -37,12 +37,25 @@ const rgbaToHsl = ({ r, g, b }) => {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 };
 
+let lastPrimaryColor = null;
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const applyPrimaryColor = (hex) => {
+  if (hex) lastPrimaryColor = hex;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const root = document.documentElement;
+  if (isDark) {
+    root.style.removeProperty('--color-primary');
+    root.style.removeProperty('--color-primary-rgb');
+    root.style.removeProperty('--color-primary-light');
+    root.style.removeProperty('--color-primary-h');
+    root.style.removeProperty('--color-primary-s');
+    root.style.removeProperty('--color-primary-l');
+    return;
+  }
   const rgba = hexToRgba(hex);
   if (!rgba) return;
   const { h, s, l } = rgbaToHsl(rgba);
-  const root = document.documentElement;
   root.style.setProperty('--color-primary-h', h);
   root.style.setProperty('--color-primary-s', `${s}%`);
   root.style.setProperty('--color-primary-l', `${l}%`);
@@ -55,6 +68,17 @@ const applyTheme = (theme) => {
   const isDark = theme === 'dark';
   document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
   try { localStorage.setItem('portal-iea-theme', isDark ? 'dark' : 'light'); } catch { /* ignore */ }
+  const root = document.documentElement;
+  if (isDark) {
+    root.style.removeProperty('--color-primary');
+    root.style.removeProperty('--color-primary-rgb');
+    root.style.removeProperty('--color-primary-light');
+    root.style.removeProperty('--color-primary-h');
+    root.style.removeProperty('--color-primary-s');
+    root.style.removeProperty('--color-primary-l');
+  } else if (lastPrimaryColor) {
+    applyPrimaryColor(lastPrimaryColor);
+  }
 };
 
 const initialSettings = {

@@ -998,7 +998,16 @@
   color: #ffffff;
 }
 
-:root[data-theme='dark'] .dash-ministry-name span {
-  border: 1px solid rgba(255, 255, 255, 0.25);
+:root[data-theme='dark'] .dash-ministry-avatar {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
 }
+
+:root[data-theme='dark'] .dash-ministry-name span {
+  color: #f7f7f9 !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+
 
