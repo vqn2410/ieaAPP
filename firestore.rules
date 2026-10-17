@@ -63,8 +63,8 @@ service cloud.firestore {
 
     function canManageMemberGroup(groupId) {
       return isGlobalManager()
-        || (hasRole('CampusAdmin') && canAccessCampus(get(/databases/$(database)/documents/groups/$(groupId)).data.campusId))
-        || (hasAnyRole(['Facilitator', 'CoFacilitator']) && managesGroup(groupId));
+        || (groupId != null && hasRole('CampusAdmin') && canAccessCampus(get(/databases/$(database)/documents/groups/$(groupId)).data.campusId))
+        || (groupId != null && hasAnyRole(['Facilitator', 'CoFacilitator']) && managesGroup(groupId));
     }
 
     function isOwnMember(member) {
@@ -120,6 +120,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'address', 'updatedAt', 'authUid'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['authUid']) || request.resource.data.authUid == request.auth.uid))
         || canManageMemberGroup(request.resource.data.groupId)
+        || (resource.data.groupId != null && canManageMemberGroup(resource.data.groupId))
       );
       allow delete: if isGlobalManager() || (hasRole('CampusAdmin') && canAccessCampus(resource.data.campusId));
     }

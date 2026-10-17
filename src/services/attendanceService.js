@@ -49,9 +49,14 @@ export const getGroupAttendanceStats = async (groupId) => {
   }
 };
 
-export const getMemberAttendanceStats = async (memberId) => {
+export const getMemberAttendanceStats = async (memberId, targetGroupId = null) => {
   try {
-    const snapshot = await getDocs(collection(db, COLLECTION_NAME));
+    let snapshot;
+    if (targetGroupId) {
+      snapshot = await getDocs(query(collection(db, COLLECTION_NAME), where('groupId', '==', targetGroupId)));
+    } else {
+      snapshot = await getDocs(collection(db, COLLECTION_NAME));
+    }
     const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
     const byGroup = {};
@@ -80,7 +85,7 @@ export const getMemberAttendanceStats = async (memberId) => {
       percentage: total ? Math.round((present / total) * 100) : 0
     };
   } catch (e) {
-    console.error('Error fetching member attendance stats', e);
+    console.warn('Error fetching member attendance stats (safe fallback applied):', e.message);
     return { bestStreak: 0, currentStreak: 0, present: 0, total: 0, percentage: 0 };
   }
 };

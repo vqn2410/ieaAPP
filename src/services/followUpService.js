@@ -21,11 +21,16 @@ export const getFollowUpsByMember = async (memberId) => {
   try {
     const q = query(
       collection(db, COLLECTION_NAME),
-      where('memberId', '==', memberId),
-      orderBy('createdAt', 'desc')
+      where('memberId', '==', memberId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
   } catch (e) {
     console.error('Error fetching follow-ups', e);
     return [];

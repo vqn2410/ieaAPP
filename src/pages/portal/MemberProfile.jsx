@@ -8,7 +8,7 @@ import MemberForm from '../../components/portal/members/MemberForm';
 import { getMember, deleteMember, updateMember, linkFamilyMembers, unlinkFamilyMembers } from '../../services/memberService';
 import { getMembers } from '../../services/memberService';
 import { getGroups, updateGroup } from '../../services/groupService';
-import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake, Wallet } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake, Wallet, Download, FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { useSettings } from '../../context/SettingsContext';
@@ -17,6 +17,7 @@ import { getMemberAttendanceStats } from '../../services/attendanceService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
 import { isBaptised } from '../../utils/helpers';
 import { getMemberFinanceHistory } from '../../services/financeIntegrationService';
+import { generateFollowUpPdf, downloadDataUrl } from '../../utils/followUpPdf';
 import { collection, getDocs, query, where, updateDoc, doc as firestoreDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import './MemberProfile.css';
@@ -63,6 +64,7 @@ const MemberProfile = () => {
   const [familyMemberId, setFamilyMemberId] = useState('');
   const [familyRelationship, setFamilyRelationship] = useState('Hijo/a');
   const [familySaving, setFamilySaving] = useState(false);
+  const [downloadingFupId, setDownloadingFupId] = useState(null);
 
   const currentRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
   const canTransfer = currentRoles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
@@ -86,25 +88,37 @@ const MemberProfile = () => {
         const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
         const isFacilitator = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role));
         const assignedData = isFacilitator && !isPrivileged ? await getAssignedGroups() : null;
-        const [m, members, fups, attendance, allGroups] = await Promise.all([
-          getMember(id),
+
+        const m = await getMember(id);
+        if (!m) {
+          navigate('/dashboard/miembros', { replace: true });
+          return;
+        }
+
+        const [members, fups, attendance, allGroups] = await Promise.all([
           isPrivileged ? getMembers() : Promise.resolve(assignedData?.members || []),
           getFollowUpsByMember(id),
-          getMemberAttendanceStats(id),
+          getMemberAttendanceStats(id, m?.groupId),
           isPrivileged ? getGroups() : Promise.resolve(assignedData?.groups || []),
         ]);
-        if (userData?.email && !isPrivileged && m) {
+
+        if (userData?.email && !isPrivileged) {
           const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
           const selfEmail = userData?.email?.trim().toLowerCase();
           const self = members.find(x => x.email?.trim().toLowerCase() === selfEmail);
-          const isSelf = self && self.id === m.id;
+          const isSelf = (m.email && m.email.trim().toLowerCase() === selfEmail) || m.id === userData?.id || (self && self.id === m.id);
+          const isAssignedMember = (assignedData?.members || []).some(mem => mem.id === m.id);
+          const targetGroup = norm(m.group);
+          const isAssignedGroup = (allGroups || []).some(g => {
+            const gName = norm(g.name);
+            return g.id === m.groupId || (targetGroup && (targetGroup === gName || gName.includes(targetGroup)));
+          });
           const leaderNames = (allGroups || []).filter(g => {
             if (!self) return false;
             const vals = [...(Array.isArray(g.facilitators) ? g.facilitators : [g.facilitators]), ...(Array.isArray(g.coFacilitators) ? g.coFacilitators : [g.coFacilitators])].filter(Boolean);
             return vals.some(v => v === self.id || norm(v) === norm(`${self.lastName}, ${self.firstName}`) || norm(v) === norm(`${self.firstName} ${self.lastName}`));
           }).map(g => norm(g.name));
-          const targetGroup = norm(m.group);
-          const allowed = isSelf || leaderNames.some(n => targetGroup && (targetGroup === n || n.includes(targetGroup)));
+          const allowed = isSelf || isAssignedMember || isAssignedGroup || leaderNames.some(n => targetGroup && (targetGroup === n || n.includes(targetGroup)));
           if (!allowed) {
             navigate('/dashboard/miembros', { replace: true });
             return;
@@ -137,7 +151,8 @@ const MemberProfile = () => {
             return updateGroup(group.id, { facilitatorEmails: [...new Set([...emails, normalizedEmail])] });
           }));
         }
-      } catch {
+      } catch (err) {
+        console.error('Error cargando perfil del miembro:', err);
         navigate('/dashboard/miembros');
       } finally {
         setLoading(false);
@@ -203,6 +218,32 @@ const MemberProfile = () => {
     if (!window.confirm('¿Eliminar este registro?')) return;
     await deleteFollowUp(fup.id);
     setFollowUps(prev => prev.filter(f => f.id !== fup.id));
+  };
+
+  const handleDownloadReportPdf = async (fup) => {
+    setDownloadingFupId(fup.id);
+    try {
+      if (fup.pdfDataUrl) {
+        const safeName = `${member?.lastName || ''}_${member?.firstName || ''}`.replace(/\s+/g, '_');
+        downloadDataUrl(fup.pdfDataUrl, `informe_seguimiento_${safeName || 'miembro'}.pdf`);
+        return;
+      }
+      const memberGroup = (assignedGroups || []).find(g => g.id === member?.groupId || g.name === member?.group) || { name: member?.group };
+      const facilitatorName = fup.facilitatorName || fup.createdByName || userData?.displayName || userData?.name || userData?.email || 'Facilitador';
+      const { pdfDataUrl, fileName } = await generateFollowUpPdf({
+        member,
+        group: memberGroup,
+        description: fup.content || '',
+        facilitatorName,
+        date: fup.createdAt?.toDate ? fup.createdAt.toDate() : new Date(),
+      });
+      downloadDataUrl(pdfDataUrl, fileName);
+    } catch (err) {
+      console.error('Error al descargar el informe:', err);
+      alert('No se pudo descargar el informe en PDF.');
+    } finally {
+      setDownloadingFupId(null);
+    }
   };
 
   const handleLinkFamily = async () => {
@@ -598,10 +639,29 @@ const MemberProfile = () => {
                   <div className="profile-fup-type">
                     {followUpStatusIcon(fup.status)}
                     <span className={`profile-fup-status ${fup.status}`}>
-                      {(settings.followUpTypes || []).find(t => t.id === fup.type)?.label || fup.type}
+                      {(settings.followUpTypes || []).find(t => t.id === fup.type)?.label || (fup.type === 'reporte' ? 'Informe de seguimiento' : fup.type)}
                     </span>
+                    {(fup.pdfDataUrl || fup.hasPdf || fup.type === 'reporte') && (
+                      <span className="badge badge-subtle" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6875rem', padding: '0.125rem 0.375rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' }}>
+                        <FileText size={11} strokeWidth={1.5} /> PDF
+                      </span>
+                    )}
                   </div>
                   <div className="profile-fup-actions">
+                    {(fup.pdfDataUrl || fup.hasPdf || fup.type === 'reporte') && (
+                      <button
+                        className="profile-fup-action"
+                        onClick={() => handleDownloadReportPdf(fup)}
+                        title="Descargar informe en PDF"
+                        disabled={downloadingFupId === fup.id}
+                      >
+                        {downloadingFupId === fup.id ? (
+                          <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
+                        ) : (
+                          <Download size={14} strokeWidth={1.5} />
+                        )}
+                      </button>
+                    )}
                     {fup.status === 'pending' && (
                       <button className="profile-fup-action" onClick={() => handleCompleteFollowUp(fup)} title="Completar">
                         <CheckCircle size={14} strokeWidth={1.5} />
