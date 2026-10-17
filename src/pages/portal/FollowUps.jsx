@@ -33,15 +33,22 @@ import './FollowUps.css';
 
 const loadLogoDataUrl = async () => {
   try {
-    const response = await fetch('/img/logo-iea.png');
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = '/img/logo-iea.png';
     });
+    const canvas = document.createElement('canvas');
+    const targetWidth = 360;
+    const targetHeight = Math.max(1, Math.round(((img.naturalHeight || img.height || 100) / (img.naturalWidth || img.width || 360)) * targetWidth));
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    return canvas.toDataURL('image/jpeg', 0.85);
   } catch {
     return null;
   }
@@ -59,7 +66,7 @@ const formatGroupSchedule = (group) => {
 
 const generateFollowUpPdf = async ({ member, groupName, groupSchedule, facilitatorName, description, date = new Date() }) => {
   const [{ default: jsPDF }] = await Promise.all([import('jspdf')]);
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const logoDataUrl = await loadLogoDataUrl();
 
   let currentY = 18;
@@ -70,7 +77,7 @@ const generateFollowUpPdf = async ({ member, groupName, groupSchedule, facilitat
     const logoHeight = 15;
     const logoX = (210 - logoWidth) / 2;
     try {
-      pdf.addImage(logoDataUrl, 'PNG', logoX, currentY, logoWidth, logoHeight);
+      pdf.addImage(logoDataUrl, 'JPEG', logoX, currentY, logoWidth, logoHeight, undefined, 'FAST');
       currentY += logoHeight + 8;
     } catch {
       currentY += 4;
@@ -435,7 +442,8 @@ const FollowUps = () => {
         reportDate: new Date().toISOString().slice(0, 10),
         createdBy: userData?.email || '',
         createdByName: autoFacilitatorName,
-        pdfDataUrl,
+        pdfDataUrl: (pdfDataUrl && pdfDataUrl.length < 800000) ? pdfDataUrl : null,
+        hasPdf: true,
         fileName
       };
 
