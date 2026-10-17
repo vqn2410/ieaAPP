@@ -105,3 +105,16 @@
     width: auto;
   }
 }
+
+:root[data-theme='dark'] .onboarding-dot {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+:root[data-theme='dark'] .onboarding-dot.active {
+  background: var(--color-primary);
+}
+
+:root[data-theme='dark'] .onboarding-card {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+}

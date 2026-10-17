@@ -968,3 +968,37 @@
 .dash-side-card-hd svg.summary-icon {
   color: #8a8a86;
 }
+
+:root[data-theme='dark'] .dash-calendar-dot {
+  background: #f4f4f6;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+:root[data-theme='dark'] .dash-announcements {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme='dark'] .dash-stat {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme='dark'] .dash-stat:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+:root[data-theme='dark'] .dash-calendar-controls button {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f7f7f9;
+}
+
+:root[data-theme='dark'] .dash-calendar-controls button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .dash-ministry-name span {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+

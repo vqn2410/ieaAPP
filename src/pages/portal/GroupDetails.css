@@ -5,3 +5,9 @@
 .group-member-section { padding: .75rem 1rem; background: var(--color-bg); color: var(--color-text-muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .group-member-section svg { vertical-align: -2px; margin-right: .35rem; color: var(--color-primary); }
 @media (max-width: 640px) { .group-details-page h1 { font-size: 1.35rem; }.group-details-page .d-flex.gap-4 { gap: 1rem; }.group-details-page .btn { flex: 1; } }
+
+:root[data-theme='dark'] .group-member-section {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+}
+

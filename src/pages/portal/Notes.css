@@ -161,3 +161,36 @@
   resize: vertical;
   min-height: 120px;
 }
+
+:root[data-theme='dark'] .notes-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #c3c9d4;
+}
+
+:root[data-theme='dark'] .notes-chip:hover {
+  border-color: #ffffff;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme='dark'] .notes-chip.active {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+:root[data-theme='dark'] .notes-action {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .notes-action:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='dark'] .notes-action.pinned,
+:root[data-theme='dark'] .notes-pinned-label {
+  color: #fde047;
+}

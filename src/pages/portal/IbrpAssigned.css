@@ -9,3 +9,35 @@
 .ibrp-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: .65rem; margin-bottom: 1rem; }.ibrp-summary > div { display: flex; flex-direction: column; gap: .2rem; border: 1px solid var(--color-border); border-radius: 12px; padding: .9rem 1rem; background: var(--color-surface); }.ibrp-summary strong { font-size: 1.35rem; }.ibrp-summary span { color: var(--color-text-muted); font-size: .7rem; }
 @media (max-width: 640px) { .ibrp-summary { grid-template-columns: repeat(2, 1fr); }.ibrp-tabs { overflow-x: auto; }.ibrp-tabs button { white-space: nowrap; } }
 @media (max-width: 640px) { .ibrp-table-wrap { overflow: visible; }.ibrp-table { min-width: 0; border-spacing: 0; border-collapse: separate; }.ibrp-table thead { display: none; }.ibrp-table tbody { display: block; }.ibrp-table tbody tr { display: grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; margin-bottom: .65rem; padding: .7rem; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-bg); }.ibrp-table tbody td { display: block; padding: .1rem 0; border: 0; white-space: normal; text-align: left; }.ibrp-table tbody td::before { content: attr(data-label); display: block; color: var(--color-text-muted); font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; }.ibrp-table tbody td:first-child { grid-column: 1 / -1; }.ibrp-table tbody td:first-child strong { font-size: .85rem; }.ibrp-table tbody td:first-child small { margin-top: .2rem; }.ibrp-table tbody td:last-child { grid-column: 2; grid-row: 1; }.ibrp-table tbody td:last-child::before { display: none; }.ibrp-table tbody td:last-child::after { content: ''; display: none; }.ibrp-action-menu { display: flex; justify-content: flex-end; }.ibrp-action-popover { right: 0; } }
+
+:root[data-theme='dark'] .ibrp-private-note {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(134, 239, 172, 0.3);
+  border-radius: 6px;
+}
+
+:root[data-theme='dark'] .ibrp-status.inactive {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+:root[data-theme='dark'] .ibrp-actions button {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .ibrp-actions button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .ibrp-action-popover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #18181b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+}
+

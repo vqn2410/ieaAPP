@@ -241,3 +241,21 @@
     overflow-wrap: anywhere;
   }
 }
+
+:root[data-theme='dark'] .visitors-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .visitors-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .visitors-action-delete:hover {
+  color: #f87171;
+  border-color: #f87171;
+}
+
