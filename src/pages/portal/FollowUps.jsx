@@ -291,21 +291,17 @@ const FollowUps = () => {
       setGroups(allGroups || []);
 
       const isPrivileged = roles.some(r => ['Admin', 'Pastor'].includes(r));
-      if (!isPrivileged && userData?.email) {
-        const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
-        const self = mems.find(m => m.email?.trim().toLowerCase() === userData.email.trim().toLowerCase());
-        const leaderNames = (allGroups || []).filter(g => {
-          if (!self) return false;
-          const vals = [...(Array.isArray(g.facilitators) ? g.facilitators : [g.facilitators]), ...(Array.isArray(g.coFacilitators) ? g.coFacilitators : [g.coFacilitators])].filter(Boolean);
-          return vals.some(v => v === self.id || norm(v) === norm(`${self.lastName}, ${self.firstName}`) || norm(v) === norm(`${self.firstName} ${self.lastName}`));
-        }).map(g => norm(g.name));
-        const allowedIds = new Set(mems.filter(m => {
-          const mg = norm(m.group);
-          return mg && leaderNames.some(n => mg === n || n.includes(mg));
-        }).map(m => m.id));
+      if (!isPrivileged) {
+        // Para facilitadores y roles acotados, mems ya contiene los miembros asignados
+        // desde getAssignedGroups(). Los seguimientos visibles son los de sus miembros o los creados por él.
+        const allowedMemberIds = new Set(mems.map(m => m.id));
+        const userEmail = userData?.email?.trim().toLowerCase();
+        const visibleFollowUps = fups.filter(f =>
+          allowedMemberIds.has(f.memberId) || (userEmail && f.createdBy?.trim().toLowerCase() === userEmail)
+        );
 
-        setFollowUps(fups.filter(f => allowedIds.has(f.memberId)));
-        setMembers(mems.filter(m => allowedIds.has(m.id)));
+        setFollowUps(visibleFollowUps);
+        setMembers(mems);
       } else {
         setFollowUps(fups);
         setMembers(mems);
@@ -352,7 +348,15 @@ const FollowUps = () => {
       ]);
     }
     setGroups(allGroups || []);
-    setFollowUps(fups);
+    if (roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader', 'CampusAdmin'].includes(role))) {
+      const allowedMemberIds = new Set(mems.map(m => m.id));
+      const userEmail = userData?.email?.trim().toLowerCase();
+      setFollowUps(fups.filter(f =>
+        allowedMemberIds.has(f.memberId) || (userEmail && f.createdBy?.trim().toLowerCase() === userEmail)
+      ));
+    } else {
+      setFollowUps(fups);
+    }
     setMembers(mems);
   };
 
