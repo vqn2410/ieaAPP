@@ -304,19 +304,26 @@
 }
 
 /* === Modo oscuro: negro minimalista (colores indicadores intactos) === */
+:root[data-theme='dark'] .fa-bubble {
+  background: #ffffff;
+  color: #000000;
+  mix-blend-mode: normal;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.25);
+}
+
 :root[data-theme='dark'] .fa-panel,
 :root[data-theme='dark'] .fa-chat {
   background: #08080a;
 }
 
 :root[data-theme='dark'] .fa-panel {
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
 :root[data-theme='dark'] .fa-header {
   background: #08080a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 :root[data-theme='dark'] .fa-avatar {

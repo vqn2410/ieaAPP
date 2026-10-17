@@ -643,7 +643,7 @@ const MemberProfile = () => {
                       {(settings.followUpTypes || []).find(t => t.id === fup.type)?.label || (fup.type === 'reporte' ? 'Informe de seguimiento' : fup.type)}
                     </span>
                     {(fup.pdfDataUrl || fup.hasPdf || fup.type === 'reporte') && (
-                      <span className="badge badge-subtle" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6875rem', padding: '0.125rem 0.375rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' }}>
+                      <span className="profile-fup-pdf-badge">
                         <FileText size={11} strokeWidth={1.5} /> PDF
                       </span>
                     )}

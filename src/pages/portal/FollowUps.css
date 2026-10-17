@@ -544,3 +544,48 @@
   padding: 0.5rem;
 }
 
+:root[data-theme='dark'] .fups-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .fups-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .fups-action-pdf {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
+}
+
+:root[data-theme='dark'] .fups-action-pdf:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #93c5fd;
+  color: #bfdbfe;
+}
+
+:root[data-theme='dark'] .fups-pdf-pill {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+}
+
+:root[data-theme='dark'] .fups-readonly-icon {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+:root[data-theme='dark'] .fups-preview-avatar {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .fups-wheel-avg-badge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+}
+

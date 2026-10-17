@@ -304,3 +304,27 @@
   cursor: pointer;
   padding: 0.2rem;
 }
+
+:root[data-theme='dark'] .weekly-schedule-day.has-groups {
+  border-top-color: #818cf8;
+}
+
+:root[data-theme='dark'] .weekly-schedule-item time {
+  color: #a5b4fc;
+}
+
+:root[data-theme='dark'] .streak-rank-3 {
+  background: #d97706;
+  color: #fff;
+}
+
+:root[data-theme='dark'] .attendance-guest-list > div {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme='dark'] .wheel-history-item.active {
+  border-color: #818cf8;
+  background: rgba(129, 140, 248, 0.15);
+}
+

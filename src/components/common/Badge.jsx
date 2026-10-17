@@ -1,9 +1,15 @@
 import React from 'react';
 
-const Badge = ({ children, variant = 'gray', className = '', style = {} }) => {
+const Badge = ({ children, variant = 'gray', className = '', style = {}, ...restProps }) => {
   // Map internal variant names to CSS classes in index.css
   const variantMap = {
     gray: 'badge-gray',
+    primary: 'badge-primary',
+    secondary: 'badge-secondary',
+    success: 'badge-success',
+    warning: 'badge-warning',
+    danger: 'badge-danger',
+    info: 'badge-info',
     blue: 'badge-blue',
     gold: 'badge-gold',
     green: 'badge-green',
@@ -18,10 +24,10 @@ const Badge = ({ children, variant = 'gray', className = '', style = {} }) => {
     baja: 'badge-status-baja'
   };
 
-  const badgeClass = variantMap[variant.toLowerCase()] || 'badge-gray';
+  const badgeClass = variantMap[String(variant).toLowerCase()] || 'badge-gray';
 
   return (
-    <span className={`badge ${badgeClass} ${className}`} style={style}>
+    <span className={`badge ${badgeClass} ${className}`} style={style} {...restProps}>
       {children}
     </span>
   );

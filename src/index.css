@@ -110,13 +110,22 @@
   --color-primary: #8acb4d;
   --color-primary-rgb: 138, 203, 77;
   --color-primary-light: #b2e77b;
+  --color-on-primary: #000000;
   --color-bg: #000000;
   --color-background: #000000;
   --color-surface: #10140f;
   --color-surface-hover: #1a2415;
   --color-text: #f7f7f9;
   --color-text-muted: #c3c9d4;
-  --color-border: rgba(255, 255, 255, 0.18);
+  --color-border: rgba(255, 255, 255, 0.22);
+  --color-success: #4ade80;
+  --color-success-rgb: 74, 222, 128;
+  --color-warning: #fbbf24;
+  --color-warning-rgb: 251, 191, 36;
+  --color-danger: #f87171;
+  --color-danger-rgb: 248, 113, 113;
+  --color-info: #38bdf8;
+  --color-info-rgb: 56, 189, 248;
   --gradient-primary: linear-gradient(135deg, #8acb4d 0%, #5b9f2c 100%);
   --gradient-surface: linear-gradient(180deg, #16161b 0%, #0d0d11 100%);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
@@ -406,12 +415,14 @@ h1, h2, h3, h4, h5, h6 {
 .btn-icon { display: inline-flex; }
 
 .btn-secondary {
-  background-color: var(--color-primary);
-  color: var(--color-bg);
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
 }
 
 .btn-secondary:hover {
-  background-color: #2b2b2b;
+  background-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .btn-outline {
@@ -432,18 +443,59 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Badges */
 .badge {
-  padding: 0.375rem 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
 }
 
-.badge-blue { background-color: #0b0b0b; color: #ffffff; }
-.badge-gold { background-color: #3a3a3a; color: #ffffff; }
-.badge-green { background-color: #d8d5cd; color: #0b0b0b; }
-.badge-gray { background-color: var(--color-surface-hover); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.badge-primary { background-color: rgba(var(--color-primary-rgb), 0.15); color: var(--color-primary); border: 1px solid rgba(var(--color-primary-rgb), 0.35); }
+.badge-secondary { background-color: rgba(99, 102, 241, 0.12); color: #4338ca; border: 1px solid rgba(99, 102, 241, 0.25); }
+.badge-success { background-color: rgba(34, 197, 94, 0.12); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.25); }
+.badge-warning { background-color: rgba(245, 158, 11, 0.12); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.25); }
+.badge-danger { background-color: rgba(239, 68, 68, 0.12); color: #b91c1c; border: 1px solid rgba(239, 68, 68, 0.25); }
+.badge-info { background-color: rgba(14, 165, 233, 0.12); color: #0369a1; border: 1px solid rgba(14, 165, 233, 0.25); }
+.badge-blue { background-color: rgba(59, 130, 246, 0.12); color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.25); }
+.badge-gold { background-color: rgba(217, 119, 6, 0.12); color: #b45309; border: 1px solid rgba(217, 119, 6, 0.25); }
+.badge-green { background-color: rgba(34, 197, 94, 0.12); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.25); }
+.badge-gray { background-color: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+.badge-status-active { background-color: rgba(34, 197, 94, 0.12); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.3); }
+.badge-status-inactive { background-color: rgba(239, 68, 68, 0.12); color: #b91c1c; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-status-baja { background-color: rgba(107, 114, 128, 0.15); color: #4b5563; border: 1px solid rgba(107, 114, 128, 0.3); }
+
+/* Overrides para Modo Oscuro en Badges y Botones */
+:root[data-theme='dark'] .btn-secondary {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #f7f7f9;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+:root[data-theme='dark'] .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .badge-primary { background-color: rgba(138, 203, 77, 0.18); color: #b2e77b; border-color: rgba(138, 203, 77, 0.4); }
+:root[data-theme='dark'] .badge-secondary { background-color: rgba(129, 140, 248, 0.2); color: #c7d2fe; border-color: rgba(129, 140, 248, 0.4); }
+:root[data-theme='dark'] .badge-success { background-color: rgba(34, 197, 94, 0.2); color: #86efac; border-color: rgba(34, 197, 94, 0.4); }
+:root[data-theme='dark'] .badge-warning { background-color: rgba(245, 158, 11, 0.2); color: #fde047; border-color: rgba(245, 158, 11, 0.4); }
+:root[data-theme='dark'] .badge-danger { background-color: rgba(239, 68, 68, 0.22); color: #fca5a5; border-color: rgba(239, 68, 68, 0.45); }
+:root[data-theme='dark'] .badge-info { background-color: rgba(14, 165, 233, 0.2); color: #7dd3fc; border-color: rgba(14, 165, 233, 0.4); }
+:root[data-theme='dark'] .badge-blue { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; border-color: rgba(59, 130, 246, 0.4); }
+:root[data-theme='dark'] .badge-gold { background-color: rgba(245, 158, 11, 0.2); color: #fcd34d; border-color: rgba(245, 158, 11, 0.4); }
+:root[data-theme='dark'] .badge-green { background-color: rgba(34, 197, 94, 0.2); color: #86efac; border-color: rgba(34, 197, 94, 0.4); }
+:root[data-theme='dark'] .badge-gray { background-color: rgba(255, 255, 255, 0.08); color: #e2e8f0; border-color: rgba(255, 255, 255, 0.25); }
+
+:root[data-theme='dark'] .badge-status-active { background-color: rgba(34, 197, 94, 0.2); color: #86efac; border-color: rgba(34, 197, 94, 0.4); }
+:root[data-theme='dark'] .badge-status-inactive { background-color: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); }
+:root[data-theme='dark'] .badge-status-baja { background-color: rgba(156, 163, 175, 0.15); color: #d1d5db; border-color: rgba(156, 163, 175, 0.35); }
+
 
 /* Alerts */
 .alert {
@@ -470,6 +522,18 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(34, 197, 94, 0.25);
 }
 
+.alert-warning {
+  color: #854d0e;
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.alert-info {
+  color: #075985;
+  background-color: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
 :root[data-theme='dark'] .alert-danger {
   color: #fecaca;
   background-color: rgba(239, 68, 68, 0.16);
@@ -480,6 +544,18 @@ h1, h2, h3, h4, h5, h6 {
   color: #bbf7d0;
   background-color: rgba(34, 197, 94, 0.16);
   border-color: rgba(34, 197, 94, 0.4);
+}
+
+:root[data-theme='dark'] .alert-warning {
+  color: #fef08a;
+  background-color: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+:root[data-theme='dark'] .alert-info {
+  color: #bae6fd;
+  background-color: rgba(14, 165, 233, 0.18);
+  border-color: rgba(14, 165, 233, 0.4);
 }
 
 /* Table */
@@ -784,6 +860,22 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(34, 197, 94, 0.3);
   background: rgba(34, 197, 94, 0.1);
   color: var(--color-success);
+}
+
+:root[data-theme='dark'] .attendance-status-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .is-present .attendance-status-toggle {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+:root[data-theme='dark'] .attendance-member.is-present {
+  background: rgba(34, 197, 94, 0.08);
 }
 
 .attendance-absence-fields {
