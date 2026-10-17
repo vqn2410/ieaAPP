@@ -107,9 +107,9 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-primary: #8acb4d;
-  --color-primary-rgb: 138, 203, 77;
-  --color-primary-light: #b2e77b;
+  --color-primary: #ffffff;
+  --color-primary-rgb: 255, 255, 255;
+  --color-primary-light: #e4e4e7;
   --color-on-primary: #000000;
   --color-bg: #000000;
   --color-background: #000000;
@@ -474,36 +474,34 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Overrides para Modo Oscuro en Badges y Botones */
 :root[data-theme='dark'] .btn-primary {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #ffffff !important;
-  font-weight: 700;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary, #000000);
+  border: 1px solid var(--color-primary);
+  font-weight: 600;
 }
 
 :root[data-theme='dark'] .btn-primary:hover {
-  background-color: #e4e4e7 !important;
-  color: #000000 !important;
-  border-color: #e4e4e7 !important;
+  filter: brightness(1.12);
+  color: var(--color-on-primary, #000000);
+  border-color: var(--color-primary);
 }
 
 :root[data-theme='dark'] .btn-primary:active {
-  background-color: #d4d4d8 !important;
-  color: #000000 !important;
-  border-color: #d4d4d8 !important;
+  filter: brightness(0.92);
+  border-color: var(--color-primary);
 }
 
 :root[data-theme='dark'] .btn-primary:disabled,
 :root[data-theme='dark'] .btn-primary[disabled],
 :root[data-theme='dark'] .btn-primary.is-loading {
-  background-color: rgba(255, 255, 255, 0.4) !important;
-  color: rgba(0, 0, 0, 0.5) !important;
-  border-color: transparent !important;
+  opacity: 0.5;
+  filter: grayscale(0.5);
 }
 
 :root[data-theme='dark'] .btn-primary svg,
 :root[data-theme='dark'] .btn-primary .btn-icon svg {
-  color: #000000 !important;
-  stroke: #000000 !important;
+  color: var(--color-on-primary, #000000);
+  stroke: var(--color-on-primary, #000000);
 }
 
 :root[data-theme='dark'] .btn-secondary {
@@ -518,7 +516,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-:root[data-theme='dark'] .badge-primary { background-color: rgba(138, 203, 77, 0.18); color: #b2e77b; border-color: rgba(138, 203, 77, 0.4); }
+:root[data-theme='dark'] .badge-primary { background-color: rgba(var(--color-primary-rgb), 0.2); color: var(--color-primary-light, var(--color-primary)); border-color: rgba(var(--color-primary-rgb), 0.4); }
 :root[data-theme='dark'] .badge-secondary { background-color: rgba(129, 140, 248, 0.2); color: #c7d2fe; border-color: rgba(129, 140, 248, 0.4); }
 :root[data-theme='dark'] .badge-success { background-color: rgba(34, 197, 94, 0.2); color: #86efac; border-color: rgba(34, 197, 94, 0.4); }
 :root[data-theme='dark'] .badge-warning { background-color: rgba(245, 158, 11, 0.2); color: #fde047; border-color: rgba(245, 158, 11, 0.4); }

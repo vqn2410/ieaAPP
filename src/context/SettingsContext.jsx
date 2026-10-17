@@ -39,46 +39,75 @@ const rgbaToHsl = ({ r, g, b }) => {
 
 let lastPrimaryColor = null;
 
+const isNearBlack = (hex) => {
+  if (!hex) return true;
+  const clean = String(hex).toLowerCase().replace('#', '').trim();
+  return clean === '000000' || clean === '0b0b0b' || clean === '141414' || clean === '151515' || clean === '111827';
+};
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const applyPrimaryColor = (hex) => {
   if (hex) lastPrimaryColor = hex;
+  const activeColor = hex || lastPrimaryColor;
   const isDark = document.documentElement.dataset.theme === 'dark';
   const root = document.documentElement;
-  if (isDark) {
-    root.style.removeProperty('--color-primary');
-    root.style.removeProperty('--color-primary-rgb');
-    root.style.removeProperty('--color-primary-light');
-    root.style.removeProperty('--color-primary-h');
-    root.style.removeProperty('--color-primary-s');
-    root.style.removeProperty('--color-primary-l');
+
+  if (!activeColor) {
+    if (isDark) {
+      root.style.removeProperty('--color-primary');
+      root.style.removeProperty('--color-primary-rgb');
+      root.style.removeProperty('--color-primary-light');
+      root.style.removeProperty('--color-primary-h');
+      root.style.removeProperty('--color-primary-s');
+      root.style.removeProperty('--color-primary-l');
+      root.style.removeProperty('--color-on-primary');
+    }
     return;
   }
-  const rgba = hexToRgba(hex);
+
+  // En modo oscuro, si el color configurado es el negro por defecto, invertir a blanco
+  let targetHex = activeColor;
+  if (isDark && isNearBlack(activeColor)) {
+    targetHex = '#ffffff';
+  }
+
+  const rgba = hexToRgba(targetHex);
   if (!rgba) return;
+
   const { h, s, l } = rgbaToHsl(rgba);
+
+  // En modo oscuro, asegurar que la luminosidad permita contraste contra fondos oscuros
+  let effectiveL = l;
+  if (isDark && !isNearBlack(activeColor) && targetHex !== '#ffffff') {
+    // Si es un color muy oscuro (como Slate #1e293b), elevar l para visibilidad
+    effectiveL = Math.max(l, 40);
+  }
+
+  const lum = (0.299 * rgba.r + 0.587 * rgba.g + 0.114 * rgba.b) / 255;
+  const onPrimary = (lum > 0.62 || effectiveL > 65) ? '#000000' : '#ffffff';
+
   root.style.setProperty('--color-primary-h', h);
   root.style.setProperty('--color-primary-s', `${s}%`);
-  root.style.setProperty('--color-primary-l', `${l}%`);
-  root.style.setProperty('--color-primary', hex);
+  root.style.setProperty('--color-primary-l', `${effectiveL}%`);
+
+  const primaryValue = (isDark && effectiveL !== l && targetHex !== '#ffffff')
+    ? `hsl(${h}, ${s}%, ${effectiveL}%)`
+    : targetHex;
+
+  root.style.setProperty('--color-primary', primaryValue);
   root.style.setProperty('--color-primary-rgb', `${rgba.r}, ${rgba.g}, ${rgba.b}`);
-  root.style.setProperty('--color-primary-light', `hsl(${h}, ${Math.min(s + 15, 95)}%, ${Math.min(l + 35, 90)}%)`);
+  root.style.setProperty(
+    '--color-primary-light',
+    `hsl(${h}, ${Math.min(s + 15, 95)}%, ${Math.min(effectiveL + 25, 90)}%)`
+  );
+  root.style.setProperty('--color-on-primary', onPrimary);
 };
 
 const applyTheme = (theme) => {
   const isDark = theme === 'dark';
   document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
   try { localStorage.setItem('portal-iea-theme', isDark ? 'dark' : 'light'); } catch { /* ignore */ }
-  const root = document.documentElement;
-  if (isDark) {
-    root.style.removeProperty('--color-primary');
-    root.style.removeProperty('--color-primary-rgb');
-    root.style.removeProperty('--color-primary-light');
-    root.style.removeProperty('--color-primary-h');
-    root.style.removeProperty('--color-primary-s');
-    root.style.removeProperty('--color-primary-l');
-  } else if (lastPrimaryColor) {
-    applyPrimaryColor(lastPrimaryColor);
-  }
+  applyPrimaryColor(lastPrimaryColor);
 };
 
 const initialSettings = {

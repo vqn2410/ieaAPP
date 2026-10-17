@@ -999,9 +999,9 @@
 }
 
 :root[data-theme='dark'] .dash-ministry-avatar {
-  background: #ffffff !important;
-  color: #000000 !important;
-  border-color: #ffffff !important;
+  background: var(--color-primary);
+  color: var(--color-on-primary, #000000);
+  border-color: var(--color-primary);
 }
 
 :root[data-theme='dark'] .dash-ministry-name span {
