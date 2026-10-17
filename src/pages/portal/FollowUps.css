@@ -429,3 +429,118 @@
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
+
+/* === Sección Rueda de Vida en Modal === */
+.fups-wheel-section {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+.fups-wheel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fups-wheel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.fups-wheel-avg-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.fups-wheel-grid {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .fups-wheel-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fups-wheel-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fups-dim-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.fups-dim-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 95px;
+}
+
+.fups-dim-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fups-dim-sub {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.fups-dim-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.fups-dim-slider {
+  flex: 1;
+  accent-color: var(--color-primary);
+  height: 5px;
+  cursor: pointer;
+}
+
+.fups-dim-score {
+  font-weight: 700;
+  font-size: 0.8125rem;
+  min-width: 20px;
+  text-align: right;
+  color: var(--color-primary);
+}
+
+.fups-wheel-radar-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+

@@ -303,14 +303,7 @@ service cloud.firestore {
 
     // === Colección: groupEvaluations ===
     match /groupEvaluations/{docId} {
-      allow read: if isAuth() && (
-        canAccessCampus(get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.campusId)
-        || managesGroup(resource.data.groupId)
-      );
-      allow create, update: if isAuth() && (
-        canAccessCampus(get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.campusId)
-        || managesGroup(request.resource.data.groupId)
-      ) && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
+      allow read, create, update: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
       allow delete: if isGlobalManager() || hasRole('CampusAdmin');
     }
 

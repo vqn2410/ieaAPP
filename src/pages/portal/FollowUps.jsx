@@ -16,7 +16,8 @@ import {
   FileText,
   Clock,
   Users,
-  Loader2
+  Loader2,
+  LifeBuoy
 } from 'lucide-react';
 import { createFollowUp, getAllFollowUps, updateFollowUp, deleteFollowUp } from '../../services/followUpService';
 import { getMembers } from '../../services/memberService';
@@ -29,7 +30,8 @@ import { normalizeString } from '../../utils/helpers';
 import { useDebounce } from '../../utils/useDebounce';
 import EmptyState from '../../components/common/EmptyState';
 import { SkeletonTable } from '../../components/common/Skeleton';
-import { formatGroupSchedule, generateFollowUpPdf, downloadDataUrl } from '../../utils/followUpPdf';
+import RadarChart from '../../components/common/RadarChart';
+import { formatGroupSchedule, generateFollowUpPdf, downloadDataUrl, PERFORMANCE_DIMENSIONS } from '../../utils/followUpPdf';
 import './FollowUps.css';
 
 
@@ -65,6 +67,9 @@ const FollowUps = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [description, setDescription] = useState('');
+  const [performanceValues, setPerformanceValues] = useState(() =>
+    Object.fromEntries(PERFORMANCE_DIMENSIONS.map(d => [d.key, 7]))
+  );
   const [submitting, setSubmitting] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
@@ -212,6 +217,7 @@ const FollowUps = () => {
   const handleOpenCreateModal = () => {
     setSelectedMemberId('');
     setDescription('');
+    setPerformanceValues(Object.fromEntries(PERFORMANCE_DIMENSIONS.map(d => [d.key, 7])));
     setShowCreateModal(true);
   };
 
@@ -222,6 +228,12 @@ const FollowUps = () => {
     : null;
   const resolvedGroupName = selectedGroup?.name || selectedMember?.group || 'Sin grupo asignado';
   const resolvedSchedule = formatGroupSchedule(selectedGroup);
+
+  // Promedio actual de desempeño de la rueda de vida
+  const performanceAverage = React.useMemo(() => {
+    const scores = PERFORMANCE_DIMENSIONS.map(d => Number(performanceValues[d.key] ?? 5));
+    return (scores.reduce((a, b) => a + b, 0) / (scores.length || 1)).toFixed(1);
+  }, [performanceValues]);
 
   // Enviar y generar PDF
   const handleSubmitReport = async (e) => {
@@ -243,6 +255,7 @@ const FollowUps = () => {
         groupSchedule: resolvedSchedule,
         facilitatorName: autoFacilitatorName,
         description: description.trim(),
+        performanceValues,
         date: new Date()
       });
 
@@ -257,6 +270,8 @@ const FollowUps = () => {
         facilitatorName: autoFacilitatorName,
         facilitatorRole: 'Facilitador',
         content: description.trim(),
+        performanceValues,
+        performanceAverage: Number(performanceAverage),
         type: 'reporte',
         status: 'completed',
         reportDate: new Date().toISOString().slice(0, 10),
@@ -305,6 +320,7 @@ const FollowUps = () => {
           groupSchedule: sched,
           facilitatorName: f.facilitatorName || f.createdByName || 'Facilitador',
           description: f.content || '',
+          performanceValues: f.performanceValues || null,
           date: f.reportDate || f.createdAt || new Date()
         });
         pdf.save(fileName);
@@ -514,6 +530,58 @@ const FollowUps = () => {
               </div>
             </div>
           )}
+
+          {/* Sección Rueda de Vida del Desempeño */}
+          <div className="fups-wheel-section">
+            <div className="fups-wheel-header">
+              <h3 className="fups-wheel-title">
+                <LifeBuoy size={16} style={{ color: 'var(--color-primary)' }} />
+                Rueda de Vida · Desempeño del Miembro
+              </h3>
+              <span className="fups-wheel-avg-badge">
+                Promedio: {performanceAverage} / 10
+              </span>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 0.75rem 0' }}>
+              Calificá cada aspecto del 1 al 10. La rueda de vida se incorporará visualmente al PDF generado.
+            </p>
+
+            <div className="fups-wheel-grid">
+              <div className="fups-wheel-sliders">
+                {PERFORMANCE_DIMENSIONS.map(dim => (
+                  <div key={dim.key} className="fups-dim-control-row">
+                    <div className="fups-dim-info">
+                      <span className="fups-dim-name">{dim.label}</span>
+                      <span className="fups-dim-sub">{dim.description}</span>
+                    </div>
+                    <div className="fups-dim-slider-wrap">
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={performanceValues[dim.key] ?? 7}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setPerformanceValues(prev => ({ ...prev, [dim.key]: val }));
+                        }}
+                        className="fups-dim-slider"
+                      />
+                      <span className="fups-dim-score">
+                        {performanceValues[dim.key] ?? 7}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="fups-wheel-radar-preview">
+                <RadarChart dimensions={PERFORMANCE_DIMENSIONS} values={performanceValues} size={200} />
+                <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                  Vista previa en PDF
+                </span>
+              </div>
+            </div>
+          </div>
 
           <div className="fups-form-group">
             <label className="fups-label" htmlFor="fup-description">

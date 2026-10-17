@@ -103,7 +103,7 @@ const GrowthGroups = () => {
     const { currentUser, hasRole } = useAuth();
     const { activeCampusId, activeCampus, isCampusAdmin, isGlobal } = useCampus();
     const isAdmin = hasRole(['Admin', 'Pastor']);
-    const canManageGroups = hasRole(['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator']);
+    const canManageGroups = hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('section'));
@@ -1322,9 +1322,10 @@ const WheelOfLifeTab = ({ myGroups, currentUser, isAdmin }) => {
             const data = await getGroupEvaluations(selectedGroupId);
             setEvaluations(data);
             setViewingMonth(currentMonth);
-            alert('¡Rueda de vida guardada!');
-        } catch {
-            alert('Error al guardar la evaluación.');
+            alert('¡Rueda de vida guardada con éxito!');
+        } catch (err) {
+            console.error('Error al guardar la evaluación de la rueda de vida:', err);
+            alert(err?.message || 'Error al guardar la evaluación.');
         } finally {
             setSaving(false);
         }

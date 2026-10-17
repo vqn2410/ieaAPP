@@ -235,6 +235,7 @@ const MemberProfile = () => {
         group: memberGroup,
         description: fup.content || '',
         facilitatorName,
+        performanceValues: fup.performanceValues || null,
         date: fup.createdAt?.toDate ? fup.createdAt.toDate() : new Date(),
       });
       downloadDataUrl(pdfDataUrl, fileName);

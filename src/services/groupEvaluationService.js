@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, getDoc, getDocs, query, setDoc, deleteDoc, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, query, setDoc, deleteDoc, where, serverTimestamp } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'groupEvaluations';
 
@@ -34,14 +34,12 @@ export const getGroupEvaluations = async (groupId) => {
 export const saveGroupEvaluation = async ({ groupId, groupName, month, dimensions, evaluatedBy }) => {
   try {
     const ref = doc(db, COLLECTION_NAME, `${groupId}_${month}`);
-    const existing = await getDoc(ref);
     await setDoc(ref, {
       groupId,
       groupName,
       month,
       dimensions,
       evaluatedBy: evaluatedBy || '',
-      ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
       updatedAt: serverTimestamp(),
     }, { merge: true });
     return true;
