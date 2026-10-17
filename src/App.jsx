@@ -114,7 +114,7 @@ function App() {
             <Route path="crecimiento" element={<Navigate to="/dashboard/grupos" replace />} />
             <Route path="configuracion" 
               element={
-                <ProtectedRoute requiredRoles={['Admin']}>
+                <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
               } 

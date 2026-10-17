@@ -17,7 +17,8 @@ import { auth } from '../../services/firebase';
 import './Settings.css';
 
 const Settings = () => {
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, hasRole } = useAuth();
+  const isAdmin = hasRole ? hasRole(['Admin']) : (userData?.role === 'Admin' || (Array.isArray(userData?.role) && userData.role.includes('Admin')));
   const { settings, updateSettings, userPreferences, updateUserPreference } = useSettings();
   const [formData, setFormData] = useState(settings);
   const reasonInputRef = useRef(null);
@@ -112,10 +113,12 @@ const Settings = () => {
   // Sync state when context loads initially
   useEffect(() => {
     setFormData(settings);
-    loadUsers();
-    loadHolidays();
-    loadCampuses();
-  }, [settings]);
+    if (isAdmin) {
+      loadUsers();
+      loadHolidays();
+      loadCampuses();
+    }
+  }, [settings, isAdmin]);
 
   useEffect(() => {
     if (userData) {
@@ -386,6 +389,97 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
 
   if(!formData || !formData.theme || !formData.modules || !formData.roles) return <div className="p-4"><SkeletonCard /></div>;
+
+  if (!isAdmin) {
+    return (
+      <div className="animate-fade-in">
+        <div className="d-flex justify-between align-center mb-4">
+          <h1>Configuración</h1>
+        </div>
+        <div style={{ maxWidth: '800px' }}>
+          <Card
+            title={
+              <div className="d-flex align-center gap-2">
+                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi apariencia personal
+              </div>
+            }
+          >
+            <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
+              Estos ajustes se guardan en tu perfil y solo afectan a tus dispositivos.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem' }}>
+              <div className="form-group m-0">
+                <label className="form-label">Modo de la app</label>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className={`btn ${(userPreferences?.theme || 'light') === 'light' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => updateUserPreference({ theme: 'light' })}
+                  >
+                    Claro
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${(userPreferences?.theme || 'light') === 'dark' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => updateUserPreference({ theme: 'dark' })}
+                  >
+                    Oscuro
+                  </button>
+                </div>
+              </div>
+              <div className="form-group m-0">
+                <label className="form-label">Color primario (personal)</label>
+                <div className="d-flex flex-wrap gap-2 align-center">
+                  {[
+                    { name: 'Slate', value: '#1e293b' },
+                    { name: 'Azul', value: '#2563eb' },
+                    { name: 'Celeste', value: '#0ea5e9' },
+                    { name: 'Esmeralda', value: '#059669' },
+                    { name: 'Violeta', value: '#7c3aed' },
+                    { name: 'Rosa', value: '#db2777' },
+                    { name: 'Ámbar', value: '#d97706' },
+                    { name: 'Rojo', value: '#dc2626' }
+                  ].map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      title={c.name}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        background: c.value,
+                        cursor: 'pointer',
+                        border: '2px solid',
+                        borderColor: userPreferences?.primaryColor === c.value
+                          ? 'var(--color-text)'
+                          : 'transparent',
+                        outline: userPreferences?.primaryColor === c.value
+                          ? '2px solid var(--color-primary)'
+                          : 'none',
+                        outlineOffset: '2px'
+                      }}
+                      onClick={() => updateUserPreference({ primaryColor: c.value })}
+                    />
+                  ))}
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="color"
+                      title="Color personalizado"
+                      value={userPreferences?.primaryColor || formData?.theme?.primaryColor || '#1e293b'}
+                      onChange={e => updateUserPreference({ primaryColor: e.target.value })}
+                      style={{ width: '34px', height: '34px', padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'transparent' }}
+                    />
+                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Custom</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const tabStyle = (id) => ({
     padding: '0.75rem 1.5rem',

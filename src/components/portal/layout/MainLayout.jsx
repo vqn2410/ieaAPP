@@ -160,7 +160,7 @@ const MainLayout = () => {
     { name: 'Anotaciones', path: '/dashboard/notas', icon: <StickyNote size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
     { name: 'Enfoque', path: '/dashboard/enfoque', icon: <Timer size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Member'] },
     { name: 'Reportes', path: '/dashboard/reportes', icon: <FileText size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader'] },
-    { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin'] },
+    { name: 'Configuración', path: '/dashboard/configuracion', icon: <Settings size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'AreaLeader', 'Facilitator', 'CoFacilitator', 'Maestro', 'Member'] },
     { name: 'Auditoría', path: '/dashboard/auditoria', icon: <FileText size={20} />, roles: ['Admin', 'Pastor'] },
   ].filter(item => hasRole(item.roles));
   const mobilePrimaryItems = menuItems

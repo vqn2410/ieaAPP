@@ -149,14 +149,14 @@ const initialSettings = {
   ],
   rolePermissions: {
     Admin: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'transmisiones', 'finanzas', 'grupos', 'configuracion'],
-    Pastor: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'transmisiones', 'finanzas', 'grupos'],
-    MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias'],
-    Facilitator: ['miembros', 'eventos', 'crecimiento'],
-    CoFacilitator: ['miembros', 'crecimiento'],
-    CampusAdmin: ['miembros', 'grupos', 'crecimiento', 'visitantes', 'notas'],
-    AreaLeader: ['ibrp'],
-    Maestro: ['kids'],
-    Member: ['dashboard']
+    Pastor: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'transmisiones', 'finanzas', 'grupos', 'configuracion'],
+    MinistryLeader: ['miembros', 'eventos', 'crecimiento', 'kids', 'ibrp', 'noticias', 'configuracion'],
+    Facilitator: ['miembros', 'eventos', 'crecimiento', 'configuracion'],
+    CoFacilitator: ['miembros', 'crecimiento', 'configuracion'],
+    CampusAdmin: ['miembros', 'grupos', 'crecimiento', 'visitantes', 'notas', 'configuracion'],
+    AreaLeader: ['ibrp', 'configuracion'],
+    Maestro: ['kids', 'configuracion'],
+    Member: ['dashboard', 'configuracion']
   }
 };
 
