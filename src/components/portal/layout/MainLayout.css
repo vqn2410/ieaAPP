@@ -275,6 +275,27 @@
   color: var(--color-text-muted);
 }
 
+.mobile-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 0.5rem;
+  padding: 0;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 50%;
+  background: rgba(244, 63, 94, 0.1);
+  color: #f43f5e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-logout-btn:active {
+  transform: scale(0.92);
+  background: rgba(244, 63, 94, 0.25);
+}
+
 .mobile-header h2 {
   font-size: 1.25rem;
   margin: 0;
@@ -650,6 +671,45 @@
 .mobile-nav-card span {
   font-size: 0.75rem;
   margin-top: 0.5rem;
+}
+
+.mobile-header-logout {
+  width: auto !important;
+  margin-top: 0 !important;
+  padding: 0.5rem 0.85rem !important;
+  gap: 0.4rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.mobile-menu-footer {
+  margin-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.mobile-full-logout {
+  width: 100% !important;
+  justify-content: center !important;
+  gap: 0.6rem !important;
+  padding: 0.85rem 1.25rem !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-lg) !important;
+  background: rgba(244, 63, 94, 0.15) !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
+}
+
+:root[data-theme='dark'] .mobile-logout-btn {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+}
+
+:root[data-theme='dark'] .mobile-full-logout {
+  background: rgba(244, 63, 94, 0.22) !important;
+  border-color: rgba(244, 63, 94, 0.45) !important;
+  color: #fda4af !important;
 }
 
 @keyframes slideUpFade {

@@ -248,11 +248,14 @@ const MainLayout = () => {
 
              {/* Right side: User Profile */}
              <div className="mobile-header-right">
-               <button className="mobile-theme-toggle" onClick={toggleTheme} aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}>
+               <button className="mobile-theme-toggle" onClick={toggleTheme} aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'} title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}>
                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                </button>
-               <button className="mobile-user-avatar" onClick={() => navigate('/dashboard/mi-perfil')} aria-label="Ir a mi perfil">
+               <button className="mobile-user-avatar" onClick={() => navigate('/dashboard/mi-perfil')} aria-label="Ir a mi perfil" title="Mi perfil">
                  {userData?.name?.charAt(0) || 'U'}
+               </button>
+               <button className="mobile-logout-btn" onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión">
+                 <LogOut size={17} />
                </button>
            </div>
          </header>
@@ -288,8 +291,9 @@ const MainLayout = () => {
                    <h2>Hola, {userData?.name?.split(' ')[0]}</h2>
                    <p className="badge badge-gray">{settings?.roles?.[userData?.role] || userData?.role}</p>
                 </div>
-                <button onClick={handleLogout} className="btn-logout" style={{ width: 'auto', padding: '0.5rem 1rem' }}>
-                   Salir
+                <button onClick={handleLogout} className="btn-logout mobile-header-logout" title="Cerrar sesión">
+                   <LogOut size={16} />
+                   <span>Salir</span>
                 </button>
              </div>
 
@@ -312,6 +316,13 @@ const MainLayout = () => {
                     </NavLink>
                   )
                 ))}
+             </div>
+
+             <div className="mobile-menu-footer">
+               <button onClick={handleLogout} className="btn-logout mobile-full-logout">
+                 <LogOut size={18} />
+                 <span>Cerrar Sesión</span>
+               </button>
              </div>
           </div>
         )}

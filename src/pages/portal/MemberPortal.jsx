@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
-import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save } from 'lucide-react';
+import { CalendarDays, User, Mail, Phone, MapPin, BookOpen, Users, Save, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { getMemberByEmail, updateMember } from '../../services/memberService';
@@ -21,7 +21,7 @@ const initialAvatar = (firstName, lastName) => {
 
 const MemberPortal = () => {
   const navigate = useNavigate();
-  const { currentUser, hasRole } = useAuth();
+  const { currentUser, hasRole, logout } = useAuth();
   const { activeCampusId } = useCampus();
   const [member, setMember] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -138,8 +138,24 @@ const MemberPortal = () => {
 
   return (
     <div className="portal">
-      <div className="portal-header">
-        <h1>Mi Perfil</h1>
+      <div className="portal-header d-flex justify-between align-center" style={{ flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0 }}>Mi Perfil</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          icon={<LogOut size={16} />}
+          onClick={async () => {
+            try {
+              await logout();
+              navigate('/login');
+            } catch (err) {
+              console.error('Error al cerrar sesión', err);
+            }
+          }}
+          style={{ borderColor: 'rgba(244, 63, 94, 0.4)', color: 'var(--color-danger)' }}
+        >
+          Cerrar Sesión
+        </Button>
       </div>
 
       <div className="portal-grid">
