@@ -33,22 +33,15 @@ import './FollowUps.css';
 
 const loadLogoDataUrl = async () => {
   try {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = '/img/logo-iea.png';
+    const response = await fetch('/img/logo-iea.png');
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
-    const canvas = document.createElement('canvas');
-    const targetWidth = 360;
-    const targetHeight = Math.max(1, Math.round(((img.naturalHeight || img.height || 100) / (img.naturalWidth || img.width || 360)) * targetWidth));
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-    return canvas.toDataURL('image/jpeg', 0.85);
   } catch {
     return null;
   }
@@ -66,18 +59,19 @@ const formatGroupSchedule = (group) => {
 
 const generateFollowUpPdf = async ({ member, groupName, groupSchedule, facilitatorName, description, date = new Date() }) => {
   const [{ default: jsPDF }] = await Promise.all([import('jspdf')]);
+  // compress: true comprime los streams de la imagen a ~48KB preservando la transparencia nativa del PNG
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const logoDataUrl = await loadLogoDataUrl();
 
   let currentY = 18;
 
-  // 1. Logo centrado de la IEA
+  // 1. Logo centrado de la IEA (proporción 1280x332 = 3.85:1)
   if (logoDataUrl) {
-    const logoWidth = 46;
-    const logoHeight = 15;
+    const logoWidth = 50;
+    const logoHeight = 13;
     const logoX = (210 - logoWidth) / 2;
     try {
-      pdf.addImage(logoDataUrl, 'JPEG', logoX, currentY, logoWidth, logoHeight, undefined, 'FAST');
+      pdf.addImage(logoDataUrl, 'PNG', logoX, currentY, logoWidth, logoHeight, undefined, 'FAST');
       currentY += logoHeight + 8;
     } catch {
       currentY += 4;
