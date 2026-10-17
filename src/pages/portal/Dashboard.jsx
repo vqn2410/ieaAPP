@@ -244,7 +244,7 @@ const Dashboard = () => {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-     members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: [], allMembers: []
+     members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: [], allMembers: [], pendingFollowUps: []
   });
   const [loading, setLoading] = useState(true);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
@@ -522,8 +522,8 @@ const Dashboard = () => {
             <div className="dash-side-card-hd">
               <MessageSquare size={16} className="fup-icon" />
               <span>Seguimientos</span>
-              {stats.pendingFollowUps?.length > 0 && (
-                <Badge variant="secondary" style={{ marginLeft: 'auto' }}>{stats.pendingFollowUps.length}</Badge>
+              {(stats.pendingFollowUps || []).length > 0 && (
+                <Badge variant="secondary" style={{ marginLeft: 'auto' }}>{(stats.pendingFollowUps || []).length}</Badge>
               )}
             </div>
             <div className="dash-card-bd">
@@ -537,16 +537,16 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ))
-              ) : stats.pendingFollowUps?.length === 0 ? (
+              ) : (stats.pendingFollowUps || []).length === 0 ? (
                 <EmptyState icon={MessageSquare} title="Sin seguimientos" message="No hay seguimientos pendientes." compact />
               ) : (
-                stats.pendingFollowUps.slice(0, 5).map(f => (
+                (stats.pendingFollowUps || []).slice(0, 5).map(f => (
                   <ActivityItem
                     key={f.id}
                     icon={MessageSquare}
-                    text={f.content.length > 40 ? f.content.slice(0, 40) + '...' : f.content}
+                    text={(f.content || '').length > 40 ? (f.content || '').slice(0, 40) + '...' : (f.content || '')}
                     time={f.memberName}
-                    onClick={() => navigate(`/dashboard/miembros/${f.memberId}`)}
+                    onClick={() => f.memberId && navigate(`/dashboard/miembros/${f.memberId}`)}
                   />
                 ))
               )}
