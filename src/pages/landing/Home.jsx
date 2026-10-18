@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users } from 'lucide-react';
+import PrivacyConsentNotice from '../../components/common/PrivacyConsentNotice';
 import './Home.css';
 
 const Home = () => {
@@ -365,6 +366,7 @@ const Home = () => {
           </div>
         </div>
       </footer>
+      <PrivacyConsentNotice />
     </div>
   );
 };
