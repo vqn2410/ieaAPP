@@ -2,8 +2,8 @@
 User-agent: *
 Allow: /
 Allow: /extensiones
+Allow: /login
 Disallow: /dashboard/
-Disallow: /login
 Disallow: /session-expired
 Disallow: /maqueta-iea
 Disallow: /api/

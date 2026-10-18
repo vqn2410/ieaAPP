@@ -67,8 +67,8 @@ const Login = () => {
     <div className="login-page">
       <SeoHead
         title="Iniciar Sesión | Portal IEA"
-        description="Acceso exclusivo para miembros y líderes de Iglesia Extremo Amor."
-        noindex
+        description="Acceso al Portal Administrativo de Iglesia Extremo Amor para miembros, servidores y líderes."
+        canonicalUrl="/login"
       />
       <div className="login-left">
         <div className="login-left-content">
