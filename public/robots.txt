@@ -1,11 +1,8 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-Allow: /extensiones
-Allow: /login
 Disallow: /dashboard/
 Disallow: /session-expired
-Disallow: /maqueta-iea
 Disallow: /api/
 
 # Sitemap principal

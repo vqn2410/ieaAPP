@@ -1,24 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Página principal -->
   <url>
     <loc>https://www.iglesiaextremoamor.com.ar/</loc>
     <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-  <!-- Iglesias en Extensión -->
   <url>
     <loc>https://www.iglesiaextremoamor.com.ar/extensiones</loc>
     <lastmod>2026-10-18</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-  </url>
-  <!-- Acceso al Portal IEA -->
-  <url>
-    <loc>https://www.iglesiaextremoamor.com.ar/login</loc>
-    <lastmod>2026-10-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 </urlset>
