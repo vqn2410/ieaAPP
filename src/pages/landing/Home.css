@@ -136,6 +136,11 @@
   text-shadow: 0 2px 30px rgba(0, 0, 0, .45);
   will-change: transform, opacity;
 }
+.iea-word-light {
+  font-weight: 300 !important;
+  letter-spacing: .02em;
+  opacity: .92;
+}
 .iea-word-left { animation: iea-word-left .95s cubic-bezier(.19, 1, .22, 1) both; }
 .iea-word-right { animation: iea-word-right .95s cubic-bezier(.19, 1, .22, 1) both; }
 .iea-title-line { display: inline-flex; gap: .14em; }

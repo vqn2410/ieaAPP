@@ -113,7 +113,7 @@ const Home = () => {
           <img src="/img/icon-500x500.png" alt="" />
         </div>
         <h1 className="iea-hero-title">
-          <span className="iea-word iea-word-left">IGLESIA</span>
+          <span className="iea-word iea-word-left iea-word-light">IGLESIA</span>
           <span className="iea-title-line">
             <span className="iea-word iea-word-right">EXTREMO</span>
             <span className="iea-word iea-word-left">AMOR</span>
