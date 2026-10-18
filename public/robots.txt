@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /extensiones
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /session-expired
+Disallow: /maqueta-iea
+Disallow: /api/
+
+# Sitemap principal
+Sitemap: https://iea-adm-app.vercel.app/sitemap.xml

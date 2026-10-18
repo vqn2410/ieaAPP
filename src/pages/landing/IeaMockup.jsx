@@ -18,6 +18,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import SeoHead from '../../components/common/SeoHead';
 import './IeaMockup.css';
 
 const navItems = [
@@ -66,6 +67,7 @@ export default function IeaMockup() {
 
   return (
     <div className="iea-mockup">
+      <SeoHead title="Maqueta | IEA" noindex />
       <aside className={`iea-mockup-sidebar ${mobileOpen ? 'open' : ''}`}>
         <div className="iea-mockup-brand">
           <div className="iea-mockup-mark">IEA</div>

@@ -1,12 +1,45 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-AR">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IEA - IGLESIA EXTREMO AMOR</title>
-  <meta name="description" content="Portal administrativo de Iglesia Extremo Amor: miembros, grupos, eventos y más." />
-  <link rel="icon" type="image/png" href="/img/icon-500x500.png" />
+
+  <!-- Título y descripción principal SEO -->
+  <title>Iglesia Extremo Amor | Remedios de Escalada, Lanús</title>
+  <meta name="description"
+    content="Iglesia cristiana en Remedios de Escalada, Lanús. Un lugar de encuentro con Dios y una comunidad viva para la familia. Reunión general: sábados 19:30 hs." />
+
+  <!-- Directivas de indexación para motores de búsqueda -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+  <!-- URL Canónica -->
+  <link rel="canonical" href="https://iea-adm-app.vercel.app/" />
+
+  <!-- Open Graph / Redes Sociales (WhatsApp, Facebook, Telegram) -->
+  <meta property="og:locale" content="es_AR" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Iglesia Extremo Amor (IEA)" />
+  <meta property="og:title" content="Iglesia Extremo Amor | Comunidad de Fe en Escalada" />
+  <meta property="og:description"
+    content="Un lugar de encuentro con Dios y para la familia. Te esperamos los sábados a las 19:30 hs en Av. Cnel. Rosales 883, Remedios de Escalada." />
+  <meta property="og:url" content="https://iea-adm-app.vercel.app/" />
+  <meta property="og:image" content="https://iea-adm-app.vercel.app/img/slider-hero.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Comunidad de Iglesia Extremo Amor en reunión general" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Iglesia Extremo Amor | Remedios de Escalada" />
+  <meta name="twitter:description"
+    content="Un lugar de encuentro con Dios y para la familia. Sábados 19:30 hs en Av. Cnel. Rosales 883." />
+  <meta name="twitter:image" content="https://iea-adm-app.vercel.app/img/slider-hero.jpg" />
+
+  <!-- Favicon, iconos de aplicación y PWA -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" type="image/png" href="/img/icon-500x500.png" />
   <link rel="apple-touch-icon" href="/img/icon-500x500.png" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0b0b0b" />
@@ -14,8 +47,66 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Portal IEA" />
+
+  <!-- Optimización de tipografía externa -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- Datos estructurados Schema.org (JSON-LD) verificables -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "PlaceOfWorship",
+        "@id": "https://iea-adm-app.vercel.app/#church",
+        "name": "Iglesia Extremo Amor",
+        "alternateName": "IEA Escalada",
+        "url": "https://iea-adm-app.vercel.app/",
+        "logo": "https://iea-adm-app.vercel.app/img/icon-500x500.png",
+        "image": "https://iea-adm-app.vercel.app/img/slider-hero.jpg",
+        "telephone": ["+5491135659725", "+5491167254066"],
+        "email": "iglesiaextremoamor@gmail.com",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Av. Cnel. Leonardo Rosales 883",
+          "addressLocality": "Remedios de Escalada",
+          "addressRegion": "Buenos Aires",
+          "postalCode": "B1826",
+          "addressCountry": "AR"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": -34.7262,
+          "longitude": -58.3965
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Saturday",
+            "opens": "19:30",
+            "closes": "21:30"
+          }
+        ],
+        "sameAs": [
+          "https://instagram.com/iea_escalada",
+          "https://youtube.com/@iglesiaextremoamor"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://iea-adm-app.vercel.app/#website",
+        "url": "https://iea-adm-app.vercel.app/",
+        "name": "Iglesia Extremo Amor",
+        "description": "Sitio oficial de Iglesia Extremo Amor en Remedios de Escalada, Buenos Aires.",
+        "inLanguage": "es-AR",
+        "publisher": {
+          "@id": "https://iea-adm-app.vercel.app/#church"
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 
 <body>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../../components/common/Logo';
+import SeoHead from '../../components/common/SeoHead';
 import './Login.css'; // Reuse login styles for consistency
 
 const SessionExpired = () => {
@@ -8,6 +9,7 @@ const SessionExpired = () => {
 
   return (
     <div className="login-page">
+      <SeoHead title="Sesión Expirada | Portal IEA" noindex />
       <div className="login-left">
         <div className="login-left-content">
           <div className="info-card animate-slide-up">

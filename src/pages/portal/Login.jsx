@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Instagram, Facebook, Youtube, Twitter } from 'lucide-react';
 import Logo from '../../components/common/Logo';
+import SeoHead from '../../components/common/SeoHead';
 import './Login.css';
 
 const Login = () => {
@@ -64,6 +65,11 @@ const Login = () => {
 
   return (
     <div className="login-page">
+      <SeoHead
+        title="Iniciar Sesión | Portal IEA"
+        description="Acceso exclusivo para miembros y líderes de Iglesia Extremo Amor."
+        noindex
+      />
       <div className="login-left">
         <div className="login-left-content">
           <div className="info-card animate-slide-up" style={{ animationDelay: '0.1s' }}>

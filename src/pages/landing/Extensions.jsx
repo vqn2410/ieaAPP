@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin } from 'lucide-react';
+import SeoHead from '../../components/common/SeoHead';
 import './Extensions.css';
 
 const campuses = [
@@ -23,6 +24,12 @@ export default function Extensions() {
 
   return (
     <div className="ext-page">
+      <SeoHead
+        title="Iglesias en Extensión | Iglesia Extremo Amor"
+        description="Conocé las extensiones de Iglesia Extremo Amor en Las Heras (Santa Cruz) y Apóstoles (Misiones). Sedes y comunidad de fe en el país."
+        canonicalUrl="/extensiones"
+        ogImage="/img/campus-las-heras.png"
+      />
       <header className="ext-nav">
         <button onClick={() => navigate('/')}><ArrowLeft size={18} /> Volver al inicio</button>
         <span>IEA · EXTENSIONES</span>

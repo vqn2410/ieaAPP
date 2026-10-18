@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users, MessageCircle } from 'lucide-react';
 import PrivacyConsentNotice from '../../components/common/PrivacyConsentNotice';
+import SeoHead from '../../components/common/SeoHead';
 import './Home.css';
 
 const Home = () => {
@@ -83,6 +84,12 @@ const Home = () => {
 
   return (
     <div className="iea-home">
+      <SeoHead
+        title="Iglesia Extremo Amor | Remedios de Escalada, Lanús"
+        description="Iglesia cristiana en Remedios de Escalada, Lanús. Un lugar de encuentro con Dios y comunidad para la familia. Reunión general: sábados 19:30 hs."
+        canonicalUrl="/"
+        ogImage="/img/slider-hero.jpg"
+      />
       <header className={`iea-nav ${scrolled ? 'iea-nav-scrolled' : ''}`}>
         <div className="iea-nav-brand" onClick={() => scrollTo('top')} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && scrollTo('top')} role="button" tabIndex={0}>
           <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" className="iea-nav-logo" />

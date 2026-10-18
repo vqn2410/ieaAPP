@@ -25,6 +25,7 @@ import {
    Search, SlidersHorizontal, Bell
 } from 'lucide-react';
 import Logo from '../../common/Logo';
+import SeoHead from '../../common/SeoHead';
 import Onboarding, { HelpButton } from '../../common/Onboarding';
 import { useAuth } from '../../../context/AuthContext';
 import { useSettings } from '../../../context/SettingsContext';
@@ -169,6 +170,7 @@ const MainLayout = () => {
 
   return (
     <div className="layout-container">
+      <SeoHead title="Portal IEA" noindex />
       <aside className="sidebar">
         <div className="sidebar-header d-flex justify-center">
           <Logo size="medium" showText={false} />
