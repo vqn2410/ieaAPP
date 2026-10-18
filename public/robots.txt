@@ -9,4 +9,4 @@ Disallow: /maqueta-iea
 Disallow: /api/
 
 # Sitemap principal
-Sitemap: https://iea-adm-app.vercel.app/sitemap.xml
+Sitemap: https://www.iglesiaextremoamor.com.ar/sitemap.xml
