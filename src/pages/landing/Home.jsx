@@ -105,10 +105,6 @@ const Home = () => {
         <div className="iea-hero-logo" aria-hidden="true">
           <img src="/img/icon-500x500.png" alt="" />
         </div>
-        <div className="iea-hero-badge iea-reveal">
-          <span className="iea-badge-pulse" />
-          <span>Comunidad de fe · Remedios de Escalada</span>
-        </div>
         <h1 className="iea-hero-title">
           <span className="iea-word iea-word-left">IGLESIA</span>
           <span className="iea-title-line">
@@ -117,32 +113,15 @@ const Home = () => {
           </span>
         </h1>
         <div className="iea-hero-bottom">
-          <div className="iea-hero-info iea-reveal">
-            <span className="iea-hero-tag">REUNIÓN GENERAL</span>
-            <p className="iea-hero-tagline">
-              Un lugar donde encontrarte con Dios y caminar en familia.
-            </p>
-          </div>
           <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>
-            <span>CONOCÉ IEA</span>
-            <ArrowUpRight size={22} />
+            CONOCÉ IEA <ArrowUpRight size={22} />
           </button>
         </div>
       </section>
 
       <div className="iea-strip">
-        <div className="iea-strip-item">
-          <div className="iea-strip-icon-box"><Clock3 size={18} /></div>
-          <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30 hs</strong></p>
-        </div>
-        <div className="iea-strip-item">
-          <div className="iea-strip-icon-box"><MapPin size={18} /></div>
-          <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
-        </div>
-        <div className="iea-strip-item iea-strip-live-badge">
-          <span className="iea-live-dot" />
-          <span>Entrada libre y gratuita</span>
-        </div>
+        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
+        <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
       </div>
 
       <section className="iea-slogan-section" aria-label="Nuestro slogan">

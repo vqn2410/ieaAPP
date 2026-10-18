@@ -101,40 +101,6 @@
   pointer-events: none;
 }
 
-.iea-hero-badge {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.45rem 1rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 1.5rem;
-  width: fit-content;
-}
-
-.iea-badge-pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
-  animation: iea-badge-pulse-kf 2s infinite;
-}
-
-@keyframes iea-badge-pulse-kf {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-}
 
 .iea-eyebrow {
   position: relative;
@@ -196,31 +162,9 @@
   z-index: 1;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 2rem;
-  margin-top: 2rem;
 }
-.iea-hero-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  max-width: 440px;
-}
-.iea-hero-tag {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  color: rgba(255, 255, 255, 0.5);
-}
-.iea-hero-tagline {
-  margin: 0;
-  font-size: clamp(0.95rem, 1.4vw, 1.25rem);
-  font-weight: 400;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.85);
-}
-.iea-hero-tagline strong,
-.iea-body-tagline strong { letter-spacing: .04em; }
 
 /* Slogan · línea de tiempo vertical */
 .iea-slogan-section {
@@ -530,7 +474,7 @@
 /* Visit */
 .iea-visit-info { display: grid; gap: 1.5rem; max-width: 480px; width: 100%; }
 .iea-visit-info > div:not(.iea-visit-actions) { padding-bottom: 1rem; border-bottom: 1px solid rgba(11, 11, 11, .25); }
-.iea-visit-info span { display: block; margin-bottom: .35rem; font-size: .65rem; letter-spacing: .16em; color: rgba(11, 11, 11, .5); }
+.iea-visit-info > div:not(.iea-visit-actions) span { display: block; margin-bottom: .35rem; font-size: .65rem; letter-spacing: .16em; color: rgba(11, 11, 11, .5); }
 .iea-visit-info strong { font-size: 1.05rem; font-weight: 700; }
 
 .iea-visit-actions {
@@ -548,7 +492,7 @@
   padding: .85rem 1.4rem;
   border-radius: 999px;
   background: var(--iea-black);
-  color: var(--iea-white) !important;
+  color: #ffffff !important;
   text-decoration: none;
   font-size: .72rem;
   font-weight: 700;
@@ -556,12 +500,20 @@
   transition: transform .25s ease, opacity .25s ease, box-shadow .25s ease;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
 }
+.iea-instagram span {
+  color: #ffffff !important;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+  display: inline;
+}
 .iea-instagram:hover {
   opacity: .92;
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(0, 0, 0, .25);
 }
-.iea-instagram svg { flex-shrink: 0; }
+.iea-instagram svg { flex-shrink: 0; color: #ffffff; }
 
 .iea-whatsapp-btn {
   display: inline-flex;
@@ -571,7 +523,7 @@
   padding: .85rem 1.4rem;
   border-radius: 999px;
   background: #1faf53;
-  color: #fff !important;
+  color: #ffffff !important;
   text-decoration: none;
   font-size: .72rem;
   font-weight: 700;
@@ -579,12 +531,20 @@
   transition: transform .25s ease, background-color .25s ease, box-shadow .25s ease;
   box-shadow: 0 4px 14px rgba(31, 175, 83, .25);
 }
+.iea-whatsapp-btn span {
+  color: #ffffff !important;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+  display: inline;
+}
 .iea-whatsapp-btn:hover {
   background: #179b47;
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(31, 175, 83, .4);
 }
-.iea-whatsapp-btn svg { flex-shrink: 0; }
+.iea-whatsapp-btn svg { flex-shrink: 0; color: #ffffff; }
 
 /* Scroll reveal */
 .iea-reveal {
@@ -1100,8 +1060,7 @@
   .iea-cards article:last-child { border-bottom: 0; }
   .iea-hero { min-height: 88vh; padding-top: 7rem; }
   .iea-hero-title { flex-direction: column; align-items: center; gap: .1em; }
-  .iea-hero-badge { margin: 0 auto 1.5rem; }
-  .iea-hero-bottom { flex-direction: column; align-items: center; text-align: center; gap: 1.75rem; }
+  .iea-hero-bottom { justify-content: center; }
   .iea-round-btn { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; width: auto; height: auto; padding: 1.4rem 2.6rem; border-radius: 12px; margin: 0 auto; }
   .iea-round-btn svg { margin: 0; }
   .iea-strip { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
