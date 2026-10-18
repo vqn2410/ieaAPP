@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users, MessageCircle } from 'lucide-react';
 import PrivacyConsentNotice from '../../components/common/PrivacyConsentNotice';
 import './Home.css';
 
@@ -11,6 +11,15 @@ const Home = () => {
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   const goPortal = () => navigate(currentUser ? '/dashboard' : '/login');
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const nextSecondSaturday = () => {
     const today = new Date();
@@ -74,8 +83,8 @@ const Home = () => {
 
   return (
     <div className="iea-home">
-      <header className="iea-nav">
-        <div className="iea-nav-brand" onClick={() => scrollTo('top')} role="button" tabIndex={0}>
+      <header className={`iea-nav ${scrolled ? 'iea-nav-scrolled' : ''}`}>
+        <div className="iea-nav-brand" onClick={() => scrollTo('top')} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && scrollTo('top')} role="button" tabIndex={0}>
           <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" className="iea-nav-logo" />
           <span className="iea-nav-brand-name">IGLESIA <strong>EXTREMO AMOR</strong></span>
         </div>
@@ -96,6 +105,10 @@ const Home = () => {
         <div className="iea-hero-logo" aria-hidden="true">
           <img src="/img/icon-500x500.png" alt="" />
         </div>
+        <div className="iea-hero-badge iea-reveal">
+          <span className="iea-badge-pulse" />
+          <span>Comunidad de fe · Remedios de Escalada</span>
+        </div>
         <h1 className="iea-hero-title">
           <span className="iea-word iea-word-left">IGLESIA</span>
           <span className="iea-title-line">
@@ -104,13 +117,32 @@ const Home = () => {
           </span>
         </h1>
         <div className="iea-hero-bottom">
-          <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>CONOCÉ IEA <ArrowUpRight size={22} /></button>
+          <div className="iea-hero-info iea-reveal">
+            <span className="iea-hero-tag">REUNIÓN GENERAL</span>
+            <p className="iea-hero-tagline">
+              Un lugar donde encontrarte con Dios y caminar en familia.
+            </p>
+          </div>
+          <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>
+            <span>CONOCÉ IEA</span>
+            <ArrowUpRight size={22} />
+          </button>
         </div>
       </section>
 
       <div className="iea-strip">
-        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
-        <p><span>ESTAMOS EN</span><strong>Remedios de Escalada · Lanús</strong></p>
+        <div className="iea-strip-item">
+          <div className="iea-strip-icon-box"><Clock3 size={18} /></div>
+          <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30 hs</strong></p>
+        </div>
+        <div className="iea-strip-item">
+          <div className="iea-strip-icon-box"><MapPin size={18} /></div>
+          <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
+        </div>
+        <div className="iea-strip-item iea-strip-live-badge">
+          <span className="iea-live-dot" />
+          <span>Entrada libre y gratuita</span>
+        </div>
       </div>
 
       <section className="iea-slogan-section" aria-label="Nuestro slogan">
@@ -207,6 +239,21 @@ const Home = () => {
               <p>{featuredAnnouncement?.description || 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.'}</p>
               <button onClick={() => scrollTo('visitanos')}>Conocé más <ArrowUpRight size={16} /></button>
             </div>
+            {visibleAnnouncements.length > 1 && (
+              <div className="iea-news-dots" role="tablist" aria-label="Anuncios destacados">
+                {visibleAnnouncements.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`iea-news-dot ${idx === activeAnnouncementIndex ? 'active' : ''}`}
+                    onClick={() => setActiveAnnouncementIndex(idx)}
+                    aria-label={`Ver anuncio ${idx + 1}`}
+                    role="tab"
+                    aria-selected={idx === activeAnnouncementIndex}
+                  />
+                ))}
+              </div>
+            )}
             <div className="iea-news-orbit" aria-hidden="true" />
           </article>
           <div className="iea-news-stack">
@@ -282,7 +329,14 @@ const Home = () => {
           <div className="iea-visit-info iea-reveal">
             <div><span>CUÁNDO</span><strong>Sábados · 19:30</strong></div>
             <div><span>DÓNDE</span><strong>Av. Cnel. Rosales 879-883, Remedios de Escalada, Lanús</strong></div>
-            <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">ESCRIBINOS POR INSTAGRAM<ArrowUpRight size={18} /></a>
+            <div className="iea-visit-actions">
+              <a className="iea-instagram" href="https://instagram.com/iea_escalada" target="_blank" rel="noopener noreferrer">
+                <Instagram size={17} /> <span>ESCRIBINOS POR INSTAGRAM</span> <ArrowUpRight size={17} />
+              </a>
+              <a className="iea-whatsapp-btn" href="https://wa.me/5491135659725?text=Hola!%20Quería%20hacer%20una%20consulta%20sobre%20las%20reuniones" target="_blank" rel="noopener noreferrer">
+                <MessageCircle size={17} /> <span>CONTACTO WHATSAPP</span> <ArrowUpRight size={17} />
+              </a>
+            </div>
           </div>
         </div>
 
