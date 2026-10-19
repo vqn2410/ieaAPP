@@ -11,6 +11,7 @@ import { getGroups } from '../../services/groupService';
 import { getEvents } from '../../services/eventService';
 import { getPendingFollowUps } from '../../services/followUpService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
+import { getBirthdays, syncAllBirthdaysFromMembers } from '../../services/birthdayService';
 import { isBaptised } from '../../utils/helpers';
 import { Users, Calendar, Activity, ListTodo, ArrowRight, ChevronLeft, ChevronRight, UserPlus, BookOpen, Target, Clock, MessageSquare, Cake } from 'lucide-react';
 import EmptyState from '../../components/common/EmptyState';
@@ -121,6 +122,9 @@ const timeAgo = (date) => {
 const getBirthDate = (member) => member?.birthDate || member?.birthday || member?.birthdate || member?.dateOfBirth || '';
 
 const getBirthdayParts = (member) => {
+  if (member?.day && member?.month) {
+    return { month: Number(member.month), day: Number(member.day) };
+  }
   const value = getBirthDate(member);
   if (!value) return null;
   if (typeof value === 'string') {
@@ -151,7 +155,7 @@ const getWeekStart = (date) => {
   return result;
 };
 
-const BirthdayWeek = ({ members, loading, onMemberClick }) => {
+const BirthdayWeek = ({ members, loading, onMemberClick, canClickMember = false }) => {
   const today = new Date();
   const weekStart = getWeekStart(today);
   const weekKeys = Array.from({ length: 7 }, (_, index) => {
@@ -174,19 +178,30 @@ const BirthdayWeek = ({ members, loading, onMemberClick }) => {
       <div className="dash-card-bd dash-birthday-week">
         {loading ? [1, 2].map(item => <div className="dash-birthday-row" key={item}><div className="skeleton" style={{ width: '30px', height: '30px', borderRadius: '50%' }} /><div style={{ flex: 1 }}><div className="skeleton" style={{ width: '65%', height: '12px', marginBottom: '4px' }} /><div className="skeleton" style={{ width: '35%', height: '10px' }} /></div></div>) : birthdays.length === 0 ? (
           <EmptyState icon={Cake} title="Sin cumpleaños" message="No hay cumpleaños registrados esta semana." compact />
-        ) : birthdays.map(({ member }) => (
-          <button className="dash-birthday-row" key={member.id} onClick={() => onMemberClick(member.id)}>
-            <span className="dash-birthday-avatar">{`${(member.firstName || '?')[0]}${(member.lastName || '?')[0]}`}</span>
-            <span className="dash-birthday-person"><strong>{member.firstName} {member.lastName}</strong><small>{birthdayLabel(member)}</small></span>
-            <span className="dash-birthday-cake">🎂</span>
-          </button>
-        ))}
+        ) : birthdays.map(({ member }) => {
+          const initials = member.firstName && member.lastName
+            ? `${member.firstName[0]}${member.lastName[0]}`
+            : (member.name ? member.name.split(' ').map(p => p[0]).slice(0, 2).join('') : '?');
+          const displayName = member.name || `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Miembro';
+          return (
+            <button
+              className="dash-birthday-row"
+              key={member.id}
+              onClick={() => canClickMember && onMemberClick(member.memberId || member.id)}
+              style={!canClickMember ? { cursor: 'default' } : undefined}
+            >
+              <span className="dash-birthday-avatar">{initials}</span>
+              <span className="dash-birthday-person"><strong>{displayName}</strong><small>{birthdayLabel(member)}</small></span>
+              <span className="dash-birthday-cake">🎂</span>
+            </button>
+          );
+        })}
       </div>
     </Card>
   );
 };
 
-const BirthdayCalendar = ({ members, onMemberClick }) => {
+const BirthdayCalendar = ({ members, onMemberClick, canClickMember = false }) => {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const year = month.getFullYear();
   const monthIndex = month.getMonth();
@@ -196,7 +211,7 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
     const day = index - firstDay + 1;
     return day > 0 && day <= daysInMonth ? day : null;
   });
-  const birthdayMap = members.reduce((map, member) => {
+  const birthdayMap = (members || []).reduce((map, member) => {
     const parts = getBirthdayParts(member);
     if (parts?.month === monthIndex + 1) {
       map[parts.day] = [...(map[parts.day] || []), member];
@@ -204,7 +219,7 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
     return map;
   }, {});
   const today = new Date();
-  const monthBirthdays = members
+  const monthBirthdays = (members || [])
     .map(member => ({ member, parts: getBirthdayParts(member) }))
     .filter(({ parts }) => parts?.month === monthIndex + 1)
     .sort((a, b) => a.parts.day - b.parts.day);
@@ -220,50 +235,91 @@ const BirthdayCalendar = ({ members, onMemberClick }) => {
         <div className="dash-calendar-grid">{cells.map((day, index) => {
           const people = day ? birthdayMap[day] || [] : [];
           const isToday = day === today.getDate() && monthIndex === today.getMonth() && year === today.getFullYear();
-          return <div className={`dash-calendar-day ${!day ? 'empty' : ''} ${isToday ? 'today' : ''}`} key={`${year}-${monthIndex}-${index}`}><span className="dash-calendar-number">{day}</span>{people.map(person => <button className="dash-calendar-person" key={person.id} title={`${person.firstName} ${person.lastName}`} onClick={() => onMemberClick(person.id)}>{`${(person.firstName || '?')[0]}${(person.lastName || '?')[0]}`}</button>)}</div>;
+          return (
+            <div className={`dash-calendar-day ${!day ? 'empty' : ''} ${isToday ? 'today' : ''}`} key={`${year}-${monthIndex}-${index}`}>
+              <span className="dash-calendar-number">{day}</span>
+              {people.map(person => {
+                const initials = person.firstName && person.lastName
+                  ? `${person.firstName[0]}${person.lastName[0]}`
+                  : (person.name ? person.name.split(' ').map(p => p[0]).slice(0, 2).join('') : '?');
+                const fullName = person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Miembro';
+                return (
+                  <button
+                    className="dash-calendar-person"
+                    key={person.id}
+                    title={fullName}
+                    onClick={() => canClickMember && onMemberClick(person.memberId || person.id)}
+                    style={!canClickMember ? { cursor: 'default' } : undefined}
+                  >
+                    {initials}
+                  </button>
+                );
+              })}
+            </div>
+          );
         })}</div>
       </div>
       <div className="dash-calendar-list">
         <div className="dash-calendar-list-hd">{monthBirthdays.length > 0 ? `${monthBirthdays.length} cumpleaños en ${fullMonths[monthIndex]}` : `Sin cumpleaños en ${fullMonths[monthIndex]}`}</div>
-        {monthBirthdays.map(({ member, parts }) => (
-          <button key={member.id} className="dash-calendar-list-item" onClick={() => onMemberClick(member.id)}>
-            <span className="dash-calendar-list-day">{parts.day}</span>
-            <span className="dash-calendar-list-name">{member.lastName}, {member.firstName}</span>
-            <Cake size={14} strokeWidth={1.5} />
-          </button>
-        ))}
+        {monthBirthdays.map(({ member, parts }) => {
+          const fullName = member.name || `${member.lastName ? `${member.lastName}, ` : ''}${member.firstName || ''}`.trim() || 'Miembro';
+          return (
+            <button
+              key={member.id}
+              className="dash-calendar-list-item"
+              onClick={() => canClickMember && onMemberClick(member.memberId || member.id)}
+              style={!canClickMember ? { cursor: 'default' } : undefined}
+            >
+              <span className="dash-calendar-list-day">{parts.day}</span>
+              <span className="dash-calendar-list-name">{fullName}</span>
+              <Cake size={14} strokeWidth={1.5} />
+            </button>
+          );
+        })}
       </div>
-      <div className="dash-calendar-legend"><span className="dash-calendar-dot" /> Seleccioná un nombre para ver el perfil.</div>
+      {canClickMember && <div className="dash-calendar-legend"><span className="dash-calendar-dot" /> Seleccioná un nombre para ver el perfil.</div>}
     </Card>
   );
 };
 
 const Dashboard = () => {
   const { currentUser, userData, hasRole } = useAuth();
-  const { activeCampusId, activeCampus } = useCampus();
+  const { activeCampusId, activeCampus, activeCampusSlug } = useCampus();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-     members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: [], allMembers: [], pendingFollowUps: []
+     members: 0, groups: 0, events: 0, baptised: 0, upcomingEvents: [], recentMembers: [], allMembers: [], birthdays: [], pendingFollowUps: []
   });
   const [loading, setLoading] = useState(true);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  const campusPrefix = `/${activeCampusSlug || 'sedecentral'}`;
+  const isMemberView = hasRole(['Member'])
+    && !hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'AreaLeader', 'Facilitator', 'CoFacilitator']);
+  const canClickMember = !isMemberView && hasRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro']);
 
   useEffect(() => {
     const load = async () => {
       try {
         const centralLegacy = hasRole(['Admin', 'Pastor']) && /central/i.test(activeCampus?.name || '');
         const isAdminOrPastor = hasRole(['Admin', 'Pastor']);
-        const isScopedUser = !isAdminOrPastor;
-        const [assignedData, directMembers, directGroups, events, pendingFups] = await Promise.all([
-          isScopedUser ? getAssignedGroups() : Promise.resolve(null),
-          isScopedUser ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
-          isScopedUser ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
-          getEvents(),
-          getPendingFollowUps(),
+        const isScopedUser = !isAdminOrPastor && !isMemberView;
+        const [assignedData, directMembers, directGroups, events, pendingFups, birthdaysData] = await Promise.all([
+          isScopedUser ? getAssignedGroups().catch(() => ({ members: [], groups: [] })) : Promise.resolve(null),
+          (isScopedUser || isMemberView) ? Promise.resolve([]) : (centralLegacy ? getMembers() : getMembers(null, activeCampusId || null)),
+          (isMemberView || isScopedUser) ? Promise.resolve([]) : (centralLegacy ? getGroups() : getGroups(activeCampusId || null)),
+          getEvents().catch(() => []),
+          (!isMemberView && !isScopedUser) ? getPendingFollowUps() : Promise.resolve([]),
+          getBirthdays(centralLegacy ? null : (activeCampusId || null)).catch(() => []),
         ]);
         const members = isScopedUser ? assignedData.members || [] : directMembers;
         const groups = isScopedUser ? assignedData.groups || [] : directGroups;
+
+        // Si la colección de cumpleaños está vacía y tenemos miembros cargados (Admin/Pastor), sincronizar en segundo plano
+        if (birthdaysData.length === 0 && directMembers.length > 0 && isAdminOrPastor) {
+          void syncAllBirthdaysFromMembers(directMembers).catch(() => {});
+        }
+
         const currentMember = members.find(member =>
           member.email && currentUserEmail(userData) &&
           member.email.trim().toLowerCase() === currentUserEmail(userData).trim().toLowerCase()
@@ -271,22 +327,22 @@ const Dashboard = () => {
         const matchesLeader = (group, member) => [...(Array.isArray(group.facilitators) ? group.facilitators : [group.facilitators]), ...(Array.isArray(group.coFacilitators) ? group.coFacilitators : [group.coFacilitators])]
           .filter(Boolean)
           .some(value => value === member?.id || normDashboard(value) === normDashboard(`${member?.lastName}, ${member?.firstName}`) || normDashboard(value) === normDashboard(`${member?.firstName} ${member?.lastName}`));
-        const visibleGroups = isScopedUser || isAdminOrPastor || !currentMember
+        const visibleGroups = isScopedUser || isAdminOrPastor || isMemberView || !currentMember
           ? groups
           : groups.filter(group => matchesLeader(group, currentMember));
         const visibleGroupIds = new Set(visibleGroups.map(group => group.id));
         const visibleGroupNames = new Set(visibleGroups.map(group => normDashboard(group.name)));
-        const visibleMembers = isScopedUser || isAdminOrPastor || !currentMember
+        const visibleMembers = isScopedUser || isAdminOrPastor || isMemberView || !currentMember
           ? members
           : members.filter(member => visibleGroups.some(group => {
               const memberGroup = normDashboard(member.group);
               const groupName = normDashboard(group.name);
               return memberGroup && (memberGroup === groupName || groupName.includes(memberGroup));
             }));
-        const visibleEvents = isAdminOrPastor || !currentMember
+        const visibleEvents = isAdminOrPastor || isMemberView || !currentMember
           ? events
           : events.filter(event => visibleGroupIds.has(event.groupId) || visibleGroupNames.has(normDashboard(event.group)));
-        const visibleFollowUps = isAdminOrPastor || !currentMember
+        const visibleFollowUps = isAdminOrPastor || isMemberView || !currentMember
           ? pendingFups
           : pendingFups.filter(followUp => visibleMembers.some(member => member.id === followUp.memberId));
         const now = new Date();
@@ -313,6 +369,7 @@ const Dashboard = () => {
           upcomingEvents: upcoming,
           recentMembers: recent,
           allMembers: members,
+          birthdays: birthdaysData.length > 0 ? birthdaysData : members,
           pendingFollowUps: visibleFollowUps.map(f => ({ ...f, memberName: memberMap[f.memberId] ? `${memberMap[f.memberId].firstName} ${memberMap[f.memberId].lastName}` : '?' }))
         });
       } catch {
@@ -322,7 +379,7 @@ const Dashboard = () => {
       }
     };
     load();
-  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampus?.name]);
+  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampus?.name, isMemberView]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -344,9 +401,9 @@ const Dashboard = () => {
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
   const quickLinks = [
-    { label: 'Miembros', icon: Users, to: '/dashboard/miembros', show: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator']) },
-    { label: 'Grupos', icon: Activity, to: '/dashboard/grupos', show: hasRole(['Admin', 'Pastor', 'Facilitator']) },
-    { label: 'Eventos', icon: Calendar, to: '/dashboard/eventos', show: hasRole(['Admin', 'Pastor', 'MinistryLeader']) },
+    { label: 'Miembros', icon: Users, to: `${campusPrefix}/miembros`, show: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator']) },
+    { label: 'Grupos', icon: Activity, to: `${campusPrefix}/grupos`, show: hasRole(['Admin', 'Pastor', 'Facilitator']) },
+    { label: 'Eventos', icon: Calendar, to: `${campusPrefix}/eventos`, show: hasRole(['Admin', 'Pastor', 'MinistryLeader']) },
   ].filter(a => a.show);
 
   const baptisedPct = stats.members > 0 ? Math.round((stats.baptised / stats.members) * 100) : 0;
@@ -379,30 +436,34 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <section className="dash-ministry-card" aria-label="Resumen ministerial">
-        <div className="dash-ministry-identity">
-          <div className="dash-ministry-avatar">{(userData?.name || 'IEA').split(' ').map(part => part[0]).slice(0, 2).join('')}</div>
-          <div>
-            <div className="dash-ministry-name">{userData?.name || 'Mi ministerio'} <span>{roleName}</span></div>
-            <p>Tu espacio de servicio y acompañamiento dentro de IEA.</p>
-          </div>
-        </div>
-        <div className="dash-ministry-metrics">
-          <div><strong>{stats.members}</strong><span>Personas que acompaño</span></div>
-          <div><strong>{stats.groups}</strong><span>Grupos activos</span></div>
-          <div><strong>{stats.events}</strong><span>Próximas actividades</span></div>
-        </div>
-      </section>
+      {!isMemberView && (
+        <>
+          <section className="dash-ministry-card" aria-label="Resumen ministerial">
+            <div className="dash-ministry-identity">
+              <div className="dash-ministry-avatar">{(userData?.name || 'IEA').split(' ').map(part => part[0]).slice(0, 2).join('')}</div>
+              <div>
+                <div className="dash-ministry-name">{userData?.name || 'Mi ministerio'} <span>{roleName}</span></div>
+                <p>Tu espacio de servicio y acompañamiento dentro de IEA.</p>
+              </div>
+            </div>
+            <div className="dash-ministry-metrics">
+              <div><strong>{stats.members}</strong><span>Personas que acompaño</span></div>
+              <div><strong>{stats.groups}</strong><span>Grupos activos</span></div>
+              <div><strong>{stats.events}</strong><span>Próximas actividades</span></div>
+            </div>
+          </section>
 
-      <div className="dash-stats">
-        <StatWidget title="Miembros" value={stats.members} icon={Users} to="/dashboard/miembros" loading={loading} />
-        <StatWidget title="Próximos" value={stats.events} icon={Calendar} loading={loading} />
-        <StatWidget title="Grupos" value={stats.groups} icon={Activity} to="/dashboard/grupos" loading={loading} />
-        <StatWidget title="Bautizados" value={stats.baptised} icon={BookOpen} loading={loading} subtitle={`${baptisedPct}% del censo`} />
-      </div>
+          <div className="dash-stats">
+            <StatWidget title="Miembros" value={stats.members} icon={Users} to={`${campusPrefix}/miembros`} loading={loading} />
+            <StatWidget title="Próximos" value={stats.events} icon={Calendar} loading={loading} />
+            <StatWidget title="Grupos" value={stats.groups} icon={Activity} to={`${campusPrefix}/grupos`} loading={loading} />
+            <StatWidget title="Bautizados" value={stats.baptised} icon={BookOpen} loading={loading} subtitle={`${baptisedPct}% del censo`} />
+          </div>
+        </>
+      )}
 
       <div className="dash-featured-row">
-        <BirthdayWeek members={stats.allMembers || []} loading={loading} onMemberClick={id => navigate(`/dashboard/miembros/${id}`)} />
+        <BirthdayWeek members={stats.birthdays || stats.allMembers || []} loading={loading} onMemberClick={id => navigate(`${campusPrefix}/miembros/${id}`)} canClickMember={canClickMember} />
 
       <section className="dash-announcements" aria-label="Anuncios">
         <div className="dash-announcements-header">
@@ -452,7 +513,7 @@ const Dashboard = () => {
                 <span>Próximas actividades</span>
               </div>
               {stats.upcomingEvents.length > 0 && (
-                <button className="dash-card-more" onClick={() => navigate('/dashboard/eventos')}>
+                <button className="dash-card-more" onClick={() => navigate(`${campusPrefix}/eventos`)}>
                   Ver todo <ArrowRight size={12} strokeWidth={1.5} />
                 </button>
               )}
@@ -489,16 +550,17 @@ const Dashboard = () => {
                     icon={UserPlus}
                     text={`${m.firstName} ${m.lastName}`}
                     time={timeAgo(m.createdAt)}
-                    onClick={() => navigate(`/dashboard/miembros/${m.id}`)}
+                    onClick={() => navigate(`${campusPrefix}/miembros/${m.id}`)}
                   />
                 ))
               )}
             </div>
           </Card>}
 
-          <BirthdayCalendar members={stats.allMembers} onMemberClick={id => navigate(`/dashboard/miembros/${id}`)} />
+          <BirthdayCalendar members={stats.birthdays || stats.allMembers} onMemberClick={id => navigate(`${campusPrefix}/miembros/${id}`)} canClickMember={canClickMember} />
         </div>
 
+        {!isMemberView && (
         <div className="dash-col-side">
           <Card>
             <div className="dash-side-card-hd">
@@ -546,7 +608,7 @@ const Dashboard = () => {
                     icon={MessageSquare}
                     text={(f.content || '').length > 40 ? (f.content || '').slice(0, 40) + '...' : (f.content || '')}
                     time={f.memberName}
-                    onClick={() => f.memberId && navigate(`/dashboard/miembros/${f.memberId}`)}
+                    onClick={() => f.memberId && navigate(`${campusPrefix}/miembros/${f.memberId}`)}
                   />
                 ))
               )}
@@ -580,6 +642,7 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
+        )}
       </div>
     </div>
   );

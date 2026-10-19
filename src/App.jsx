@@ -1,10 +1,11 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import MainLayout from './components/portal/layout/MainLayout';
 import InactivityTimer from './components/common/InactivityTimer';
 import RouteTransition from './components/common/RouteTransition';
 import { useAuth } from './context/AuthContext';
+import { useCampus } from './context/CampusContext';
 
 const Dashboard = lazy(() => import('./pages/portal/Dashboard'));
 const Members = lazy(() => import('./pages/portal/Members'));
@@ -34,21 +35,60 @@ const Extensions = lazy(() => import('./pages/landing/Extensions'));
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { currentUser, userData, loading, hasRole } = useAuth();
+  const { activeCampusSlug } = useCampus();
   const location = useLocation();
 
   if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
   
   if (!currentUser) return <Navigate to="/login" />;
   
-  if (userData?.needsPasswordChange === true && location.pathname !== '/dashboard/cambio-clave') {
-    return <Navigate to="/dashboard/cambio-clave" replace />;
+  const campusPrefix = `/${activeCampusSlug || 'sedecentral'}`;
+
+  if (userData?.needsPasswordChange === true && !location.pathname.endsWith('/cambio-clave')) {
+    return <Navigate to={`${campusPrefix}/cambio-clave`} replace />;
   }
 
   if (requiredRoles && !hasRole(requiredRoles)) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to={`${campusPrefix}/dashboard`} />;
   }
 
   return children;
+};
+
+const CampusRouteWrapper = ({ children }) => {
+  const { campusSlug } = useParams();
+  const { selectCampusBySlug, loading } = useCampus();
+
+  useEffect(() => {
+    if (!loading && campusSlug) {
+      selectCampusBySlug(campusSlug);
+    }
+  }, [campusSlug, loading, selectCampusBySlug]);
+
+  return children;
+};
+
+const CampusRedirect = ({ to }) => {
+  const { campusSlug } = useParams();
+  return <Navigate to={`/${campusSlug || 'sedecentral'}/${to}`} replace />;
+};
+
+const NestedDashboardRedirect = () => {
+  const { campusSlug, section } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/${campusSlug || 'sedecentral'}/${section}${location.search || ''}`} replace />;
+};
+
+const LegacyDashboardRedirect = () => {
+  const { activeCampusSlug } = useCampus();
+  const location = useLocation();
+  const targetSlug = activeCampusSlug || 'sedecentral';
+  const remainder = location.pathname.replace(/^\/dashboard\/?/, '');
+  const search = location.search || '';
+  if (!remainder) {
+    return <Navigate to={`/${targetSlug}/dashboard${search}`} replace />;
+  }
+  return <Navigate to={`/${targetSlug}/${remainder}${search}`} replace />;
 };
 
 function App() {
@@ -72,21 +112,31 @@ function App() {
       <InactivityTimer>
         <Suspense fallback={<RouteTransition mode="loading" />}>
         <Routes>
+          {/* Rutas públicas y landing */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/session-expired" element={<SessionExpired />} />
           <Route path="/maqueta-iea" element={<IeaMockup />} />
           <Route path="/extensiones" element={<Extensions />} />
           
+          {/* Redirecciones de rutas legacy /dashboard hacia el campus activo */}
+          <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
+          <Route path="/dashboard/*" element={<LegacyDashboardRedirect />} />
+
+          {/* Rutas principales organizadas por campus: /sedecentral/dashboard, /apostoles/dashboard, etc. */}
           <Route 
-            path="/dashboard" 
+            path="/:campusSlug" 
             element={
               <ProtectedRoute>
-                <MainLayout />
+                <CampusRouteWrapper>
+                  <MainLayout />
+                </CampusRouteWrapper>
               </ProtectedRoute>
             }
           >
-            <Route index element={<Dashboard />} />
+            <Route index element={<CampusRedirect to="dashboard" />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard/:section" element={<NestedDashboardRedirect />} />
             <Route path="miembros" element={<Members />} />
             <Route path="kids" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Maestro']}><Kids /></ProtectedRoute>} />
             <Route path="ibrp" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader']}><IbrpAssigned /></ProtectedRoute>} />
@@ -111,7 +161,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="crecimiento" element={<Navigate to="/dashboard/grupos" replace />} />
+            <Route path="crecimiento" element={<CampusRedirect to="grupos" />} />
             <Route path="configuracion" 
               element={
                 <ProtectedRoute>
@@ -121,15 +171,15 @@ function App() {
             />
             <Route path="auditoria" element={<ProtectedRoute requiredRoles={['Admin', 'Pastor']}><AuditLogs /></ProtectedRoute>} />
             <Route path="cambio-clave" element={<ChangePassword />} />
-            <Route path="seguimientos" element={<Navigate to="/dashboard/grupos?section=seguimientos" replace />} />
-            <Route path="clases" element={<Navigate to="/dashboard/grupos?section=clases" replace />} />
+            <Route path="seguimientos" element={<CampusRedirect to="grupos?section=seguimientos" />} />
+            <Route path="clases" element={<CampusRedirect to="grupos?section=clases" />} />
             <Route path="visitantes" element={<Visitors />} />
             <Route path="mi-perfil" element={<MemberPortal />} />
             <Route path="reportes" element={<Reports />} />
             <Route
               path="notas"
               element={
-                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
+                <ProtectedRoute requiredRoles={['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']}>
                   <Notes />
                 </ProtectedRoute>
               }

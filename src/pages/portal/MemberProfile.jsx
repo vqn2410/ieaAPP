@@ -168,18 +168,24 @@ const MemberProfile = () => {
   };
 
   const handleAutoAssign = async () => {
-    if (!member?.email || !userData) return;
-    const isAdminRole = userData.role.includes('Admin');
-    const existingUser = allMembers.find(m =>
-      m.email?.toLowerCase() === member.email.toLowerCase() && m.id !== id
-    );
-    if (existingUser && !isAdminRole) {
-      alert('Ya existe un miembro con este email.');
+    if (!member?.email || !userData) {
+      alert('Este miembro no tiene un email registrado para buscar duplicados.');
       return;
     }
-    await deleteMember(id);
-    alert('Miembro eliminado correctamente.');
-    navigate('/dashboard/miembros');
+    const targetEmail = member.email.trim().toLowerCase();
+    const duplicates = allMembers.filter(m =>
+      m.email?.trim().toLowerCase() === targetEmail && m.id !== id
+    );
+    if (duplicates.length === 0) {
+      alert('No se encontraron fichas duplicadas con este email.');
+      return;
+    }
+    if (!window.confirm(`Se encontraron ${duplicates.length} ficha(s) duplicada(s) con el email ${member.email}. ¿Deseás eliminar los duplicados y conservar esta ficha?`)) {
+      return;
+    }
+    await Promise.all(duplicates.map(dup => deleteMember(dup.id)));
+    setAllMembers(prev => prev.filter(m => !duplicates.some(dup => dup.id === m.id)));
+    alert(`Se eliminaron ${duplicates.length} ficha(s) duplicada(s) correctamente.`);
   };
 
   const handleDelete = async () => {

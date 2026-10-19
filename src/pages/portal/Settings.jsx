@@ -9,8 +9,9 @@ import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../../services/firebase';
 import { getHolidays, addHoliday, deleteHoliday } from '../../services/holidayService';
-import { getCampuses, createCampus, updateCampus, migrateLegacyRecordsToCampus } from '../../services/campusService';
+import { getCampuses, createCampus, updateCampus, migrateLegacyRecordsToCampus, getCampusSlug } from '../../services/campusService';
 import { getMembers, createMember, updateMember } from '../../services/memberService';
+import { syncAllBirthdaysFromMembers } from '../../services/birthdayService';
 import MemberForm from '../../components/portal/members/MemberForm';
 import Modal from '../../components/common/Modal';
 import { auth } from '../../services/firebase';
@@ -29,6 +30,7 @@ const Settings = () => {
   const [campuses, setCampuses] = useState([]);
   const [newCampusName, setNewCampusName] = useState('');
   const [migratingCampus, setMigratingCampus] = useState(false);
+  const [syncingBirthdays, setSyncingBirthdays] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ campusId: '', name: '', email: '' });
   const [savingAdmin, setSavingAdmin] = useState(false);
   const [campusProfileMember, setCampusProfileMember] = useState(null);
@@ -155,6 +157,20 @@ const Settings = () => {
       alert('No se pudo completar la migración.');
     } finally {
       setMigratingCampus(false);
+    }
+  };
+
+  const handleSyncBirthdays = async () => {
+    setSyncingBirthdays(true);
+    try {
+      const allMembers = await getMembers();
+      const count = await syncAllBirthdaysFromMembers(allMembers);
+      alert(`Se sincronizaron ${count} cumpleaños en la colección 'birthdays'.`);
+    } catch (err) {
+      console.error('Error sincronizando cumpleaños:', err);
+      alert('Error sincronizando cumpleaños.');
+    } finally {
+      setSyncingBirthdays(false);
     }
   };
 
@@ -520,14 +536,17 @@ const Settings = () => {
               <input className="form-input" value={newCampusName} onChange={event => setNewCampusName(event.target.value)} placeholder="Nombre de la nueva sede" />
               <Button onClick={handleCreateCampus} disabled={!newCampusName.trim()}>Crear campus</Button>
             </div>
-            <div style={{ marginBottom: '1.25rem' }}>
+            <div style={{ marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <Button variant="outline" size="sm" onClick={handleMigrateLegacy} disabled={migratingCampus}>
                 {migratingCampus ? 'Migrando registros...' : 'Asignar registros antiguos a Sede Central'}
               </Button>
-              <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--color-text-muted)' }}>
-                Usalo una sola vez para incorporar los miembros y grupos existentes.
-              </small>
+              <Button variant="outline" size="sm" onClick={handleSyncBirthdays} disabled={syncingBirthdays}>
+                {syncingBirthdays ? 'Sincronizando...' : 'Sincronizar colección "birthdays"'}
+              </Button>
             </div>
+            <small style={{ display: 'block', marginTop: '-0.75rem', marginBottom: '1.25rem', color: 'var(--color-text-muted)' }}>
+              La colección "birthdays" almacena únicamente nombre, día y mes para que los miembros celebren cumpleaños sin acceder a datos sensibles.
+            </small>
             <div className="d-flex flex-column gap-3">
               {campuses.length === 0 ? <p style={{ color: 'var(--color-text-muted)' }}>No hay campus creados.</p> : campuses.map(campus => {
                 const assigned = appUsers.filter(user => (user.campusIds || []).includes(campus.id));
@@ -535,7 +554,13 @@ const Settings = () => {
                 return (
                   <div key={campus.id} style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1rem' }}>
                     <div className="d-flex justify-between align-center gap-2">
-                      <div><strong>{campus.name}</strong><small style={{ display: 'block', color: 'var(--color-text-muted)' }}>{assigned.length}/2 encargados asignados</small></div>
+                      <div>
+                        <strong>{campus.name}</strong>
+                        <span style={{ marginLeft: '0.5rem', fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                          /{getCampusSlug(campus)}/dashboard
+                        </span>
+                        <small style={{ display: 'block', color: 'var(--color-text-muted)' }}>{assigned.length}/2 encargados asignados</small>
+                      </div>
                       <Button variant="outline" size="sm" onClick={() => updateCampus(campus.id, { active: campus.active === false })}> {campus.active === false ? 'Activar' : 'Desactivar'} </Button>
                     </div>
                     {isCentral ? (

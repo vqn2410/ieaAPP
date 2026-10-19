@@ -62,7 +62,15 @@
 }
 
 .members-table-wrap {
-  overflow-x: auto;
+  overflow-x: clip;
+}
+
+.members-page .card {
+  overflow: visible;
+}
+
+.member-directory-card:has(.member-action-popover) {
+  z-index: 6;
 }
 
 .members-table {

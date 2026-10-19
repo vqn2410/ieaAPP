@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, runTransaction, where } from 'firebase/firestore';
 import { reciprocalRelationship, normalizeFamilyLinks, upsertFamilyLink, removeFamilyLink } from '../utils/familyHelpers';
 import { recordAudit } from './auditService';
+import { syncMemberBirthday, deleteMemberBirthday } from './birthdayService';
 
 const COLLECTION_NAME = 'members';
 
@@ -75,6 +76,7 @@ export const createMember = async (memberData) => {
             createdAt: new Date()
         });
         void recordAudit({ action: 'create', entity: COLLECTION_NAME, entityId: docRef.id }).catch(() => {});
+        void syncMemberBirthday({ id: docRef.id, ...memberData }).catch(() => {});
         return { id: docRef.id, ...memberData };
     } catch (e) {
         console.error("Error creando miembro", e);
@@ -82,12 +84,19 @@ export const createMember = async (memberData) => {
     }
 };
 
+const BIRTHDAY_SYNC_KEYS = ['birthDate', 'birthday', 'birthdate', 'dateOfBirth', 'day', 'month', 'firstName', 'lastName', 'name', 'campusId'];
+
 // Actualizar un miembro
 export const updateMember = async (id, memberData) => {
     try {
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, { ...memberData, updatedAt: new Date() });
         void recordAudit({ action: 'update', entity: COLLECTION_NAME, entityId: id, metadata: { fields: Object.keys(memberData) } }).catch(() => {});
+        if (Object.keys(memberData || {}).some(key => BIRTHDAY_SYNC_KEYS.includes(key))) {
+            void getDoc(docRef)
+                .then(snap => snap.exists() && syncMemberBirthday({ id, ...snap.data() }))
+                .catch(() => {});
+        }
     } catch (e) {
         console.error("Error actualizando miembro", e);
         throw e;
@@ -151,6 +160,7 @@ export const deleteMember = async (id) => {
     try {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
         void recordAudit({ action: 'delete', entity: COLLECTION_NAME, entityId: id }).catch(() => {});
+        void deleteMemberBirthday(id).catch(() => {});
     } catch (e) {
         console.error("Error eliminando miembro", e);
         throw e;

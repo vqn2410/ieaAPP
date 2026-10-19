@@ -119,6 +119,65 @@ const seedFacilitatorRecords = async () => {
   });
 };
 
+test('denies a regular member from reading other members of their campus while allowing birthdays', async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const firestore = context.firestore();
+    await setDoc(doc(firestore, 'users/member-uid'), {
+      email: 'member@example.com',
+      role: ['Member'],
+      campusIds: ['campus-1'],
+    });
+    await setDoc(doc(firestore, 'members/member-1'), {
+      email: 'person@example.com',
+      firstName: 'Persona',
+      lastName: 'Prueba',
+      campusId: 'campus-1',
+    });
+    await setDoc(doc(firestore, 'birthdays/member-1'), {
+      memberId: 'member-1',
+      name: 'Prueba, Persona',
+      day: 15,
+      month: 5,
+      campusId: 'campus-1',
+    });
+  });
+
+  const member = testEnv.authenticatedContext('member-uid', { email: 'member@example.com' });
+  const firestore = member.firestore();
+  await assertFails(getDocs(query(collection(firestore, 'members'), where('campusId', '==', 'campus-1'))));
+  await assertFails(getDoc(doc(firestore, 'members/member-1')));
+  await assertSucceeds(getDocs(query(collection(firestore, 'birthdays'), where('campusId', '==', 'campus-1'))));
+});
+
+test('allows a CampusAdmin to read members of their own campus only', async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const firestore = context.firestore();
+    await setDoc(doc(firestore, 'users/campus-admin-uid'), {
+      email: 'campusadmin@example.com',
+      role: ['CampusAdmin'],
+      campusIds: ['campus-1'],
+    });
+    await setDoc(doc(firestore, 'members/member-1'), {
+      email: 'person@example.com',
+      firstName: 'Persona',
+      lastName: 'Prueba',
+      campusId: 'campus-1',
+    });
+    await setDoc(doc(firestore, 'members/member-2'), {
+      email: 'other@example.com',
+      firstName: 'Otra',
+      lastName: 'Persona',
+      campusId: 'campus-2',
+    });
+  });
+
+  const campusAdmin = testEnv.authenticatedContext('campus-admin-uid', { email: 'campusadmin@example.com' });
+  const firestore = campusAdmin.firestore();
+  await assertSucceeds(getDocs(query(collection(firestore, 'members'), where('campusId', '==', 'campus-1'))));
+  await assertSucceeds(getDoc(doc(firestore, 'members/member-1')));
+  await assertFails(getDoc(doc(firestore, 'members/member-2')));
+});
+
 test('allows a facilitator to get an assigned group document by UID', async () => {
   await seedFacilitatorRecords();
   const facilitator = testEnv.authenticatedContext('facilitator-uid', { email: 'facilitator@example.com' });

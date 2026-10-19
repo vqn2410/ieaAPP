@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { getCampuses, migrateLegacyRecordsToCampus } from '../services/campusService';
+import { getCampuses, getCampusSlug, matchesCampusSlug, migrateLegacyRecordsToCampus } from '../services/campusService';
 import { getAssignedGroups } from '../services/assignedGroupService';
 import { useAuth } from './AuthContext';
 
@@ -33,8 +33,8 @@ export function CampusProvider({ children }) {
     ])
       .then(async ([data, assignedGroups]) => {
         if (!mounted) return;
-        const central = data.find(campus => /central/i.test(campus.name || ''));
-        if (isGlobal && central) {
+        const central = data.find(campus => /central/i.test(campus.name || '') || campus.slug === 'sedecentral');
+        if (isGlobal && central && !central.id?.includes('seed')) {
           // La base histórica no tenía campusId: pertenece a Sede Central.
           // Se completa una sola vez; luego el servicio no encuentra legacy pendientes.
           await migrateLegacyRecordsToCampus(central.id).catch(error => console.error('Error migrando Sede Central:', error));
@@ -45,12 +45,17 @@ export function CampusProvider({ children }) {
           ...assignedCampusIds,
         ])];
         const visible = isGlobal ? data : data.filter(campus => allowedIds.includes(campus.id));
-        setCampuses(visible.filter(campus => campus.active !== false));
+        const activeList = visible.filter(campus => campus.active !== false);
+        setCampuses(activeList);
+
         setActiveCampusId(previous => {
-          if (visible.some(campus => campus.id === previous && campus.active !== false)) return previous;
-          const fallback = userData.defaultCampusId && visible.some(campus => campus.id === userData.defaultCampusId)
-            ? userData.defaultCampusId
-            : visible[0]?.id || '';
+          if (activeList.some(campus => campus.id === previous)) return previous;
+          // Por defecto pastores y admin tendrán sede central
+          const fallback = isGlobal && central
+            ? central.id
+            : (userData.defaultCampusId && activeList.some(campus => campus.id === userData.defaultCampusId)
+              ? userData.defaultCampusId
+              : (central?.id || activeList[0]?.id || ''));
           if (fallback) localStorage.setItem(STORAGE_KEY, fallback);
           return fallback;
         });
@@ -61,25 +66,76 @@ export function CampusProvider({ children }) {
   }, [authLoading, currentUser?.uid, userData, isGlobal, isFacilitator]);
 
   const activeCampus = useMemo(
-    () => campuses.find(campus => campus.id === activeCampusId) || null,
+    () => campuses.find(campus => campus.id === activeCampusId) || campuses.find(c => /central/i.test(c.name || '')) || campuses[0] || null,
     [campuses, activeCampusId]
   );
 
+  const activeCampusSlug = useMemo(
+    () => (activeCampus ? getCampusSlug(activeCampus) : 'sedecentral'),
+    [activeCampus]
+  );
+
   const selectCampus = useCallback((campusId) => {
-    if (!campuses.some(campus => campus.id === campusId)) return;
+    const target = campuses.find(campus => campus.id === campusId);
+    if (!target) return;
     localStorage.setItem(STORAGE_KEY, campusId);
     setActiveCampusId(campusId);
+  }, [campuses]);
+
+  const selectCampusBySlug = useCallback((slug) => {
+    if (!slug || campuses.length === 0) return;
+    const found = campuses.find(c => matchesCampusSlug(c, slug));
+    if (found && found.id !== activeCampusId) {
+      localStorage.setItem(STORAGE_KEY, found.id);
+      setActiveCampusId(found.id);
+    }
+  }, [campuses, activeCampusId]);
+
+  const switchCampus = useCallback((campusId, navigate, currentPathname = '') => {
+    const target = campuses.find(c => c.id === campusId);
+    if (!target) return;
+    localStorage.setItem(STORAGE_KEY, target.id);
+    setActiveCampusId(target.id);
+
+    const newSlug = getCampusSlug(target);
+    const pathname = currentPathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+    const search = typeof window !== 'undefined' ? window.location.search : '';
+    const parts = pathname.split('/').filter(Boolean);
+    let targetPath = `/${newSlug}/dashboard${search}`;
+
+    if (parts.length > 0) {
+      const isCurrentSlug = campuses.some(c => matchesCampusSlug(c, parts[0])) || parts[0] === 'dashboard';
+      if (isCurrentSlug) {
+        if (parts[0] === 'dashboard') {
+          parts.unshift(newSlug);
+        } else {
+          parts[0] = newSlug;
+        }
+        targetPath = '/' + parts.join('/') + search;
+      }
+    }
+
+    if (typeof navigate === 'function') {
+      navigate(targetPath);
+    } else if (typeof window !== 'undefined') {
+      window.location.href = targetPath;
+    }
   }, [campuses]);
 
   const value = useMemo(() => ({
     campuses,
     activeCampus,
     activeCampusId,
+    activeCampusSlug,
     selectCampus,
+    selectCampusBySlug,
+    switchCampus,
+    getCampusSlug,
+    matchesCampusSlug,
     isGlobal,
     isCampusAdmin,
     loading: authLoading || loading,
-  }), [campuses, activeCampus, activeCampusId, selectCampus, isGlobal, isCampusAdmin, authLoading, loading]);
+  }), [campuses, activeCampus, activeCampusId, activeCampusSlug, selectCampus, selectCampusBySlug, switchCampus, isGlobal, isCampusAdmin, authLoading, loading]);
 
   return <CampusContext.Provider value={value}>{children}</CampusContext.Provider>;
 }

@@ -18,16 +18,17 @@ export default function RouteTransition({ mode = 'navigation' }) {
   const previousPath = useRef(pathname);
 
   const isHome = pathname === '/';
+  const isPortalPath = (path) => path.startsWith('/dashboard') || path.includes('/dashboard') || (!['/', '/login', '/session-expired', '/maqueta-iea', '/extensiones'].includes(path));
   // El valor previo de la ruta es intencionalmente una lectura estable (no dispara render).
   // eslint-disable-next-line react-hooks/refs
   const isPortalEntry = previousPath.current === '/' || previousPath.current === '/login';
-  const shouldAnimate = mode === 'loading' || (mode === 'navigation' && isPortalEntry && pathname.startsWith('/dashboard'));
+  const shouldAnimate = mode === 'loading' || (mode === 'navigation' && isPortalEntry && isPortalPath(pathname));
 
   useEffect(() => {
     const oldPath = previousPath.current;
     previousPath.current = pathname;
     const enteringPortal = oldPath === '/' || oldPath === '/login';
-    if (PREFERS_REDUCED_MOTION || isHome || (mode === 'navigation' && !(enteringPortal && pathname.startsWith('/dashboard')))) return undefined;
+    if (PREFERS_REDUCED_MOTION || isHome || (mode === 'navigation' && !(enteringPortal && isPortalPath(pathname)))) return undefined;
     timers.current.forEach(clearTimeout);
     timers.current = [];
     document.body.style.overflow = 'hidden';

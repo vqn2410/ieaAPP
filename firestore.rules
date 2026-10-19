@@ -112,6 +112,7 @@ service cloud.firestore {
       allow read: if isAuth() && (
         isOwnMember(resource)
         || canAccessCampus(resource.data.campusId)
+        || (hasAnyRole(['MinistryLeader', 'AreaLeader', 'Facilitator', 'CoFacilitator', 'Maestro']) && hasCampus(resource.data.campusId))
         || (resource.data.groupId != null && managesGroup(resource.data.groupId))
       );
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
@@ -123,6 +124,20 @@ service cloud.firestore {
         || (resource.data.groupId != null && canManageMemberGroup(resource.data.groupId))
       );
       allow delete: if isGlobalManager() || (hasRole('CampusAdmin') && canAccessCampus(resource.data.campusId));
+    }
+
+    // === Colección pública para miembros: birthdays ===
+    // Solo contiene nombre, día, mes y campusId para celebrar cumpleaños comunitarios sin exponer datos personales sensibles.
+    match /birthdays/{birthdayId} {
+      allow read: if isAuth();
+      allow create, update: if isAuth() && (
+        hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Maestro'])
+        || isGlobalManager()
+      );
+      allow delete: if isAuth() && (
+        hasAnyRole(['Admin', 'Pastor', 'CampusAdmin'])
+        || isGlobalManager()
+      );
     }
 
     // === Colección: kids ===

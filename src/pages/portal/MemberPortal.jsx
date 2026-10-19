@@ -22,7 +22,8 @@ const initialAvatar = (firstName, lastName) => {
 const MemberPortal = () => {
   const navigate = useNavigate();
   const { currentUser, hasRole, logout } = useAuth();
-  const { activeCampusId } = useCampus();
+  const { activeCampusId, activeCampusSlug } = useCampus();
+  const campusPrefix = `/${activeCampusSlug || 'sedecentral'}`;
   const [member, setMember] = useState(null);
   const [groups, setGroups] = useState([]);
   const [events, setEvents] = useState([]);
@@ -223,7 +224,7 @@ const MemberPortal = () => {
               </div>
               <div className="portal-groups-list">
                 {myGroups.map(g => (
-                  <div key={g.id} className="portal-group-item" onClick={() => navigate('/dashboard/crecimiento')}>
+                  <div key={g.id} className="portal-group-item" onClick={() => navigate(`${campusPrefix}/grupos`)}>
                     <span>{g.name}</span>
                   </div>
                 ))}
@@ -238,7 +239,7 @@ const MemberPortal = () => {
               <CalendarDays size={16} />
               <span>Próximas reuniones</span>
             </div>
-            {events.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: '.8125rem' }}>No hay reuniones próximas registradas.</p> : <div className="portal-events-list">{events.map(event => <div className="portal-event-item" key={event.id}><button type="button" className="portal-event-link" onClick={() => navigate('/dashboard/eventos')}><span><strong>{event.title}</strong><small>{event.date}{event.time ? ` · ${event.time}` : ''}</small></span><CalendarDays size={15} /></button><Button size="sm" variant={rsvp[event.id] ? 'primary' : 'outline'} onClick={() => toggleRsvp(event)}>{rsvp[event.id] ? 'Anotado' : 'Me anoto'}</Button></div>)}</div>}
+            {events.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: '.8125rem' }}>No hay reuniones próximas registradas.</p> : <div className="portal-events-list">{events.map(event => <div className="portal-event-item" key={event.id}><button type="button" className="portal-event-link" onClick={() => navigate(`${campusPrefix}/eventos`)}><span><strong>{event.title}</strong><small>{event.date}{event.time ? ` · ${event.time}` : ''}</small></span><CalendarDays size={15} /></button><Button size="sm" variant={rsvp[event.id] ? 'primary' : 'outline'} onClick={() => toggleRsvp(event)}>{rsvp[event.id] ? 'Anotado' : 'Me anoto'}</Button></div>)}</div>}
           </Card>
           <Card>
             <div className="portal-section-title">
