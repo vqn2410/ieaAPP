@@ -57,16 +57,53 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
   }, [members]);
 
   const resolveMember = useCallback(value => {
+    if (!value) return null;
     if (byId[value]) return byId[value];
     if (byName[norm(value)]) return byName[norm(value)];
     const tokens = norm(value).split(' ').filter(Boolean);
     if (tokens.length < 2) return null;
     return members.find(member => {
-      const first = norm(member.firstName);
-      const last = norm(member.lastName);
-      return tokens.some(token => token === first) && tokens.some(token => token.length > 2 && (last.startsWith(token) || token.startsWith(last)));
+      const firstWords = norm(member.firstName).split(' ').filter(Boolean);
+      const lastWords = norm(member.lastName).split(' ').filter(Boolean);
+      return (
+        tokens.some(token => firstWords.includes(token)) &&
+        tokens.some(token => token.length > 2 && lastWords.some(lw => lw === token || lw.startsWith(token) || token.startsWith(lw)))
+      );
     }) || null;
   }, [byId, byName, members]);
+
+  const pastors = useMemo(() => {
+    const cristian = resolveMember('Cristian Ortiz') || members.find(m => /cristian/i.test(m.firstName || '') && /ortiz/i.test(m.lastName || ''));
+    const romina = resolveMember('Romina Hardoy') || members.find(m => /romina/i.test(m.firstName || '') && /hardoy/i.test(m.lastName || ''));
+    return [
+      {
+        id: cristian ? `person:${cristian.id}` : 'pastor:cristian',
+        memberId: cristian?.id || null,
+        label: 'Cristian Ortiz',
+        sub: 'Pastor',
+        member: cristian || null,
+      },
+      {
+        id: romina ? `person:${romina.id}` : 'pastor:romina',
+        memberId: romina?.id || null,
+        label: 'Romina Hardoy',
+        sub: 'Pastora',
+        member: romina || null,
+      },
+    ];
+  }, [resolveMember, members]);
+
+  const pastorMemberIds = useMemo(
+    () => new Set(pastors.map(p => p.memberId).filter(Boolean)),
+    [pastors]
+  );
+
+  const isPastorMember = useCallback(member => {
+    if (!member) return false;
+    if (pastorMemberIds.has(member.id)) return true;
+    const full = norm(`${member.firstName || ''} ${member.lastName || ''}`);
+    return (full.includes('cristian') && full.includes('ortiz')) || (full.includes('romina') && full.includes('hardoy'));
+  }, [pastorMemberIds]);
 
   const leadersOf = useCallback(group => [...asArray(group.facilitators), ...asArray(group.coFacilitators)]
     .map(resolveMember)
@@ -77,8 +114,17 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     if (scopeMember) {
       return groups.filter(group => leadersOf(group).some(leader => leader.id === scopeMember.id));
     }
-    const roots = groups.filter(group => /martes|jueves/i.test(group.name || '')).slice(0, 2);
-    return roots.length ? roots : groups.slice(0, 2);
+    const orderScore = group => {
+      const name = norm(group.name || '');
+      if (name.includes('jueves')) return 1;
+      if (name.includes('martes')) return 2;
+      if (name.includes('extension')) return 3;
+      return 4;
+    };
+    const roots = groups
+      .filter(group => /martes|jueves|extensi[oó]n/i.test(group.name || ''))
+      .sort((a, b) => orderScore(a) - orderScore(b));
+    return roots.length ? roots : groups.slice(0, 3);
   }, [groups, scopeMember, leadersOf]);
 
   const membersOf = useCallback(group => {
@@ -93,6 +139,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
 
     const direct = members
       .filter(member => (sameGroup(member, group) || assigned.has(member.id)) &&
+        !isPastorMember(member) &&
         !leaderIds.has(member.id) &&
         !leaderNames.has(norm(displayName(member))) &&
         !leaderNames.has(norm(`${member.lastName} ${member.firstName}`)));
@@ -108,7 +155,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
       groups.forEach(candidate => {
         if (candidate.id === group.id || rootGroups.some(root => root.id === candidate.id)) return;
         leadersOf(candidate).forEach(leader => {
-          if (!byId[leader.id] || present.has(leader.id)) return;
+          if (!byId[leader.id] || present.has(leader.id) || isPastorMember(leader)) return;
           present.add(leader.id);
           extra.push(byId[leader.id]);
         });
@@ -117,15 +164,17 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     }
 
     return direct.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
-  }, [leadersOf, resolveMember, members, scopeMember, groups, rootGroups, byId]);
+  }, [leadersOf, resolveMember, members, scopeMember, groups, rootGroups, byId, isPastorMember]);
 
   const childGroupsOf = useCallback(group => {
     const parentMembers = membersOf(group);
     return groups.filter(candidate => {
       if (candidate.id === group.id || rootGroups.some(root => root.id === candidate.id)) return false;
-      return leadersOf(candidate).some(leader => parentMembers.some(member => member.id === leader.id));
+      return leadersOf(candidate)
+        .filter(leader => !isPastorMember(leader))
+        .some(leader => parentMembers.some(member => member.id === leader.id));
     });
-  }, [membersOf, groups, rootGroups, leadersOf]);
+  }, [membersOf, groups, rootGroups, leadersOf, isPastorMember]);
 
   const graph = useMemo(() => {
     const nodeMap = new Map();
@@ -138,24 +187,56 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
       if (!edgeMap.has(key)) edgeMap.set(key, { id: key, from, to });
     };
 
-    addNode('root', 'root', scopeMember ? displayName(scopeMember) : 'Pastores');
-    rootGroups.forEach(root => {
-      const rootId = `group:${root.id}`;
-      addNode(rootId, 'group', root.name, { group: root });
-      addEdge('root', rootId);
-    });
+    const effectiveRoots = [...rootGroups];
+    if (!scopeMember && !effectiveRoots.some(g => /extensi[oó]n/i.test(g.name || ''))) {
+      effectiveRoots.push({
+        id: 'extensiones-virtual',
+        name: 'IGLESIAS EN EXTENSIÓN',
+        type: 'Sedes en Extensión',
+      });
+    }
 
-    const visibleGroups = new Set(rootGroups.map(group => group.id));
-    const queue = [...rootGroups];
+    if (scopeMember) {
+      addNode('root', 'root', displayName(scopeMember));
+      effectiveRoots.forEach(root => {
+        const rootId = `group:${root.id}`;
+        addNode(rootId, 'group', root.name, { group: root });
+        addEdge('root', rootId);
+      });
+    } else {
+      addNode('root', 'root', 'IEA', { sub: 'Ministerio' });
+      pastors.forEach(pastor => {
+        addNode(pastor.id, 'person', pastor.label, {
+          member: pastor.member,
+          sub: pastor.sub,
+          isPastor: true,
+        });
+        addEdge('root', pastor.id);
+      });
+      effectiveRoots.forEach((root, index) => {
+        const rootId = `group:${root.id}`;
+        addNode(rootId, 'group', root.name, { group: root, rootOrder: index + 1 });
+        pastors.forEach(pastor => {
+          addEdge(pastor.id, rootId);
+        });
+      });
+    }
+
+    const visibleGroups = new Set(effectiveRoots.map(group => group.id));
+    const queue = [...effectiveRoots];
     // En vista completa ningún grupo queda afuera: los no alcanzables
-    // cuelgan directo de la raíz para que todos los nodos se desplieguen.
+    // cuelgan de los pastores (o de la raíz si hay scopeMember).
     if (showAll) {
       groups.forEach(group => {
         if (visibleGroups.has(group.id)) return;
         visibleGroups.add(group.id);
         const orphanId = `group:${group.id}`;
         addNode(orphanId, 'group', group.name, { group });
-        addEdge('root', orphanId);
+        if (scopeMember) {
+          addEdge('root', orphanId);
+        } else {
+          pastors.forEach(pastor => addEdge(pastor.id, orphanId));
+        }
         queue.push(group);
       });
     }
@@ -177,11 +258,13 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
         }
         const childId = `group:${child.id}`;
         addNode(childId, 'group', child.name, { group: child });
-        leadersOf(child).forEach(leader => {
-          const personId = `person:${leader.id}`;
-          addNode(personId, 'person', displayName(leader), { member: leader });
-          addEdge(personId, childId);
-        });
+        leadersOf(child)
+          .filter(leader => !isPastorMember(leader))
+          .forEach(leader => {
+            const personId = `person:${leader.id}`;
+            addNode(personId, 'person', displayName(leader), { member: leader });
+            addEdge(personId, childId);
+          });
       });
     }
 
@@ -217,6 +300,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     });
     Object.values(levels).forEach(column => {
       column.sort((a, b) => {
+        if (a.rootOrder && b.rootOrder) return a.rootOrder - b.rootOrder;
         const aTargets = (outgoing.get(a.id) || []).sort().join('|');
         const bTargets = (outgoing.get(b.id) || []).sort().join('|');
         const aSources = (incoming.get(a.id) || []).sort().join('|');
@@ -276,7 +360,7 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
     });
 
     return { nodes, edges, positions, width, height: viewMode === 'pyramid' ? Math.max(760, levelKeys.length * 155 + 130) : 760 };
-  }, [groups, rootGroups, expanded, viewMode, scopeMember, showAll, leadersOf, membersOf, childGroupsOf]);
+  }, [groups, rootGroups, expanded, viewMode, scopeMember, showAll, leadersOf, membersOf, childGroupsOf, pastors, isPastorMember]);
 
   useEffect(() => {
     setManualPositions({});
@@ -703,7 +787,11 @@ export default function MinistryChart({ groups = [], members = [], scopeMember =
                     </>
                   )}
                   <text x={radius + 14} y="5" className="network-node-label">{node.label}</text>
-                  {node.kind === 'group' && <text x={radius + 14} y="24" className="network-node-sub">{node.group.type || 'Grupo'}</text>}
+                  {(node.kind === 'group' || node.sub) && (
+                    <text x={radius + 14} y="24" className="network-node-sub">
+                      {node.kind === 'group' ? (node.group.type || 'Grupo') : node.sub}
+                    </text>
+                  )}
                 </g>
               );
             })}
