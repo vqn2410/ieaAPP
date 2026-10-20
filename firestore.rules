@@ -311,8 +311,14 @@ service cloud.firestore {
 
     // === Colección: notes ===
     match /notes/{noteId} {
-      allow read: if isAuth() && (resource.data.visibility == 'public' || resource.data.authorId == request.auth.uid);
-      allow create: if isAuth();
+      allow read: if isAuth() && (
+        resource.data.authorId == request.auth.uid
+        || (resource.data.visibility == 'public' && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator']))
+      );
+      allow create: if isAuth() && (
+        request.resource.data.visibility != 'public'
+        || hasAnyRole(['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'])
+      );
       allow update, delete: if isAuth() && (resource.data.authorId == request.auth.uid || hasAnyRole(['Admin', 'Pastor']));
     }
 

@@ -98,7 +98,7 @@ const MemberProfile = () => {
 
         const [members, fups, attendance, allGroups] = await Promise.all([
           isPrivileged ? getMembers() : Promise.resolve(assignedData?.members || []),
-          getFollowUpsByMember(id),
+          (isPrivileged || isFacilitator) ? getFollowUpsByMember(id) : Promise.resolve([]),
           getMemberAttendanceStats(id, m?.groupId),
           isPrivileged ? getGroups() : Promise.resolve(assignedData?.groups || []),
         ]);

@@ -26,7 +26,8 @@ export const NOTE_COLORS = [
 
 export const getNotes = async (userId, userRole = 'Member') => {
   try {
-    const isLeader = ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'].includes(userRole);
+    const roles = Array.isArray(userRole) ? userRole : [userRole].filter(Boolean);
+    const isLeader = roles.some(r => ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator'].includes(r));
     const queries = [];
 
     if (isLeader) {
