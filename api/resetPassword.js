@@ -95,29 +95,71 @@ export default async function handler(req, res) {
   const callerData = callerDoc.data();
   const callerRoles = Array.isArray(callerData.role) ? callerData.role : [callerData.role];
 
-  if (!callerRoles.includes('Admin')) {
-    return res.status(403).json({ error: 'Solo administradores pueden resetear contraseñas.' });
+  if (!callerRoles.some((r) => ['Admin', 'Pastor'].includes(r))) {
+    return res.status(403).json({ error: 'Solo administradores o pastores pueden gestionar contraseñas y usuarios.' });
   }
 
-  const { email } = req.body;
+  const { email, name, roles } = req.body || {};
 
   if (!email) {
     return res.status(400).json({ error: 'El email es obligatorio.' });
   }
 
+  const cleanEmail = String(email).trim().toLowerCase();
+
   try {
-    const userRecord = await admin.auth().getUserByEmail(email);
-    await admin.auth().updateUser(userRecord.uid, {
-      password: FORCED_PASSWORD,
-    });
+    let userRecord;
+    let isCreated = false;
+    try {
+      userRecord = await admin.auth().getUserByEmail(cleanEmail);
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        userRecord = await admin.auth().createUser({
+          email: cleanEmail,
+          password: FORCED_PASSWORD,
+          displayName: name || '',
+        });
+        isCreated = true;
+      } else {
+        throw err;
+      }
+    }
+
+    if (!isCreated) {
+      await admin.auth().updateUser(userRecord.uid, {
+        password: FORCED_PASSWORD,
+      });
+    }
+
+    const assignedRoles = Array.isArray(roles) && roles.length > 0 ? roles : ['Member'];
+
     await admin.firestore().collection('users').doc(userRecord.uid).set(
-      { needsPasswordChange: true },
+      {
+        email: cleanEmail,
+        name: name || userRecord.displayName || '',
+        role: assignedRoles,
+        needsPasswordChange: true,
+        updatedAt: new Date(),
+      },
       { merge: true }
     );
 
-    res.status(200).json({ success: true, message: 'Contraseña restablecida temporalmente. El usuario deberá cambiarla al ingresar.' });
+    // Si existía un registro de preasignación 'pre-email', marcarlo como migrado
+    const preDocRef = admin.firestore().collection('users').doc(`pre-${cleanEmail}`);
+    const preDoc = await preDocRef.get();
+    if (preDoc.exists) {
+      await preDocRef.set({ migratedTo: userRecord.uid, isPending: false }, { merge: true });
+    }
+
+    res.status(200).json({
+      success: true,
+      created: isCreated,
+      message: isCreated
+        ? `¡Usuario creado con éxito! Se asignó la clave temporal "${FORCED_PASSWORD}".`
+        : `Contraseña restablecida temporalmente a "${FORCED_PASSWORD}". El usuario deberá cambiarla al ingresar.`,
+    });
   } catch (error) {
-    console.error('Error reseteando contraseña:', error);
+    console.error('Error gestionando usuario/contraseña:', error);
     res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 }

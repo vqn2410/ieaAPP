@@ -46,6 +46,7 @@ const Settings = () => {
   
   // Holidays state
   const [holidays, setHolidays] = useState([]);
+  const [creatingUserId, setCreatingUserId] = useState(null);
 
   const loadUsers = async () => {
      try {
@@ -893,8 +894,50 @@ const Settings = () => {
                           </div>
                         </td>
                         <td style={{ padding: '0.75rem 1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {!u.isMemberOnly && (
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {u.isMemberOnly ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+                                disabled={creatingUserId === u.id}
+                                onClick={async () => {
+                                  if (window.confirm(`¿Crear usuario en el sistema para ${u.name} (${u.email}) con contraseña temporal "123456"?`)) {
+                                    setCreatingUserId(u.id);
+                                    try {
+                                      const token = await currentUser.getIdToken();
+                                      const res = await fetch('/api/resetPassword', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          'Authorization': `Bearer ${token}`
+                                        },
+                                        body: JSON.stringify({
+                                          email: u.email,
+                                          name: u.name,
+                                          roles: Array.isArray(u.role) ? u.role : [u.role || 'Member']
+                                        })
+                                      });
+
+                                      if (!res.ok) {
+                                        const errData = await res.json().catch(() => ({}));
+                                        throw new Error(errData.error || 'Error del servidor al crear usuario');
+                                      }
+
+                                      const data = await res.json().catch(() => ({}));
+                                      alert(data.message || '¡Usuario creado con éxito con clave temporal "123456"!');
+                                      await loadUsers();
+                                    } catch (e) {
+                                      alert('Error: ' + e.message);
+                                    } finally {
+                                      setCreatingUserId(null);
+                                    }
+                                  }
+                                }}
+                              >
+                                {creatingUserId === u.id ? 'Creando...' : 'Crear Usuario'}
+                              </Button>
+                            ) : (
                                <>
                                  <Button 
                                     size="sm" 

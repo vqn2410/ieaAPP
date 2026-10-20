@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { loadEnvFile } from 'node:process';
 import assignedGroupsHandler from '../api/assigned-groups.js';
 import youtubeHandler from '../api/youtube.js';
+import resetPasswordHandler from '../api/resetPassword.js';
 
 try {
   loadEnvFile('.env.local');
@@ -12,6 +13,7 @@ try {
 const routes = {
   '/api/assigned-groups': assignedGroupsHandler,
   '/api/youtube': youtubeHandler,
+  '/api/resetPassword': resetPasswordHandler,
 };
 
 const server = createServer(async (req, res) => {
@@ -23,6 +25,20 @@ const server = createServer(async (req, res) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  // Parse JSON body for POST requests if present
+  if (req.method === 'POST') {
+    try {
+      const buffers = [];
+      for await (const chunk of req) {
+        buffers.push(chunk);
+      }
+      const rawBody = Buffer.concat(buffers).toString('utf8');
+      req.body = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      req.body = {};
+    }
   }
 
   const pathname = new URL(req.url || '/', 'http://localhost').pathname;
