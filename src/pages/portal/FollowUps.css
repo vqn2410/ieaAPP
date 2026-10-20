@@ -437,6 +437,7 @@
   border-radius: 10px;
   padding: 1rem;
   margin-top: 0.75rem;
+  overflow: hidden;
 }
 
 .fups-wheel-header {
@@ -468,31 +469,39 @@
 }
 
 .fups-wheel-grid {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 1.25rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .fups-wheel-sliders {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  width: 100%;
 }
 
 .fups-dim-control-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.8125rem;
+}
+
+.fups-dim-control-row:last-child {
+  border-bottom: none;
 }
 
 .fups-dim-info {
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
   min-width: 0;
-  flex: 1;
+  width: 100%;
 }
 
 .fups-dim-name {
@@ -504,29 +513,31 @@
   font-size: 0.6875rem;
   color: var(--color-text-muted);
   white-space: normal;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .fups-dim-slider-wrap {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 0 0 160px;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .fups-dim-slider {
   flex: 1;
+  width: 100%;
   accent-color: var(--color-primary);
-  height: 6px;
+  height: 8px;
   cursor: pointer;
 }
 
 .fups-dim-score {
   font-weight: 700;
-  font-size: 0.8125rem;
-  min-width: 20px;
+  font-size: 0.875rem;
+  min-width: 26px;
   text-align: right;
   color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .fups-wheel-radar-preview {
@@ -537,15 +548,12 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 640px) {
-  .fups-wheel-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
   .fups-wheel-section {
     padding: 0.75rem;
   }
@@ -554,37 +562,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.35rem;
-  }
-
-  .fups-dim-control-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .fups-dim-control-row:last-child {
-    border-bottom: none;
-  }
-
-  .fups-dim-info {
-    width: 100%;
-  }
-
-  .fups-dim-slider-wrap {
-    flex: 1 1 auto;
-    width: 100%;
-    gap: 0.75rem;
-  }
-
-  .fups-dim-slider {
-    height: 8px;
-  }
-
-  .fups-dim-score {
-    min-width: 26px;
-    font-size: 0.875rem;
   }
 }
 

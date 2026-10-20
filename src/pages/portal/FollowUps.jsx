@@ -575,7 +575,7 @@ const FollowUps = () => {
               </div>
 
               <div className="fups-wheel-radar-preview">
-                <RadarChart dimensions={PERFORMANCE_DIMENSIONS} values={performanceValues} size={200} />
+                <RadarChart dimensions={PERFORMANCE_DIMENSIONS} values={performanceValues} size={240} />
                 <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
                   Vista previa en PDF
                 </span>

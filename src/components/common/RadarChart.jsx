@@ -1,7 +1,7 @@
 import React from 'react';
 
 const CENTER = 150;
-const RADIUS = 105;
+const RADIUS = 92;
 
 const pointAt = (index, total, value) => {
   const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
@@ -40,7 +40,14 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
   });
 
   return (
-    <svg width={size} height={size} viewBox="0 0 300 300" role="img" aria-label="Rueda de vida">
+    <svg
+      width={size}
+      height={size}
+      viewBox="-35 0 370 300"
+      style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
+      role="img"
+      aria-label="Rueda de vida"
+    >
       {gridRings}
       {axes}
       <polygon
@@ -52,7 +59,7 @@ const RadarChart = ({ dimensions, values, size = 320 }) => {
       {dimensions.map((d, i) => {
         const v = Math.max(0, Math.min(10, Number(values[d.key]) || 0));
         const p = pointAt(i, total, v);
-        const labelP = pointAt(i, total, 11.5);
+        const labelP = pointAt(i, total, 11.4);
         return (
           <g key={d.key}>
             <circle cx={p.x} cy={p.y} r="3.5" style={{ fill: 'var(--color-primary)' }} />
