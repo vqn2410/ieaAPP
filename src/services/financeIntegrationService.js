@@ -26,6 +26,19 @@ function getFinanceDb() {
   return getFirestore(financeApp);
 }
 
+async function assertAdminOrPastorAccess() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Iniciá sesión para consultar Finanzas.');
+  const userSnap = await getDoc(doc(appDb, 'users', user.uid));
+  const data = userSnap.exists() ? userSnap.data() : {};
+  const roles = Array.isArray(data?.role) ? data.role : [data?.role].filter(Boolean);
+  const allowed = roles.some((role) => ['Admin', 'Pastor'].includes(role));
+  if (!allowed) {
+    throw new Error('Acceso restringido: la consulta de aportes y finanzas está reservada exclusivamente para Pastores y Administración.');
+  }
+  return user;
+}
+
 export function normalizeText(value) {
   return String(value || '')
     .toLowerCase()
@@ -213,7 +226,7 @@ function buildUnifiedContributors(contribuyentes, transactions) {
 }
 
 export async function getFinanceSummary(params = {}) {
-  if (!auth.currentUser) throw new Error('Iniciá sesión para consultar Finanzas.');
+  await assertAdminOrPastorAccess();
 
   const { sedes, transactions } = await fetchFinanceCollections();
   const requestedSede = params.sedeId ? String(params.sedeId) : '';
@@ -313,7 +326,7 @@ export async function getFinanceSummary(params = {}) {
 }
 
 export async function getFinanceDatabaseMatch() {
-  if (!auth.currentUser) throw new Error('Iniciá sesión para consultar el cruce de datos.');
+  await assertAdminOrPastorAccess();
 
   const [{ contribuyentes, transactions, linksByContribId }, membersSnap, campusesSnap] = await Promise.all([
     fetchFinanceCollections(),
@@ -507,8 +520,7 @@ export async function linkContributorToMember({
   matchScore = 100,
   matchType = 'manual',
 }) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Iniciá sesión para vincular registros.');
+  const user = await assertAdminOrPastorAccess();
   if (!financialContributorId || !ieaAppMemberId) {
     throw new Error('Seleccioná tanto el contribuyente como el miembro de IEA APP.');
   }
@@ -541,8 +553,7 @@ export async function linkContributorToMember({
 }
 
 export async function unlinkContributorFromMember(financialContributorId) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Iniciá sesión para desvincular registros.');
+  const user = await assertAdminOrPastorAccess();
   if (!financialContributorId) throw new Error('Indicá el registro financiero que debe desvincularse.');
 
   const now = new Date().toISOString();
@@ -564,8 +575,7 @@ export async function unlinkContributorFromMember(financialContributorId) {
 }
 
 export async function autoMatchContributors(minScore = 92) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Iniciá sesión para ejecutar el cruce automático.');
+  await assertAdminOrPastorAccess();
 
   const { rows } = await getFinanceDatabaseMatch();
   const candidates = rows.filter(
@@ -603,8 +613,7 @@ export async function autoMatchContributors(minScore = 92) {
 }
 
 export async function getMemberFinanceHistory(memberId) {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Iniciá sesión para consultar Finanzas.');
+  await assertAdminOrPastorAccess();
   if (!memberId) throw new Error('El identificador del miembro no es válido.');
 
   const [memberSnap, { contribuyentes, transactions, linksByContribId }] = await Promise.all([

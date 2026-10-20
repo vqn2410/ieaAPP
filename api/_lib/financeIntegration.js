@@ -170,7 +170,12 @@ export async function getFinanceIdentity(context) {
   const userData = userSnap.data();
   const roles = Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean);
   const isGlobalManager = roles.some((r) => ['Admin', 'Pastor'].includes(r));
-  const isCampusAdmin = roles.includes('CampusAdmin');
+
+  if (!isGlobalManager) {
+    const error = new Error('Los aportes y la información financiera están reservados exclusivamente para Pastores y Administración.');
+    error.statusCode = 403;
+    throw error;
+  }
 
   if (grantSnap.exists) {
     const grant = grantSnap.data();
@@ -179,31 +184,23 @@ export async function getFinanceIdentity(context) {
         system: 'ieaAPP',
         uid: context.uid,
         email: normalizeEmail(userData.email || context.email),
-        role: grant.financeRole || (isGlobalManager ? 'Administrador Central' : 'Administrador de Sede'),
+        role: grant.financeRole || 'Administrador Central',
         financeSedeIds: Array.isArray(grant.financeSedeIds) ? grant.financeSedeIds : ['central'],
-        permissions: Array.isArray(grant.permissions) ? grant.permissions : (isGlobalManager ? ['*'] : []),
+        permissions: Array.isArray(grant.permissions) ? grant.permissions : ['*'],
         active: true,
       };
     }
   }
 
-  if (isGlobalManager || isCampusAdmin) {
-    return {
-      system: 'ieaAPP',
-      uid: context.uid,
-      email: normalizeEmail(userData.email || context.email),
-      role: isGlobalManager ? 'Administrador Central' : 'Administrador de Sede',
-      financeSedeIds: ['central'],
-      permissions: isGlobalManager
-        ? ['*', 'finance.read.global', 'finance.read.summary', 'finance.read.transactions', 'finance.read.contributions', 'members.link.search', 'members.link.manage']
-        : ['finance.read.summary', 'finance.read.transactions', 'finance.read.contributions', 'members.link.search'],
-      active: true,
-    };
-  }
-
-  const error = new Error('Este usuario no tiene acceso financiero asignado.');
-  error.statusCode = 403;
-  throw error;
+  return {
+    system: 'ieaAPP',
+    uid: context.uid,
+    email: normalizeEmail(userData.email || context.email),
+    role: 'Administrador Central',
+    financeSedeIds: ['central'],
+    permissions: ['*', 'finance.read.global', 'finance.read.summary', 'finance.read.transactions', 'finance.read.contributions', 'members.link.search', 'members.link.manage'],
+    active: true,
+  };
 }
 
 function financeRole(identity) {

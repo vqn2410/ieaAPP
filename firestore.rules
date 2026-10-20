@@ -338,8 +338,7 @@ service cloud.firestore {
 
     // === Colección: finance_member_links ===
     match /finance_member_links/{linkId} {
-      allow read: if isAuth();
-      allow write: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin']);
+      allow read, write: if isAuth() && hasAnyRole(['Admin', 'Pastor']);
     }
 
     // === Denegar todo lo demás ===
