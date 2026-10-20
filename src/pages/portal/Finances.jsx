@@ -52,7 +52,7 @@ function getBadgeClass(type) {
 
 export default function Finances() {
   const { currentUser } = useAuth();
-  const { activeCampusSlug } = useCampus() || {};
+  const { activeCampusSlug, activeCampus, activeCampusId } = useCampus() || {};
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('match');
@@ -78,9 +78,10 @@ export default function Finances() {
     setLoading(true);
     setError('');
     try {
+      const campusParam = activeCampus || (activeCampusSlug ? { slug: activeCampusSlug, id: activeCampusId } : null);
       const [sumRes, matchRes] = await Promise.all([
-        getFinanceSummary(),
-        getFinanceDatabaseMatch(),
+        getFinanceSummary({ campus: campusParam }),
+        getFinanceDatabaseMatch({ campus: campusParam }),
       ]);
       setSummaryData(sumRes);
       setMatchData(matchRes);
@@ -89,7 +90,7 @@ export default function Finances() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, activeCampus, activeCampusSlug, activeCampusId]);
 
   useEffect(() => {
     loadAll();
@@ -99,7 +100,8 @@ export default function Finances() {
     setAutoMatching(true);
     setStatusMessage('');
     try {
-      const result = await autoMatchContributors(92);
+      const campusParam = activeCampus || (activeCampusSlug ? { slug: activeCampusSlug, id: activeCampusId } : null);
+      const result = await autoMatchContributors(92, { campus: campusParam });
       setStatusMessage(
         result.matchedCount > 0
           ? `Se vincularon automáticamente ${result.matchedCount} contribuyentes con miembros de IEA APP.`
@@ -194,14 +196,23 @@ export default function Finances() {
 
   const campusPrefix = activeCampusSlug ? `/${activeCampusSlug}` : '/sedecentral';
 
+  const hasFinanceData = useMemo(() => {
+    if (!summaryData || !matchData) return false;
+    const txCount = summaryData.summary?.transactionCount || 0;
+    const income = summaryData.summary?.income || 0;
+    const expense = summaryData.summary?.expense || 0;
+    const contributors = matchData.stats?.totalContributors || 0;
+    return txCount > 0 || income > 0 || expense > 0 || contributors > 0;
+  }, [summaryData, matchData]);
+
   return (
     <section className="finance-integration-page animate-fade-in">
       <div className="finance-header">
         <div>
-          <p className="finance-eyebrow">Integración Financiera</p>
+          <p className="finance-eyebrow">Integración Financiera · {activeCampus?.name || 'Sede Central'}</p>
           <h1>Finanzas y Cruce de Padrón</h1>
           <p className="finance-subtitle">
-            Conexión en vivo con la base de datos de <strong>IEA Finanzas</strong> y cruce inteligente con los miembros de <strong>IEA APP</strong>.
+            Conexión en vivo con la base de datos de <strong>IEA Finanzas</strong> para <strong>{activeCampus?.name || 'Sede Central'}</strong>.
           </p>
         </div>
         <div className="finance-header-actions">
@@ -257,7 +268,21 @@ export default function Finances() {
         </Card>
       )}
 
-      {!loading && !error && summaryData && matchData && (
+      {!loading && !error && summaryData && matchData && !hasFinanceData && (
+        <Card>
+          <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-muted)' }}>
+            <Landmark size={44} strokeWidth={1.5} style={{ margin: '0 auto 1.25rem', opacity: 0.6, color: 'var(--color-primary)' }} />
+            <h3 style={{ margin: '0 0 0.5rem', color: 'var(--color-text)', fontSize: '1.25rem' }}>
+              Sin datos financieros en {activeCampus?.name || 'esta sede'}
+            </h3>
+            <p style={{ margin: 0, maxWidth: '460px', marginInline: 'auto', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              No se registran movimientos, diezmos, ofrendas ni contribuyentes para <strong>{activeCampus?.name || 'esta sede'}</strong> en la base de IEA Finanzas.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {!loading && !error && summaryData && matchData && hasFinanceData && (
         <>
           {/* KPIs Financieros Globales */}
           <div className="finance-kpi-grid">

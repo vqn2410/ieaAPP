@@ -8,7 +8,7 @@
     "dev:api": "node scripts/localAssignedGroupsApi.js",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test tests/authHelpers.test.js tests/familyHelpers.test.js tests/communication.test.js",
+    "test": "node --test tests/authHelpers.test.js tests/familyHelpers.test.js tests/communication.test.js tests/financeScope.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project iea-rules-test \"node --test tests/firestore.rules.test.js\"",
     "preview": "vite preview"
   },

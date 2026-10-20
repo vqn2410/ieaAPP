@@ -7,15 +7,19 @@ import {
   doc,
   setDoc,
 } from 'firebase/firestore';
-import { auth, db as appDb } from './firebase';
+import { auth, db as appDb } from './firebase.js';
+import { getCampusSlug } from './campusService.js';
+import { matchesCampusFinance } from '../utils/financeHelpers.js';
+
+export { matchesCampusFinance };
 
 const FINANCE_FIREBASE_CONFIG = {
-  apiKey: import.meta.env.VITE_FINANCE_FIREBASE_API_KEY || 'AIzaSyBkjTjo2daYffuO0sEnTkWt7sYamPEs70Q',
-  authDomain: import.meta.env.VITE_FINANCE_FIREBASE_AUTH_DOMAIN || 'iea-finanzas.firebaseapp.com',
-  projectId: import.meta.env.VITE_FINANCE_FIREBASE_PROJECT_ID || 'iea-finanzas',
-  storageBucket: import.meta.env.VITE_FINANCE_FIREBASE_STORAGE_BUCKET || 'iea-finanzas.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FINANCE_FIREBASE_MESSAGING_SENDER_ID || '486672001154',
-  appId: import.meta.env.VITE_FINANCE_FIREBASE_APP_ID || '1:486672001154:web:133785df053ec7c5a62c9b',
+  apiKey: import.meta.env?.VITE_FINANCE_FIREBASE_API_KEY || 'AIzaSyBkjTjo2daYffuO0sEnTkWt7sYamPEs70Q',
+  authDomain: import.meta.env?.VITE_FINANCE_FIREBASE_AUTH_DOMAIN || 'iea-finanzas.firebaseapp.com',
+  projectId: import.meta.env?.VITE_FINANCE_FIREBASE_PROJECT_ID || 'iea-finanzas',
+  storageBucket: import.meta.env?.VITE_FINANCE_FIREBASE_STORAGE_BUCKET || 'iea-finanzas.firebasestorage.app',
+  messagingSenderId: import.meta.env?.VITE_FINANCE_FIREBASE_MESSAGING_SENDER_ID || '486672001154',
+  appId: import.meta.env?.VITE_FINANCE_FIREBASE_APP_ID || '1:486672001154:web:133785df053ec7c5a62c9b',
 };
 
 const FINANCE_APP_NAME = 'iea-finanzas-integration';
@@ -229,19 +233,29 @@ export async function getFinanceSummary(params = {}) {
   await assertAdminOrPastorAccess();
 
   const { sedes, transactions } = await fetchFinanceCollections();
+  const campus = params.campus || null;
   const requestedSede = params.sedeId ? String(params.sedeId) : '';
 
-  const filteredSedes = requestedSede && requestedSede !== 'all'
+  // Filtrar sedes según el campus activo
+  const matchingSedes = campus
+    ? sedes.filter((s) => matchesCampusFinance(s.id, campus) || matchesCampusFinance(s.name, campus))
+    : requestedSede && requestedSede !== 'all'
     ? sedes.filter((s) => s.id === requestedSede || normalizeText(s.name).includes(normalizeText(requestedSede)))
     : sedes;
-  const activeSedes = filteredSedes.length > 0 ? filteredSedes : sedes;
-  const allowedSedeIds = new Set(activeSedes.map((s) => s.id));
+
+  const allowedSedeIds = new Set(matchingSedes.map((s) => s.id));
 
   const fromDate = params.from ? new Date(`${params.from}T00:00:00.000Z`) : null;
   const toDate = params.to ? new Date(`${params.to}T23:59:59.999Z`) : null;
 
   const scopedTx = transactions.filter((tx) => {
-    if (requestedSede && requestedSede !== 'all' && !allowedSedeIds.has(tx.sedeId)) return false;
+    if (campus) {
+      const match = matchesCampusFinance(tx.sedeId, campus) || (tx.sedeId && allowedSedeIds.has(tx.sedeId));
+      if (!match) return false;
+    } else if (requestedSede && requestedSede !== 'all' && !allowedSedeIds.has(tx.sedeId)) {
+      return false;
+    }
+
     if (fromDate || toDate) {
       if (!tx.date) return false;
       const t = new Date(tx.date).getTime();
@@ -261,7 +275,7 @@ export async function getFinanceSummary(params = {}) {
   };
 
   const bySedeMap = new Map(
-    activeSedes.map((sede) => [
+    matchingSedes.map((sede) => [
       sede.id,
       {
         sedeId: sede.id,
@@ -318,15 +332,17 @@ export async function getFinanceSummary(params = {}) {
       net: totals.income - totals.expense,
       bySede: [...bySedeMap.values()],
     },
-    sedes: activeSedes,
+    sedes: matchingSedes,
     recentTransactions: scopedTx.slice(0, 100),
     from: params.from || null,
     to: params.to || null,
   };
 }
 
-export async function getFinanceDatabaseMatch() {
+export async function getFinanceDatabaseMatch(params = {}) {
   await assertAdminOrPastorAccess();
+
+  const campus = params.campus || null;
 
   const [{ contribuyentes, transactions, linksByContribId }, membersSnap, campusesSnap] = await Promise.all([
     fetchFinanceCollections(),
@@ -338,37 +354,76 @@ export async function getFinanceDatabaseMatch() {
     campusesSnap.docs.map((d) => [d.id, { id: d.id, ...d.data() }])
   );
 
-  const appMembers = membersSnap.docs
-    .map((d) => {
-      const data = d.data();
-      const firstName = String(data.firstName || '').trim();
-      const lastName = String(data.lastName || '').trim();
-      const campus = campusesById.get(data.campusId);
-      return {
-        id: d.id,
-        firstName,
-        lastName,
-        fullName: `${firstName} ${lastName}`.trim(),
-        dni: String(data.dni || ''),
-        email: String(data.email || ''),
-        phone: String(data.phone || ''),
-        group: String(data.group || ''),
-        campusId: String(data.campusId || ''),
-        campusName: campus?.name || 'Sede Central',
-      };
+  const rawMembers = membersSnap.docs.map((d) => {
+    const data = d.data();
+    const firstName = String(data.firstName || '').trim();
+    const lastName = String(data.lastName || '').trim();
+    const c = campusesById.get(data.campusId);
+    return {
+      id: d.id,
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`.trim(),
+      dni: String(data.dni || ''),
+      email: String(data.email || ''),
+      phone: String(data.phone || ''),
+      group: String(data.group || ''),
+      campusId: String(data.campusId || ''),
+      campusName: c?.name || 'Sede Central',
+      campusSlug: c?.slug || (c ? getCampusSlug(c) : 'sedecentral'),
+    };
+  });
+
+  const isCentralCampus = !campus || /central/i.test(campus.slug || campus.name || '');
+
+  const appMembers = rawMembers
+    .filter((m) => {
+      if (!campus) return true;
+      if (isCentralCampus) {
+        return !m.campusId || m.campusId === campus.id || /central/i.test(m.campusName || '');
+      }
+      return (
+        m.campusId === campus.id ||
+        matchesCampusFinance(m.campusName, campus) ||
+        matchesCampusFinance(m.campusSlug, campus)
+      );
     })
     .sort((a, b) =>
       `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'es', { sensitivity: 'base' })
     );
 
+  // Filtrar transacciones pertenecientes al campus
+  const scopedTransactions = campus
+    ? transactions.filter((tx) => matchesCampusFinance(tx.sedeId, campus))
+    : transactions;
+
+  // Filtrar contribuyentes pertenecientes al campus
+  const scopedTxContributorNames = new Set(
+    scopedTransactions.map((tx) => getSortedTokenKey(tx.contributorName)).filter(Boolean)
+  );
+  const scopedTxMemberIds = new Set(
+    scopedTransactions.map((tx) => tx.memberId).filter(Boolean)
+  );
+
+  const scopedContribuyentes = contribuyentes.filter((c) => {
+    if (!campus) return true;
+    if (c.sedeId) {
+      return matchesCampusFinance(c.sedeId, campus);
+    }
+    const key = getSortedTokenKey(c.name);
+    const hasTxInCampus = (key && scopedTxContributorNames.has(key)) || (c.id && scopedTxMemberIds.has(c.id));
+    if (hasTxInCampus) return true;
+    return isCentralCampus;
+  });
+
   const membersById = new Map(appMembers.map((m) => [m.id, m]));
-  const unifiedContributors = buildUnifiedContributors(contribuyentes, transactions);
+  const unifiedContributors = buildUnifiedContributors(scopedContribuyentes, scopedTransactions);
 
   // Aggregate transactions by sorted contributor key and memberId
   const txBySortedKey = new Map();
   const txByMemberId = new Map();
 
-  for (const tx of transactions) {
+  for (const tx of scopedTransactions) {
     if (tx.type !== 'income') continue;
     if (tx.memberId) {
       if (!txByMemberId.has(tx.memberId)) txByMemberId.set(tx.memberId, []);
@@ -574,10 +629,10 @@ export async function unlinkContributorFromMember(financialContributorId) {
   return { unlinked: true };
 }
 
-export async function autoMatchContributors(minScore = 92) {
+export async function autoMatchContributors(minScore = 92, params = {}) {
   await assertAdminOrPastorAccess();
 
-  const { rows } = await getFinanceDatabaseMatch();
+  const { rows } = await getFinanceDatabaseMatch(params);
   const candidates = rows.filter(
     (row) =>
       row.status === 'suggested' &&
