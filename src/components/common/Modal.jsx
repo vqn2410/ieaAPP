@@ -86,8 +86,9 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', className = '' }
 
   const sizeStyles = {
     sm: 'min(100%, 400px)',
-    md: 'min(100%, 500px)',
-    lg: 'min(100%, 860px)',
+    md: 'min(100%, 540px)',
+    lg: 'min(100%, 940px)',
+    xl: 'min(100%, 1120px)',
   };
 
   const handleOverlayMouseDown = (event) => {

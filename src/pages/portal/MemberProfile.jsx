@@ -690,7 +690,7 @@ const MemberProfile = () => {
         </Card>
       )}
 
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar Miembro">
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar Miembro" size="lg">
         <MemberForm onSuccess={handleEditSuccess} initialData={member} />
       </Modal>
 

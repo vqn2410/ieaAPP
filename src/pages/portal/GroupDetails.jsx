@@ -245,7 +245,7 @@ const GroupDetails = () => {
                     </div>
                 </div>
             </Modal>
-            <Modal isOpen={showCreateMember} onClose={() => setShowCreateMember(false)} title={`Nuevo miembro para ${group.name}`}>
+            <Modal isOpen={showCreateMember} onClose={() => setShowCreateMember(false)} title={`Nuevo miembro para ${group.name}`} size="lg">
                 <MemberForm fixedGroup={group.name} fixedGroupId={group.id} onSuccess={async () => {
                     await refreshMembers();
                     setShowCreateMember(false);
