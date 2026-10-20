@@ -131,7 +131,7 @@ export default function CampusSwitcher({ compact = false }) {
               className="campus-footer-action"
               onClick={() => {
                 setOpen(false);
-                navigate(`/${getCampusSlug(activeCampus)}/dashboard`);
+                window.location.href = `/${getCampusSlug(activeCampus)}/dashboard`;
               }}
             >
               <span>Ir al Dashboard de {activeCampus?.name || 'este campus'}</span>

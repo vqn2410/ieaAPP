@@ -336,6 +336,12 @@ service cloud.firestore {
       allow delete: if isGlobalManager();
     }
 
+    // === Colección: finance_member_links ===
+    match /finance_member_links/{linkId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && hasAnyRole(['Admin', 'Pastor', 'CampusAdmin']);
+    }
+
     // === Denegar todo lo demás ===
     match /{document=**} {
       allow read, write: if false;

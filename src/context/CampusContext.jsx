@@ -115,10 +115,10 @@ export function CampusProvider({ children }) {
       }
     }
 
-    if (typeof navigate === 'function') {
-      navigate(targetPath);
-    } else if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       window.location.href = targetPath;
+    } else if (typeof navigate === 'function') {
+      navigate(targetPath);
     }
   }, [campuses]);
 

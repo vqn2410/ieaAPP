@@ -155,7 +155,7 @@ const MainLayout = () => {
     { name: 'Grupos', path: `${campusPrefix}/grupos`, icon: <TrendingUp size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator'] },
     { name: 'Asignados IBRP', path: `${campusPrefix}/ibrp`, icon: <img className="ibrp-menu-icon" src="/img/ibrp-logo.svg" alt="" />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'AreaLeader'] },
     { name: 'Eventos', path: `${campusPrefix}/eventos`, icon: <Calendar size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Member'] },
-    { name: 'Finanzas', path: 'https://iea-finanzas.vercel.app/', icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor'], external: true },
+    { name: 'Finanzas', path: `${campusPrefix}/finanzas`, icon: <DollarSign size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin'] },
     { name: 'Transmisiones', path: `${campusPrefix}/transmisiones`, icon: <Radio size={20} />, roles: ['Admin', 'Pastor', 'MinistryLeader', 'Member'] },
     { name: 'Visitantes', path: `${campusPrefix}/visitantes`, icon: <UserPlus size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'Facilitator', 'CoFacilitator', 'Maestro'] },
     { name: 'Noticias', path: `${campusPrefix}/noticias`, icon: <MessageSquare size={20} />, roles: ['Admin', 'Pastor', 'Member'] },

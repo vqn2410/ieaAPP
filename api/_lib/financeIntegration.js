@@ -161,29 +161,49 @@ export async function getFinanceIdentity(context) {
     getAppClient().firestore().collection('users').doc(context.uid).get(),
     getFinanceClient().firestore().collection('integration_access').doc(context.uid).get(),
   ]);
-  if (!userSnap.exists || !grantSnap.exists) {
+  if (!userSnap.exists) {
     const error = new Error('Este usuario no tiene acceso financiero asignado.');
     error.statusCode = 403;
     throw error;
   }
 
   const userData = userSnap.data();
-  const grant = grantSnap.data();
-  if (grant.active !== true || grant.ieaAppUid !== context.uid) {
-    const error = new Error('El acceso financiero está deshabilitado.');
-    error.statusCode = 403;
-    throw error;
+  const roles = Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean);
+  const isGlobalManager = roles.some((r) => ['Admin', 'Pastor'].includes(r));
+  const isCampusAdmin = roles.includes('CampusAdmin');
+
+  if (grantSnap.exists) {
+    const grant = grantSnap.data();
+    if (grant.active === true && grant.ieaAppUid === context.uid) {
+      return {
+        system: 'ieaAPP',
+        uid: context.uid,
+        email: normalizeEmail(userData.email || context.email),
+        role: grant.financeRole || (isGlobalManager ? 'Administrador Central' : 'Administrador de Sede'),
+        financeSedeIds: Array.isArray(grant.financeSedeIds) ? grant.financeSedeIds : ['central'],
+        permissions: Array.isArray(grant.permissions) ? grant.permissions : (isGlobalManager ? ['*'] : []),
+        active: true,
+      };
+    }
   }
 
-  return {
-    system: 'ieaAPP',
-    uid: context.uid,
-    email: normalizeEmail(userData.email || context.email),
-    role: grant.financeRole || '',
-    financeSedeIds: Array.isArray(grant.financeSedeIds) ? grant.financeSedeIds : [],
-    permissions: Array.isArray(grant.permissions) ? grant.permissions : [],
-    active: true,
-  };
+  if (isGlobalManager || isCampusAdmin) {
+    return {
+      system: 'ieaAPP',
+      uid: context.uid,
+      email: normalizeEmail(userData.email || context.email),
+      role: isGlobalManager ? 'Administrador Central' : 'Administrador de Sede',
+      financeSedeIds: ['central'],
+      permissions: isGlobalManager
+        ? ['*', 'finance.read.global', 'finance.read.summary', 'finance.read.transactions', 'finance.read.contributions', 'members.link.search', 'members.link.manage']
+        : ['finance.read.summary', 'finance.read.transactions', 'finance.read.contributions', 'members.link.search'],
+      active: true,
+    };
+  }
+
+  const error = new Error('Este usuario no tiene acceso financiero asignado.');
+  error.statusCode = 403;
+  throw error;
 }
 
 function financeRole(identity) {
