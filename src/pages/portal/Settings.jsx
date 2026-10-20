@@ -255,9 +255,26 @@ const Settings = () => {
           extraData: { active: 'Activo' },
         });
       }
+      try {
+        const token = await currentUser.getIdToken();
+        await fetch('/api/resetPassword', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email,
+            name: newAdmin.name.trim(),
+            roles: ['CampusAdmin'],
+          }),
+        });
+      } catch (authErr) {
+        console.warn('Aviso creando usuario Auth para encargado:', authErr.message);
+      }
       setNewAdmin({ campusId: '', name: '', email: '' });
       await loadUsers();
-      alert('Encargado creado. Al registrarse deberá cambiar su contraseña inicial.');
+      alert('Encargado creado. Se asignó la contraseña temporal "123456". Al ingresar deberá cambiarla.');
     } catch (error) {
       console.error('Error creando encargado de campus:', error);
       alert('No se pudo crear el encargado.');

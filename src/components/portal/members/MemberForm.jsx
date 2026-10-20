@@ -27,7 +27,7 @@ const dateInputValue = (value) => {
 
 const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId, fixedCampusId }) => {
   const { activeCampusId } = useCampus();
-  const { hasRole } = useAuth();
+  const { currentUser, hasRole } = useAuth();
   const { settings } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -138,13 +138,66 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId, fixedCam
     }
     setLoading(true);
     try {
+      const cleanOldEmail = (initialData?.email || '').trim().toLowerCase();
+      const cleanNewEmail = (formData.email || '').trim().toLowerCase();
+      const emailChanged = Boolean(cleanNewEmail && cleanNewEmail !== cleanOldEmail);
+
+      let memberId = initialData?.id;
+
       if (initialData && initialData.id) {
-        await updateMember(initialData.id, { ...formData, campusId: fixedCampusId || formData.campusId || activeCampusId || null });
-        toast('Miembro actualizado correctamente', 'success');
+        await updateMember(initialData.id, {
+          ...formData,
+          campusId: fixedCampusId || formData.campusId || activeCampusId || null,
+        });
       } else {
-        await createMember({ ...formData, group: fixedGroup || formData.group, campusId: fixedCampusId || activeCampusId || null, ...(fixedGroupId && { groupId: fixedGroupId }) });
-        toast('Miembro creado correctamente', 'success');
+        const created = await createMember({
+          ...formData,
+          group: fixedGroup || formData.group,
+          campusId: fixedCampusId || activeCampusId || null,
+          ...(fixedGroupId && { groupId: fixedGroupId }),
+        });
+        memberId = created?.id;
       }
+
+      // Al cambiar o asignar un correo, forzar la clave temporal a 123456
+      if (emailChanged && currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          const res = await fetch('/api/resetPassword', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              email: cleanNewEmail,
+              oldEmail: cleanOldEmail || undefined,
+              authUid: initialData?.authUid || undefined,
+              memberId: memberId || undefined,
+              name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
+              roles: Array.isArray(formData.role) ? formData.role : [formData.role || 'Member'],
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (data.uid && memberId) {
+              await updateMember(memberId, { authUid: data.uid });
+            }
+            toast(`Correo guardado. La clave de acceso temporal es "${data.forcedPassword || '123456'}".`, 'success');
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            console.warn('Aviso al forzar clave tras cambio de correo:', errData.error);
+            toast('Miembro guardado. Verifica el usuario en Configuración si necesita clave temporal.', 'info');
+          }
+        } catch (apiErr) {
+          console.warn('No se pudo contactar con la API de contraseñas:', apiErr.message);
+          toast(initialData && initialData.id ? 'Miembro actualizado correctamente' : 'Miembro creado correctamente', 'success');
+        }
+      } else {
+        toast(initialData && initialData.id ? 'Miembro actualizado correctamente' : 'Miembro creado correctamente', 'success');
+      }
+
       if (formData.email) {
         await syncUserByEmail(formData.email, {
           role: Array.isArray(formData.role) ? formData.role : [formData.role || 'Member'],
@@ -152,6 +205,14 @@ const MemberForm = ({ onSuccess, initialData, fixedGroup, fixedGroupId, fixedCam
           managedAreas: formData.managedAreas || [],
         });
       }
+
+      if (cleanOldEmail && emailChanged) {
+        await syncUserByEmail(cleanOldEmail, {
+          email: cleanNewEmail,
+          needsPasswordChange: true,
+        });
+      }
+
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
