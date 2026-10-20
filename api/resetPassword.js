@@ -3,7 +3,7 @@ import admin from 'firebase-admin';
 const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW = 60_000;
-const FORCED_PASSWORD = '123456';
+const FORCED_PASSWORD = process.env.DEFAULT_RESET_PASSWORD || '123456';
 
 function checkRateLimit(key) {
   const now = Date.now();
@@ -110,8 +110,12 @@ export default async function handler(req, res) {
     await admin.auth().updateUser(userRecord.uid, {
       password: FORCED_PASSWORD,
     });
+    await admin.firestore().collection('users').doc(userRecord.uid).set(
+      { needsPasswordChange: true },
+      { merge: true }
+    );
 
-    res.status(200).json({ success: true, message: 'Contraseña restablecida a 123456.' });
+    res.status(200).json({ success: true, message: 'Contraseña restablecida temporalmente. El usuario deberá cambiarla al ingresar.' });
   } catch (error) {
     console.error('Error reseteando contraseña:', error);
     res.status(500).json({ error: error.message || 'Error del servidor' });

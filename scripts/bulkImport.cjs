@@ -35,9 +35,13 @@ async function bulkImport() {
 
     for (const member of members) {
       try {
+        const defaultPassword = process.env.DEFAULT_USER_PASSWORD;
+        if (!defaultPassword) {
+          throw new Error('Definí la variable de entorno DEFAULT_USER_PASSWORD antes de ejecutar este script.');
+        }
         const userRecord = await auth.createUser({
           email: member.email,
-          password: process.env.DEFAULT_USER_PASSWORD || 'Cambia2410@',
+          password: defaultPassword,
           displayName: member.displayName,
         });
 
