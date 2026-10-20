@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   const { activeCampusSlug } = useCampus();
   const location = useLocation();
 
-  if (loading) return <div className="d-flex justify-center align-center" style={{ height: '100vh' }}>Cargando...</div>;
+  if (loading) return <RouteTransition mode="loading" message="Iniciando sesión..." />;
   
   if (!currentUser) return <Navigate to="/login" />;
   
