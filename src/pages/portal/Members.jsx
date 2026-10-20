@@ -71,6 +71,9 @@ const Members = () => {
   const [filterActive, setFilterActive] = useState('');
   const [filterBaptism, setFilterBaptism] = useState('');
   const [viewStatus, setViewStatus] = useState('all');
+  const [qualityFilter, setQualityFilter] = useState(''); // '' | 'incomplete' | 'duplicates'
+  const [summaryFilter, setSummaryFilter] = useState(''); // '' | 'group' | 'leaders'
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' | 'desc'
   const [openActionId, setOpenActionId] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -246,7 +249,44 @@ const Members = () => {
     document.body.removeChild(link);
   };
 
-  const sortedMembers = [...members].sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+  const incompleteCount = members.filter(m => !String(m.dni || '').trim() || !String(m.email || '').trim()).length;
+
+  const duplicateReasonsById = React.useMemo(() => {
+    const dniCounts = new Map();
+    const emailCounts = new Map();
+    const nameCounts = new Map();
+
+    const cleanDni = (v) => String(v || '').replace(/\D+/g, '').trim();
+    const cleanEmail = (v) => String(v || '').trim().toLowerCase();
+    const cleanName = (m) => normalizeString(`${m.lastName || ''} ${m.firstName || ''}`).replace(/\s+/g, ' ').trim();
+
+    members.forEach((m) => {
+      const d = cleanDni(m.dni);
+      if (d.length >= 5) dniCounts.set(d, (dniCounts.get(d) || 0) + 1);
+      const e = cleanEmail(m.email);
+      if (e) emailCounts.set(e, (emailCounts.get(e) || 0) + 1);
+      const n = cleanName(m);
+      if (n.length >= 3) nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
+    });
+
+    const map = new Map();
+    members.forEach((m) => {
+      const reasons = [];
+      const d = cleanDni(m.dni);
+      if (d.length >= 5 && (dniCounts.get(d) || 0) > 1) reasons.push('DNI duplicado');
+      const e = cleanEmail(m.email);
+      if (e && (emailCounts.get(e) || 0) > 1) reasons.push('Email duplicado');
+      const n = cleanName(m);
+      if (n.length >= 3 && (nameCounts.get(n) || 0) > 1) reasons.push('Nombre duplicado');
+      if (reasons.length > 0) map.set(m.id, reasons);
+    });
+    return map;
+  }, [members]);
+
+  const sortedMembers = [...members].sort((a, b) => {
+    const cmp = `${a.lastName || ''} ${a.firstName || ''}`.localeCompare(`${b.lastName || ''} ${b.firstName || ''}`);
+    return sortOrder === 'desc' ? -cmp : cmp;
+  });
 
   const filteredMembers = sortedMembers.filter(m => {
     const matchSearch = (m.firstName + ' ' + m.lastName).toLowerCase().includes(debouncedSearch.toLowerCase()) ||
@@ -261,8 +301,51 @@ const Members = () => {
     const matchBaptism = filterBaptism
       ? filterBaptism === 'Sí' ? isBaptised(m) : !isBaptised(m)
       : true;
-    return matchSearch && matchGroup && matchActive && matchViewStatus && matchBaptism;
+    const matchQuality = qualityFilter === 'incomplete'
+      ? (!String(m.dni || '').trim() || !String(m.email || '').trim())
+      : qualityFilter === 'duplicates'
+        ? duplicateReasonsById.has(m.id)
+        : true;
+    const matchSummary = summaryFilter === 'group'
+      ? Boolean(m.group)
+      : summaryFilter === 'leaders'
+        ? (Array.isArray(m.role) ? m.role : [m.role]).some(role => ['Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'].includes(role))
+        : true;
+    return matchSearch && matchGroup && matchActive && matchViewStatus && matchBaptism && matchQuality && matchSummary;
   });
+
+  const handleSummaryCardClick = (tone) => {
+    setCurrentPage(1);
+    setQualityFilter('');
+    if (tone === 'members') {
+      setViewStatus('all');
+      setFilterBaptism('');
+      setSummaryFilter('');
+    } else if (tone === 'active') {
+      setViewStatus('active');
+      setSummaryFilter('');
+    } else if (tone === 'inactive') {
+      setViewStatus('inactive');
+      setSummaryFilter('');
+    } else if (tone === 'group') {
+      setSummaryFilter(prev => prev === 'group' ? '' : 'group');
+    } else if (tone === 'leaders') {
+      setSummaryFilter(prev => prev === 'leaders' ? '' : 'leaders');
+    } else if (tone === 'baptised') {
+      setFilterBaptism(prev => prev === 'Sí' ? '' : 'Sí');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setFilterGroup('');
+    setFilterActive('');
+    setFilterBaptism('');
+    setViewStatus('all');
+    setQualityFilter('');
+    setSummaryFilter('');
+    setCurrentPage(1);
+  };
 
   const ITEMS_PER_PAGE = 15;
   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
@@ -291,10 +374,51 @@ const Members = () => {
           ['En grupo', members.filter(m => m.group).length, 'group'],
           ['Líderes', members.filter(m => (Array.isArray(m.role) ? m.role : [m.role]).some(role => ['Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'].includes(role))).length, 'leaders'],
           ['Bautizados', members.filter(isBaptised).length, 'baptised'],
-        ].map(([label, value, tone]) => <div className={`members-summary-card ${tone}`} key={label}><strong>{value}</strong><span>{label}</span><ChevronRight size={14} /></div>)}
+        ].map(([label, value, tone]) => (
+          <div
+            className={`members-summary-card ${tone}`}
+            key={label}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer' }}
+            onClick={() => handleSummaryCardClick(tone)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSummaryCardClick(tone); }}
+          >
+            <strong>{value}</strong>
+            <span>{label}</span>
+            <ChevronRight size={14} />
+          </div>
+        ))}
       </div>
 
-      <div className="members-quality-card"><div><strong>Acciones de calidad documental</strong><span>{members.filter(m => !m.dni || !m.email).length} sin documento o contacto completo</span></div><Button variant="outline" size="sm">Completar documentos</Button><Button variant="outline" size="sm">Revisar duplicados</Button></div>
+      <div className="members-quality-card">
+        <div>
+          <strong>Acciones de calidad documental</strong>
+          <span>
+            {incompleteCount} sin documento o contacto completo · {duplicateReasonsById.size} posibles duplicados
+          </span>
+        </div>
+        <Button
+          variant={qualityFilter === 'incomplete' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setQualityFilter(prev => prev === 'incomplete' ? '' : 'incomplete');
+            setCurrentPage(1);
+          }}
+        >
+          {qualityFilter === 'incomplete' ? `Viendo incompletos (${incompleteCount})` : 'Completar documentos'}
+        </Button>
+        <Button
+          variant={qualityFilter === 'duplicates' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setQualityFilter(prev => prev === 'duplicates' ? '' : 'duplicates');
+            setCurrentPage(1);
+          }}
+        >
+          {qualityFilter === 'duplicates' ? `Viendo duplicados (${duplicateReasonsById.size})` : `Revisar duplicados (${duplicateReasonsById.size})`}
+        </Button>
+      </div>
 
       <Card>
           <div className="members-filters">
@@ -324,7 +448,7 @@ const Members = () => {
             <option value="Sí">Bautizado</option>
             <option value="No">No Bautizado</option>
           </select>
-           <Button variant="outline" size="sm" icon={<SlidersHorizontal size={14} />}>Filtros</Button><Button variant="outline" size="sm" icon={<RefreshCw size={14} />} onClick={loadMembers}>Recargar</Button>
+           <Button variant="outline" size="sm" icon={<SlidersHorizontal size={14} />} onClick={handleResetFilters}>Limpiar filtros</Button><Button variant="outline" size="sm" icon={<RefreshCw size={14} />} onClick={loadMembers}>Recargar</Button>
           </div>
           </div>
 
@@ -332,9 +456,9 @@ const Members = () => {
           <div style={{ padding: '1rem' }}><SkeletonTable rows={8} cols={5} /></div>
         ) : (
           <div className="members-table-wrap">
-            <div className="members-results-head"><h2><Users size={18} /> Resultados ({filteredMembers.length})</h2><div className="members-sort"><span>Orden por nombre:</span><button>Nombre A-Z</button><button>Nombre Z-A</button></div></div>
+            <div className="members-results-head"><h2><Users size={18} /> Resultados ({filteredMembers.length})</h2><div className="members-sort"><span>Orden por nombre:</span><button className={sortOrder === 'asc' ? 'active' : ''} onClick={() => setSortOrder('asc')}>Nombre A-Z</button><button className={sortOrder === 'desc' ? 'active' : ''} onClick={() => setSortOrder('desc')}>Nombre Z-A</button></div></div>
             <div className="members-view-tabs"><span>Ver:</span><button className={viewStatus === 'active' ? 'active' : ''} onClick={() => { setViewStatus('active'); setCurrentPage(1); }}>Activos ({members.filter(m => !['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button><button className={viewStatus === 'all' ? 'active' : ''} onClick={() => { setViewStatus('all'); setCurrentPage(1); }}>Todas</button><button className={viewStatus === 'inactive' ? 'active' : ''} onClick={() => { setViewStatus('inactive'); setCurrentPage(1); }}>Dados de baja ({members.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button></div>
-            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}</span>{(() => { const birthday = formatBirthday(member); return birthday ? <span className="member-birthday-inline"><Cake size={11} /> Cumpleaños: {birthday}</span> : null; })()}</div></div><div className="member-directory-status"><Badge title={roleFullNames(member, settings)}>{roleLetters(member)}</Badge><div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div><div className="member-card-foot"><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span></div></article>)}</div>
+            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}{member.dni ? ` · DNI ${member.dni}` : ' · Sin DNI'}</span>{(() => { const birthday = formatBirthday(member); return birthday ? <span className="member-birthday-inline"><Cake size={11} /> Cumpleaños: {birthday}</span> : null; })()}</div></div><div className="member-directory-status">{qualityFilter === 'incomplete' && canEdit && <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>Completar</Button>}{qualityFilter === 'duplicates' && duplicateReasonsById.has(member.id) && <Badge variant="warning">{duplicateReasonsById.get(member.id).join(' · ')}</Badge>}<Badge title={roleFullNames(member, settings)}>{roleLetters(member)}</Badge><div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div><div className="member-card-foot"><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span></div></article>)}</div>
             <table className="members-table">
               <thead>
                 <tr>

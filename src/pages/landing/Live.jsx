@@ -25,28 +25,24 @@ const getCountdown = (target, now) => {
 
 const fallbackVideos = [
   {
-    id: 'aRQz0oKHHXc',
-    title: 'Formando el carácter',
-    date: '26 de julio de 2026',
-    reflection: 'Un mensaje para crecer con convicción, madurez y una vida transformada.',
+    id: 'NPZoy9q86T8',
+    title: 'VIVENCIANDO EL EVANGELIO | ROMINA HARDOY | IEA (18/10/2026)',
+    date: '18 de octubre de 2026',
   },
   {
-    id: 'EUPJ14EeL-I',
-    title: 'La mano de Dios',
-    date: '19 de julio de 2026',
-    reflection: 'Una invitación a reconocer la guía y la obra de Dios en cada etapa.',
+    id: 'b92gM7VO38g',
+    title: 'MISION CONGO | PATRICIO VILLAROEL | IEA (11/10/2026)',
+    date: '11 de octubre de 2026',
   },
   {
-    id: 'DRSiNqmtnW0',
-    title: 'Como viendo al invisible',
-    date: '12 de julio de 2026',
-    reflection: 'Una reflexión sobre depender de Dios y caminar por fe aun sin ver todo el camino.',
+    id: 'y7CvYg45B6s',
+    title: 'JESÚS VALE MÁS | CRISTIAN ORTIZ | IEA (04/10/2026)',
+    date: '4 de octubre de 2026',
   },
   {
-    id: 'RIlsWXOw8p0',
-    title: 'Proyecto Misionero Apolos',
-    date: '5 de julio de 2026',
-    reflection: 'Una mirada al llamado misionero y al servicio que lleva esperanza a otros.',
+    id: '8Dj7s-1OuOE',
+    title: 'OTRA VEZ | CRISTIAN ORTIZ | IEA (26/09/2026)',
+    date: '26 de septiembre de 2026',
   },
 ];
 
@@ -65,7 +61,7 @@ const toCard = (v) => {
   return {
     id,
     title: v.title,
-    date: v.published ? formatDate(v.published) : v.date,
+    date: (v.published && formatDate(v.published)) || v.date || '',
     href: v.href || (id ? `https://www.youtube.com/watch?v=${id}` : ''),
   };
 };
@@ -84,14 +80,24 @@ const Live = () => {
 
   useEffect(() => {
     let active = true;
-    const load = () => fetch(iaUrl('/api/youtube'))
-      .then(res => { if (!res.ok) throw new Error('YouTube API no disponible'); return res.json(); })
-      .then(data => {
-        if (active && Array.isArray(data.videos) && data.videos.length) setVideos(data.videos.slice(0, 4).map(toCard));
-      })
-      .catch(() => {});
-    load();
-    const refresh = setInterval(load, 10 * 60 * 1000);
+    const fetchVideos = async () => {
+      const endpoints = Array.from(new Set(['/api/youtube', iaUrl('/api/youtube')]));
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (active && Array.isArray(data.videos) && data.videos.length) {
+            setVideos(data.videos.slice(0, 4).map(toCard));
+            return;
+          }
+        } catch {
+          // Intentar con el siguiente endpoint si falla
+        }
+      }
+    };
+    fetchVideos();
+    const refresh = setInterval(fetchVideos, 10 * 60 * 1000);
     return () => { active = false; clearInterval(refresh); };
   }, []);
 
