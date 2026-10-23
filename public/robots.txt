@@ -1,7 +1,13 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
+Allow: /home
+Allow: /login
+Allow: /extensiones
 Disallow: /dashboard/
+Disallow: /sedecentral/
+Disallow: /lasheras/
+Disallow: /apostoles/
 Disallow: /session-expired
 Disallow: /api/
 
