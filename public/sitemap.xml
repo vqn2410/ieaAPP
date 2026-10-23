@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Página de inicio / landing principal -->
   <url>
     <loc>https://www.iglesiaextremoamor.com.ar/home</loc>
     <lastmod>2026-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- Iglesias en Extensión (Las Heras, Apóstoles) -->
   <url>
     <loc>https://www.iglesiaextremoamor.com.ar/extensiones</loc>
     <lastmod>2026-10-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Acceso al Portal Administrativo y de Miembros -->
   <url>
     <loc>https://www.iglesiaextremoamor.com.ar/login</loc>
     <lastmod>2026-10-23</lastmod>
