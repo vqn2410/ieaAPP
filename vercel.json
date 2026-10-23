@@ -7,6 +7,20 @@
       ]
     },
     {
+      "source": "/sitemap.xml",
+      "headers": [
+        { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
       "source": "/sw.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
@@ -21,7 +35,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|google86c743ff57e4a8c6\\.html).*)",
+      "source": "/((?!api/|sitemap\\.xml|robots\\.txt|google86c743ff57e4a8c6\\.html).*)",
       "destination": "/index.html"
     }
   ]
