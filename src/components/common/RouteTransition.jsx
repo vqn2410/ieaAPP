@@ -11,7 +11,7 @@ const PREFERS_REDUCED_MOTION = typeof window !== 'undefined'
 const isPortalPath = (path) =>
   path.startsWith('/dashboard') ||
   path.includes('/dashboard') ||
-  (!['/', '/login', '/session-expired', '/maqueta-iea', '/extensiones'].includes(path));
+  (!['/', '/home', '/login', '/session-expired', '/maqueta-iea', '/extensiones'].includes(path));
 
 export default function RouteTransition({
   mode = 'navigation',
@@ -31,9 +31,9 @@ export default function RouteTransition({
     const oldPath = previousPath.current;
     previousPath.current = pathname;
 
-    if (PREFERS_REDUCED_MOTION || pathname === '/') return undefined;
+    if (PREFERS_REDUCED_MOTION || pathname === '/' || pathname === '/home') return undefined;
 
-    const wasPublic = oldPath === '/' || oldPath === '/login';
+    const wasPublic = oldPath === '/' || oldPath === '/home' || oldPath === '/login';
     const isNowPortal = isPortalPath(pathname);
 
     // Solo iniciamos una nueva transición si venimos de público a portal y no estamos ya en una

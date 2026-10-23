@@ -14,7 +14,7 @@ const InactivityTimer = ({ children }) => {
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     
-    if (currentUser && !['/login', '/session-expired', '/'].includes(location.pathname)) {
+    if (currentUser && !['/login', '/session-expired', '/', '/home'].includes(location.pathname)) {
       timerRef.current = setTimeout(handleInactivity, INACTIVITY_LIMIT);
     }
   };

@@ -87,7 +87,7 @@ const Home = () => {
       <SeoHead
         title="Iglesia Extremo Amor | Remedios de Escalada, Lanús"
         description="Iglesia cristiana en Remedios de Escalada, Lanús. Un lugar de encuentro con Dios y comunidad para la familia. Reunión general: sábados 19:30 hs."
-        canonicalUrl="/"
+        canonicalUrl="/home"
         ogImage="/img/slider-hero.jpg"
       />
       <header className={`iea-nav ${scrolled ? 'iea-nav-scrolled' : ''}`}>

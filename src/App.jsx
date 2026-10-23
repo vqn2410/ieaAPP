@@ -113,7 +113,8 @@ function App() {
         <Suspense fallback={<RouteTransition mode="loading" />}>
         <Routes>
           {/* Rutas públicas y landing */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/session-expired" element={<SessionExpired />} />
           <Route path="/maqueta-iea" element={<IeaMockup />} />

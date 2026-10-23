@@ -31,7 +31,7 @@ export default function Extensions() {
         ogImage="/img/campus-las-heras.png"
       />
       <header className="ext-nav">
-        <button onClick={() => navigate('/')}><ArrowLeft size={18} /> Volver al inicio</button>
+        <button onClick={() => navigate('/home')}><ArrowLeft size={18} /> Volver al inicio</button>
         <span>IEA · EXTENSIONES</span>
       </header>
 
@@ -56,7 +56,7 @@ export default function Extensions() {
       </section>
 
       <footer className="ext-footer">
-        <button onClick={() => navigate('/')}><ArrowLeft size={16} /> Volver al inicio</button>
+        <button onClick={() => navigate('/home')}><ArrowLeft size={16} /> Volver al inicio</button>
         <span>Un lugar de ENCUENTRO. Un lugar para la FAMILIA. Un lugar para VOS.</span>
       </footer>
     </div>
