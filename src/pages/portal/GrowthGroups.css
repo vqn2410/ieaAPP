@@ -44,7 +44,7 @@
 }
 
 .weekly-schedule-day.has-groups {
-  border-top: 3px solid #6366f1;
+  border-top: 3px solid var(--v15-accent, var(--color-primary));
 }
 
 .weekly-schedule-day h3 {
@@ -72,7 +72,7 @@
 .weekly-schedule-item time {
   display: block;
   margin-bottom: 0.25rem;
-  color: #6366f1;
+  color: var(--v15-accent, var(--color-primary));
   font-size: 0.6875rem;
   font-weight: 700;
 }

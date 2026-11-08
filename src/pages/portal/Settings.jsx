@@ -4,7 +4,7 @@ import Button from '../../components/common/Button';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { SkeletonCard } from '../../components/common/Skeleton';
-import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2, ClipboardList } from 'lucide-react';
+import { Save, Palette, Layers, Shield, Key, Calendar, ClipboardX, Lock, User, Trash2, ClipboardList, Plus, X } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../../services/firebase';
@@ -20,8 +20,19 @@ import './Settings.css';
 const Settings = () => {
   const { currentUser, userData, hasRole } = useAuth();
   const isAdmin = hasRole ? hasRole(['Admin']) : (userData?.role === 'Admin' || (Array.isArray(userData?.role) && userData.role.includes('Admin')));
-  const { settings, updateSettings, userPreferences, updateUserPreference } = useSettings();
+  const {
+    settings,
+    updateSettings,
+    userPreferences,
+    updateUserPreference,
+    personalPalette,
+    activePrimaryColor,
+    addCustomColor,
+    removeCustomColor,
+  } = useSettings();
   const [formData, setFormData] = useState(settings);
+  const [newColorHex, setNewColorHex] = useState('#ea6a2a');
+  const [newColorName, setNewColorName] = useState('');
   const reasonInputRef = useRef(null);
   const holidayDateRef = useRef(null);
   const holidayDescRef = useRef(null);
@@ -422,6 +433,134 @@ const Settings = () => {
 
   const [activeTab, setActiveTab] = useState('profile');
 
+  const handleAddColorToPalette = async (e) => {
+    if (e) e.preventDefault();
+    let hex = newColorHex.trim();
+    if (!hex.startsWith('#')) hex = `#${hex}`;
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      alert('Ingresá un código de color hexadecimal válido de 6 caracteres (ej: #ea6a2a).');
+      return;
+    }
+    await addCustomColor(hex, newColorName);
+    setNewColorName('');
+  };
+
+  const renderPersonalAppearanceCard = () => (
+    <Card
+      title={
+        <div className="d-flex align-center gap-2">
+          <Palette size={20} style={{ color: 'var(--v15-accent, var(--color-primary))' }} /> Mi apariencia y Paleta Personal
+        </div>
+      }
+      className="lg:col-span-2"
+    >
+      <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+        Elegí un color de tu paleta o creá colores nuevos personalizados. El color activo se aplica inmediatamente al Dashboard, Navbar y todas las secciones.
+      </p>
+
+      <div className="settings-appearance-grid">
+        <div className="form-group m-0">
+          <label className="form-label">Modo de visualización</label>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className={`btn ${(userPreferences?.theme || 'light') === 'light' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => updateUserPreference({ theme: 'light' })}
+            >
+              Claro
+            </button>
+            <button
+              type="button"
+              className={`btn ${(userPreferences?.theme || 'light') === 'dark' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => updateUserPreference({ theme: 'dark' })}
+            >
+              Oscuro
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group m-0">
+          <label className="form-label">Mi paleta de colores ({(personalPalette || []).length})</label>
+          <div className="settings-palette-swatches">
+            {(personalPalette || []).map(c => {
+              const isSelected = activePrimaryColor === c.value.toLowerCase();
+              return (
+                <div
+                  key={c.id || c.value}
+                  className={`settings-swatch-pill ${isSelected ? 'active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="settings-swatch-trigger"
+                    onClick={() => {
+                      setNewColorHex(c.value);
+                      updateUserPreference({ primaryColor: c.value });
+                    }}
+                    title={`Aplicar ${c.name} (${c.value})`}
+                  >
+                    <span className="settings-swatch-dot" style={{ background: c.value }} />
+                    <span className="settings-swatch-name">{c.name}</span>
+                  </button>
+                  {c.isCustom && (
+                    <button
+                      type="button"
+                      className="settings-swatch-remove"
+                      title={`Eliminar ${c.name} de mi paleta`}
+                      onClick={() => removeCustomColor(c.id || c.value)}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-custom-color-creator">
+        <label className="form-label">Crear nuevo color y agregarlo a mi paleta personal</label>
+        <div className="settings-color-creator-row">
+          <label className="settings-color-wheel-wrap" title="Seleccionar en rueda de color">
+            <input
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(newColorHex) ? newColorHex : '#ea6a2a'}
+              onChange={e => {
+                setNewColorHex(e.target.value);
+                updateUserPreference({ primaryColor: e.target.value });
+              }}
+            />
+            <span
+              className="settings-color-wheel-preview"
+              style={{ background: /^#[0-9a-fA-F]{6}$/.test(newColorHex) ? newColorHex : '#ea6a2a' }}
+            />
+          </label>
+          <input
+            type="text"
+            className="form-input settings-color-hex-input"
+            value={newColorHex}
+            onChange={e => setNewColorHex(e.target.value)}
+            placeholder="#ea6a2a"
+            maxLength={7}
+            aria-label="Código HEX del color"
+          />
+          <input
+            type="text"
+            className="form-input settings-color-name-input"
+            value={newColorName}
+            onChange={e => setNewColorName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddColorToPalette(e)}
+            placeholder="Nombre del color (ej: Dorado IEA, Azul Marino...)"
+            aria-label="Nombre del nuevo color"
+          />
+          <Button type="button" onClick={handleAddColorToPalette} icon={<Plus size={16} />}>
+            Agregar a mi paleta
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+
   if(!formData || !formData.theme || !formData.modules || !formData.roles) return <div className="p-4"><SkeletonCard /></div>;
 
   if (!isAdmin) {
@@ -430,86 +569,8 @@ const Settings = () => {
         <div className="d-flex justify-between align-center mb-4">
           <h1>Configuración</h1>
         </div>
-        <div style={{ maxWidth: '800px' }}>
-          <Card
-            title={
-              <div className="d-flex align-center gap-2">
-                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi apariencia personal
-              </div>
-            }
-          >
-            <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
-              Estos ajustes se guardan en tu perfil y solo afectan a tus dispositivos.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem' }}>
-              <div className="form-group m-0">
-                <label className="form-label">Modo de la app</label>
-                <div className="d-flex gap-2">
-                  <button
-                    type="button"
-                    className={`btn ${(userPreferences?.theme || 'light') === 'light' ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => updateUserPreference({ theme: 'light' })}
-                  >
-                    Claro
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${(userPreferences?.theme || 'light') === 'dark' ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => updateUserPreference({ theme: 'dark' })}
-                  >
-                    Oscuro
-                  </button>
-                </div>
-              </div>
-              <div className="form-group m-0">
-                <label className="form-label">Color primario (personal)</label>
-                <div className="d-flex flex-wrap gap-2 align-center">
-                  {[
-                    { name: 'Slate', value: '#1e293b' },
-                    { name: 'Azul', value: '#2563eb' },
-                    { name: 'Celeste', value: '#0ea5e9' },
-                    { name: 'Esmeralda', value: '#059669' },
-                    { name: 'Violeta', value: '#7c3aed' },
-                    { name: 'Rosa', value: '#db2777' },
-                    { name: 'Ámbar', value: '#d97706' },
-                    { name: 'Rojo', value: '#dc2626' }
-                  ].map(c => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      title={c.name}
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        background: c.value,
-                        cursor: 'pointer',
-                        border: '2px solid',
-                        borderColor: userPreferences?.primaryColor === c.value
-                          ? 'var(--color-text)'
-                          : 'transparent',
-                        outline: userPreferences?.primaryColor === c.value
-                          ? '2px solid var(--color-primary)'
-                          : 'none',
-                        outlineOffset: '2px'
-                      }}
-                      onClick={() => updateUserPreference({ primaryColor: c.value })}
-                    />
-                  ))}
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="color"
-                      title="Color personalizado"
-                      value={userPreferences?.primaryColor || formData?.theme?.primaryColor || '#1e293b'}
-                      onChange={e => updateUserPreference({ primaryColor: e.target.value })}
-                      style={{ width: '34px', height: '34px', padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'transparent' }}
-                    />
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Custom</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
+        <div style={{ maxWidth: '900px' }}>
+          {renderPersonalAppearanceCard()}
         </div>
       </div>
     );
@@ -611,6 +672,7 @@ const Settings = () => {
         
         {/* TAB: PERFIL */}
         {activeTab === 'profile' && (
+          <>
           <Card title={
               <div className="d-flex align-center gap-2">
                   <User size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi Perfil de Usuario
@@ -640,6 +702,8 @@ const Settings = () => {
                   </Button>
               </div>
           </Card>
+          {renderPersonalAppearanceCard()}
+          </>
         )}
 
         {activeTab === 'areas' && (
@@ -654,79 +718,7 @@ const Settings = () => {
         {/* TAB: SISTEMA */}
         {activeTab === 'system' && (
           <>
-            <Card title={
-              <div className="d-flex align-center gap-2">
-                <Palette size={20} style={{ color: 'var(--color-primary-light)' }} /> Mi apariencia personal
-              </div>
-            } className="lg:col-span-2">
-              <p style={{color: 'var(--color-text-muted)', marginBottom: '1.5rem'}}>
-                Estos ajustes se guardan en tu perfil y solo afectan a tus dispositivos.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: '1.5rem' }}>
-                <div className="form-group m-0">
-                  <label className="form-label">Modo de la app</label>
-                  <div className="d-flex gap-2">
-                    <button
-                      type="button"
-                      className={`btn ${(userPreferences?.theme || 'light') === 'light' ? 'btn-primary' : 'btn-outline'}`}
-                      onClick={() => updateUserPreference({ theme: 'light' })}
-                    >
-                      Claro
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${(userPreferences?.theme || 'light') === 'dark' ? 'btn-primary' : 'btn-outline'}`}
-                      onClick={() => updateUserPreference({ theme: 'dark' })}
-                    >
-                      Oscuro
-                    </button>
-                  </div>
-                </div>
-                <div className="form-group m-0">
-                  <label className="form-label">Color primario (personal)</label>
-                  <div className="d-flex flex-wrap gap-2 align-center">
-                    {[
-                      { name: 'Slate', value: '#1e293b' },
-                      { name: 'Azul', value: '#2563eb' },
-                      { name: 'Celeste', value: '#0ea5e9' },
-                      { name: 'Esmeralda', value: '#059669' },
-                      { name: 'Violeta', value: '#7c3aed' },
-                      { name: 'Rosa', value: '#db2777' },
-                      { name: 'Ámbar', value: '#d97706' },
-                      { name: 'Rojo', value: '#dc2626' }
-                    ].map(c => (
-                      <button
-                        key={c.value}
-                        type="button"
-                        title={c.name}
-                        style={{
-                          width: '34px', height: '34px', borderRadius: '50%',
-                          background: c.value, cursor: 'pointer', border: '2px solid',
-                          borderColor: userPreferences?.primaryColor === c.value
-                            ? 'var(--color-text)'
-                            : 'transparent',
-                          outline: userPreferences?.primaryColor === c.value
-                            ? '2px solid var(--color-primary)'
-                            : 'none',
-                          outlineOffset: '2px'
-                        }}
-                        onClick={() => updateUserPreference({ primaryColor: c.value })}
-                      />
-                    ))}
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="color"
-                        title="Color personalizado"
-                        value={userPreferences?.primaryColor || formData.theme.primaryColor || '#1e293b'}
-                        onChange={e => updateUserPreference({ primaryColor: e.target.value })}
-                        style={{ width: '34px', height: '34px', padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer', background: 'transparent' }}
-                      />
-                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Custom</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
+            {renderPersonalAppearanceCard()}
 
             <Card title={
               <div className="d-flex align-center gap-2">
