@@ -1,35 +1,8 @@
-import admin from 'firebase-admin';
-
-function initAdmin() {
-  if (admin.apps.length) return;
-  let serviceAccount = null;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
-    ? Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64.replace(/\s/g, ''), 'base64').toString('utf8')
-    : process.env.FIREBASE_PRIVATE_KEY;
-  try {
-    const parsed = JSON.parse(privateKey);
-    if (parsed?.private_key) {
-      serviceAccount = parsed;
-      privateKey = parsed.private_key;
-    }
-  } catch {
-    // FIREBASE_PRIVATE_KEY puede llegar como PEM en vez de JSON Base64.
-  }
-  const clientEmail = serviceAccount?.client_email || process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || 'iea-app-73f5f';
-  if (!clientEmail || !privateKey) throw new Error('Firebase Admin no configurado: falta email o clave privada.');
-  if (serviceAccount?.project_id && process.env.FIREBASE_PROJECT_ID && serviceAccount.project_id !== process.env.FIREBASE_PROJECT_ID) {
-    throw new Error('Firebase Admin mal configurado: FIREBASE_PROJECT_ID no coincide con el proyecto del JSON de servicio.');
-  }
-  admin.initializeApp({ credential: admin.credential.cert({
-    projectId,
-    clientEmail,
-    privateKey: String(privateKey).replace(/\\n/g, '\n').replace(/\r/g, ''),
-  }) });
-}
+import { admin, getDefaultAdmin } from './_lib/firebase-admin.js';
+import { handleError, asArray } from './_lib/http.js';
+import { requireUser } from './_lib/auth.js';
 
 const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[,.;]/g, ' ').replace(/\s+/g, ' ').trim();
-const asArray = value => Array.isArray(value) ? value : value ? [value] : [];
 
 function matchesMemberReference(value, member, email, uid) {
   const reference = normalize(typeof value === 'object' ? value.id || value.email || `${value.firstName || ''} ${value.lastName || ''}` : value);
@@ -67,21 +40,13 @@ function isGroupMember(group, member) {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido.' });
   try {
-    initAdmin();
-    const authorization = String(req.headers.authorization || '');
-    if (!authorization.startsWith('Bearer ')) return res.status(401).json({ error: 'Se requiere una sesión autenticada.' });
-    let token;
-    try {
-      token = await admin.auth().verifyIdToken(authorization.slice(7));
-    } catch {
-      return res.status(401).json({ error: 'La sesión no es válida. Cerrá sesión y volvé a entrar.' });
-    }
-    const db = admin.firestore();
-    const user = (await db.collection('users').doc(token.uid).get()).data() || {};
-    const roles = Array.isArray(user.role) ? user.role : [user.role];
-    const email = String(token.email || '').trim().toLowerCase();
+    const app = getDefaultAdmin();
+    const db = app.firestore();
+    const { decoded, user, roles } = await requireUser(req, app);
+    const email = String(decoded.email || '').trim().toLowerCase();
     const memberCollection = db.collection('members');
-    let ownSnapshot = await memberCollection.where('authUid', '==', token.uid).limit(1).get();
+
+    let ownSnapshot = await memberCollection.where('authUid', '==', decoded.uid).limit(1).get();
     if (ownSnapshot.empty && email) ownSnapshot = await memberCollection.where('email', '==', email).limit(1).get();
     if (ownSnapshot.empty && email) {
       // Compatibilidad temporal con emails históricos guardados con mayúsculas/espacios.
@@ -93,11 +58,11 @@ export default async function handler(req, res) {
     }
     const ownDoc = ownSnapshot.docs[0];
     const own = ownDoc ? { id: ownDoc.id, ...ownDoc.data() } : null;
-    if (own && own.authUid !== token.uid) {
-      await memberCollection.doc(own.id).update({ authUid: token.uid, updatedAt: admin.firestore.Timestamp.now() });
-      own.authUid = token.uid;
+    if (own && own.authUid !== decoded.uid) {
+      await memberCollection.doc(own.id).update({ authUid: decoded.uid, updatedAt: admin.firestore.Timestamp.now() });
+      own.authUid = decoded.uid;
     }
-    const ownMemberRoles = Array.isArray(own?.role) ? own.role : [own?.role];
+    const ownMemberRoles = asArray(own?.role);
     const isLeader = roles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role))
       || ownMemberRoles.some(role => ['Facilitator', 'CoFacilitator', 'MinistryLeader'].includes(role));
     const isGlobal = roles.some(role => ['Admin', 'Pastor'].includes(role));
@@ -113,7 +78,7 @@ export default async function handler(req, res) {
       ? groups
       : isCampusManager
         ? groups.filter(group => Array.isArray(user.campusIds) && user.campusIds.includes(group.campusId))
-        : own ? groups.filter(group => isAssignedLeader(group, own, email, token.uid)) : [];
+        : own ? groups.filter(group => isAssignedLeader(group, own, email, decoded.uid)) : [];
 
     // Backfill facilitatorEmails en grupos históricos para que las reglas de
     // Firestore autoricen después sus lecturas/escrituras directas de asistencia.
@@ -121,14 +86,15 @@ export default async function handler(req, res) {
       await Promise.all(assignedGroups.map(async group => {
         const emails = Array.isArray(group.facilitatorEmails) ? group.facilitatorEmails.map(value => String(value).toLowerCase()) : [];
         const uids = Array.isArray(group.facilitatorUids) ? group.facilitatorUids : [];
-        if (emails.includes(email) && uids.includes(token.uid)) return;
+        if (emails.includes(email) && uids.includes(decoded.uid)) return;
         const updatedEmails = [...new Set([...emails, ...(email ? [email] : [])])];
-        const updatedUids = [...new Set([...uids, token.uid])];
+        const updatedUids = [...new Set([...uids, decoded.uid])];
         await db.collection('groups').doc(group.id).update({ facilitatorEmails: updatedEmails, facilitatorUids: updatedUids });
         group.facilitatorEmails = updatedEmails;
         group.facilitatorUids = updatedUids;
       }));
     }
+
     let assignedMembers;
     if (isGlobal) {
       assignedMembers = (await memberCollection.get()).docs.map(item => ({ id: item.id, ...item.data() }));
@@ -179,7 +145,6 @@ export default async function handler(req, res) {
       },
     });
   } catch (error) {
-    console.error('Assigned groups error:', error);
-    return res.status(500).json({ error: error.message || 'No se pudieron cargar los grupos.' });
+    return handleError(res, error, 'assigned-groups');
   }
 }

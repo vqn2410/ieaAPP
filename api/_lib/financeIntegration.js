@@ -1,56 +1,26 @@
-import admin from 'firebase-admin';
+import { admin, getAdminApp } from './firebase-admin.js';
 
 const APP_PROJECT_ID = 'iea-app-73f5f';
 const FINANCE_PROJECT_ID = 'iea-finanzas';
 const MAX_TRANSACTIONS_PER_SITE = 20000;
 const PAGE_SIZE = 100;
 
-function readCredentials(prefix, fallbackProjectId) {
-  const projectId = process.env[`${prefix}_PROJECT_ID`] || fallbackProjectId;
-  const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
-  let privateKey = process.env[`${prefix}_PRIVATE_KEY_BASE64`]
-    ? Buffer.from(String(process.env[`${prefix}_PRIVATE_KEY_BASE64`]).replace(/\s/g, ''), 'base64').toString('utf8')
-    : process.env[`${prefix}_PRIVATE_KEY`];
-
-  try {
-    const parsed = JSON.parse(privateKey);
-    privateKey = parsed.private_key || privateKey;
-  } catch {
-    // The private key may be provided directly as PEM text.
-  }
-
-  if (!clientEmail || !privateKey) return null;
-  return {
-    projectId,
-    clientEmail,
-    privateKey: String(privateKey)
-      .trim()
-      .replace(/^['"]|['"]$/g, '')
-      .replace(/\\n/g, '\n')
-      .replace(/\r/g, ''),
-  };
-}
-
-function getAdminApp(name, prefix, expectedProjectId) {
-  const existing = admin.apps.find((app) => app.name === name);
-  if (existing) return existing;
-
-  const credentials = readCredentials(prefix, expectedProjectId);
-  if (!credentials || credentials.projectId !== expectedProjectId) {
-    const error = new Error('El servicio de integración todavía no está configurado.');
-    error.statusCode = 503;
-    throw error;
-  }
-
-  return admin.initializeApp({ credential: admin.credential.cert(credentials) }, name);
-}
-
 function getAppClient() {
-  return getAdminApp('iea-integration-app', 'FIREBASE', APP_PROJECT_ID);
+  return getAdminApp('iea-integration-app', {
+    prefix: 'FIREBASE',
+    fallbackProjectId: APP_PROJECT_ID,
+    expectedProjectId: APP_PROJECT_ID,
+    missingMessage: 'El servicio de integración todavía no está configurado.',
+  });
 }
 
 function getFinanceClient() {
-  return getAdminApp('iea-integration-finance', 'FINANCE_FIREBASE', FINANCE_PROJECT_ID);
+  return getAdminApp('iea-integration-finance', {
+    prefix: 'FINANCE_FIREBASE',
+    fallbackProjectId: FINANCE_PROJECT_ID,
+    expectedProjectId: FINANCE_PROJECT_ID,
+    missingMessage: 'El servicio de integración todavía no está configurado.',
+  });
 }
 
 export function applyCors(req, res) {

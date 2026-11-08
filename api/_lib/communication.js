@@ -1,51 +1,15 @@
-import admin from 'firebase-admin';
+import { getDefaultAdmin } from './firebase-admin.js';
+import { httpError } from './http.js';
+import { verifyIdToken } from './auth.js';
 
 const CHANNELS = new Set(['email', 'sms', 'push']);
 
 function configurationError(message) {
-  const error = new Error(message);
-  error.statusCode = 503;
-  error.code = 'COMMUNICATION_PROVIDER_NOT_CONFIGURED';
-  return error;
-}
-
-function initializeFirebase() {
-  if (admin.apps.length) return;
-
-  const projectId = process.env.FIREBASE_PROJECT_ID || 'iea-app-73f5f';
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
-    ? Buffer.from(String(process.env.FIREBASE_PRIVATE_KEY_BASE64).replace(/\s/g, ''), 'base64').toString('utf8')
-    : process.env.FIREBASE_PRIVATE_KEY;
-
-  if (!clientEmail || !privateKey) {
-    throw configurationError('El servicio de comunicaciones requiere credenciales de Firebase en el servidor.');
-  }
-
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey: String(privateKey).replace(/\\n/g, '\n'),
-    }),
-  });
+  return httpError(503, message, 'COMMUNICATION_PROVIDER_NOT_CONFIGURED');
 }
 
 export async function authenticateCommunication(req) {
-  initializeFirebase();
-  const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
-  if (!match) {
-    const error = new Error('Token de autenticación requerido.');
-    error.statusCode = 401;
-    throw error;
-  }
-  try {
-    return await admin.auth().verifyIdToken(match[1]);
-  } catch {
-    const error = new Error('Token inválido o expirado.');
-    error.statusCode = 401;
-    throw error;
-  }
+  return verifyIdToken(req, getDefaultAdmin());
 }
 
 function getProvider() {
@@ -56,21 +20,15 @@ function getProvider() {
 
 function validateMessage(channel, message) {
   if (!CHANNELS.has(channel)) {
-    const error = new Error('El canal de comunicación no está disponible.');
-    error.statusCode = 400;
-    throw error;
+    throw httpError(400, 'El canal de comunicación no está disponible.');
   }
   if (!message || typeof message !== 'object') {
-    const error = new Error('El contenido de la comunicación es obligatorio.');
-    error.statusCode = 400;
-    throw error;
+    throw httpError(400, 'El contenido de la comunicación es obligatorio.');
   }
   const destination = message.to || message.token;
   const content = message.body || message.text;
   if (!destination || !content) {
-    const error = new Error('La comunicación requiere destinatario y contenido.');
-    error.statusCode = 400;
-    throw error;
+    throw httpError(400, 'La comunicación requiere destinatario y contenido.');
   }
 }
 
@@ -100,13 +58,4 @@ export async function sendCommunication(channel, message) {
   }
   if (provider === 'webhook') return sendWithWebhook(channel, message);
   throw configurationError(`El proveedor de comunicaciones "${provider}" no está implementado.`);
-}
-
-export function handleCommunicationError(res, error) {
-  const status = Number(error?.statusCode) || 500;
-  if (status >= 500 && status !== 503) console.error('Communication API error:', error);
-  return res.status(status).json({
-    error: error?.message || 'No se pudo enviar la comunicación.',
-    ...(error?.code ? { code: error.code } : {}),
-  });
 }

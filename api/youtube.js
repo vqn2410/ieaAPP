@@ -1,3 +1,5 @@
+import { applyCors, methodGuard, handleError, httpError } from './_lib/http.js';
+
 const CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || 'UCJlG13t1Q5S8DJn6tFghWNw';
 const CHANNEL_HANDLE = (process.env.YOUTUBE_HANDLE || 'IEA-ESCALADA').replace(/^@/, '');
 
@@ -103,12 +105,10 @@ async function fetchFromRss() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  applyCors(req, res);
 
-  if (req.method === 'OPTIONS') return res.status(204).json({});
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido.' });
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (methodGuard(req, res, 'GET')) return;
 
   try {
     let videos = [];
@@ -128,7 +128,6 @@ export default async function handler(req, res) {
       videos: videos.slice(0, 8),
     });
   } catch (error) {
-    console.error('YouTube API error:', error);
-    return res.status(502).json({ error: 'No se pudieron obtener los videos recientes.' });
+    return handleError(res, httpError(502, 'No se pudieron obtener los videos recientes.'), 'youtube');
   }
 }

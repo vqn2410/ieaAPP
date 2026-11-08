@@ -1,58 +1,9 @@
-import admin from 'firebase-admin';
+import { getDefaultAdmin } from './_lib/firebase-admin.js';
+import { httpError, methodGuard, handleError } from './_lib/http.js';
+import { requireUser, requireRole } from './_lib/auth.js';
+import { createRateLimiter } from './_lib/rate-limit.js';
 
-const rateLimitMap = new Map();
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW = 60_000;
-
-function checkRateLimit(key) {
-  const now = Date.now();
-  const record = rateLimitMap.get(key);
-  if (!record || now - record.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(key, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (record.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-  record.count++;
-  return true;
-}
-
-function initializeFirebaseAdmin() {
-  if (admin.apps.length > 0) return true;
-
-  const projectId = process.env.FIREBASE_PROJECT_ID || "iea-app-73f5f";
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY_BASE64
-    ? Buffer.from(String(process.env.FIREBASE_PRIVATE_KEY_BASE64).replace(/\s/g, ''), 'base64').toString('utf8')
-    : process.env.FIREBASE_PRIVATE_KEY;
-  try {
-    const json = JSON.parse(privateKey);
-    privateKey = json.private_key || privateKey;
-  } catch {
-    // La variable también puede contener directamente la clave PEM.
-  }
-
-  if (!clientEmail || !privateKey) {
-    throw new Error('Faltan Variables de Entorno en Vercel.');
-  }
-
-  privateKey = String(privateKey)
-    .trim()
-    .replace(/^['"]|['"]$/g, '')
-    .replace(/\\\\n/g, '\n')
-    .replace(/\\n/g, '\n')
-    .replace(/\r/g, '');
-
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
-  });
-  return true;
-}
+const limiter = createRateLimiter({ max: 20, windowMs: 60_000 });
 
 async function callAssistant(question, knowledge = []) {
   const apiUrl = process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
@@ -103,64 +54,32 @@ async function callAssistant(question, knowledge = []) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
-  }
+  if (methodGuard(req, res, 'POST')) return;
 
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(`ip:${ip}`)) {
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  if (!limiter.check(`ip:${ip}`)) {
     return res.status(429).json({ error: 'Demasiadas solicitudes. Espera un minuto.' });
   }
 
   try {
-    initializeFirebaseAdmin();
-  } catch (initError) {
-    return res.status(500).json({ error: initError.message });
-  }
+    const { roles } = await requireUser(req);
+    requireRole(roles, ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']);
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token de autenticación requerido.' });
-  }
+    const { question } = req.body || {};
+    if (!question || typeof question !== 'string') {
+      throw httpError(400, 'La pregunta es obligatoria.');
+    }
+    const trimmedQuestion = question.trim().slice(0, 1000);
 
-  let decodedToken;
-  try {
-    decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
-  } catch {
-    return res.status(401).json({ error: 'Token inválido o expirado.' });
-  }
-
-  const callerUid = decodedToken.uid;
-  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
-  if (!callerDoc.exists) {
-    return res.status(403).json({ error: 'Usuario no encontrado en Firestore.' });
-  }
-
-  const callerData = callerDoc.data();
-  const callerRoles = Array.isArray(callerData.role) ? callerData.role : [callerData.role];
-
-  const allowed = ['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator'];
-  if (!allowed.some(r => callerRoles.includes(r))) {
-    return res.status(403).json({ error: 'Rol sin acceso al asistente.' });
-  }
-
-  const { question } = req.body;
-  if (!question || typeof question !== 'string') {
-    return res.status(400).json({ error: 'La pregunta es obligatoria.' });
-  }
-
-  const trimmedQuestion = question.trim().slice(0, 1000);
-
-  try {
-    const knowledgeSnapshot = await admin.firestore().collection('knowledge').get();
+    const knowledgeSnapshot = await getDefaultAdmin().firestore().collection('knowledge').get();
     const knowledge = knowledgeSnapshot.docs
-      .map(item => item.data())
+      .map((item) => item.data())
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
       .slice(0, 30);
+
     const answer = await callAssistant(trimmedQuestion, knowledge);
-    res.status(200).json({ answer });
+    return res.status(200).json({ answer });
   } catch (error) {
-    console.error('Assistant error:', error);
-    res.status(500).json({ error: error.message || 'Error del servidor' });
+    return handleError(res, error, 'assistant');
   }
 }

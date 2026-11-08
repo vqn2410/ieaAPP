@@ -1,20 +1,7 @@
-const rateLimitMap = new Map();
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW = 60_000;
+import { methodGuard, handleError } from './_lib/http.js';
+import { createRateLimiter } from './_lib/rate-limit.js';
 
-function checkRateLimit(key) {
-  const now = Date.now();
-  const record = rateLimitMap.get(key);
-  if (!record || now - record.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(key, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (record.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-  record.count++;
-  return true;
-}
+const limiter = createRateLimiter({ max: 20, windowMs: 60_000 });
 
 const SYSTEM = [
   'Sos IEA, el asistente oficial de la Iglesia Extremo Amor (IEA) en Remedios de Escalada, Buenos Aires.',
@@ -65,12 +52,10 @@ async function callAssistant(messages) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
-  }
+  if (methodGuard(req, res, 'POST')) return;
 
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(`pub:${ip}`)) {
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  if (!limiter.check(`pub:${ip}`)) {
     return res.status(429).json({ error: 'Demasiadas solicitudes. Espera un minuto.' });
   }
 
@@ -100,7 +85,6 @@ export default async function handler(req, res) {
     const answer = await callAssistant(messages);
     res.status(200).json({ answer });
   } catch (error) {
-    console.error('Public assistant error:', error);
-    res.status(500).json({ error: error.message || 'Error del servidor' });
+    handleError(res, error, 'public-assistant');
   }
 }
