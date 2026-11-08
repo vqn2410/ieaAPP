@@ -279,13 +279,39 @@ const BirthdayCalendar = ({ members, onMemberClick, canClickMember = false }) =>
   );
 };
 
+const DASH_CACHE_PREFIX = 'portal-iea-dash-stats:';
+
+const readCachedDashStats = (campusKey) => {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(`${DASH_CACHE_PREFIX}${campusKey || 'default'}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedDashStats = (campusKey, data) => {
+  if (typeof sessionStorage === 'undefined' || !data) return;
+  try {
+    sessionStorage.setItem(`${DASH_CACHE_PREFIX}${campusKey || 'default'}`, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota errors
+  }
+};
+
 const Dashboard = () => {
   const { currentUser, userData, hasRole } = useAuth();
   const { activeCampusId, activeCampus, activeCampusSlug, campuses, selectCampusBySlug } = useCampus();
   const { settings } = useSettings();
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState({
+  const initialCache = useMemo(
+    () => readCachedDashStats(activeCampusId || activeCampusSlug),
+    [activeCampusId, activeCampusSlug]
+  );
+
+  const [stats, setStats] = useState(() => initialCache || {
     members: 0,
     groups: 0,
     events: 0,
@@ -297,7 +323,7 @@ const Dashboard = () => {
     pendingFollowUps: [],
     notes: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialCache);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [quickFilter, setQuickFilter] = useState('');
   const [activeBottomTab, setActiveBottomTab] = useState('birthdays');
@@ -386,7 +412,7 @@ const Dashboard = () => {
         const memberMap = {};
         members.forEach(m => { memberMap[m.id] = m; });
 
-        setStats({
+        const nextStats = {
           members: visibleMembers.length,
           groups: visibleGroups.length,
           events: visibleEvents.filter(e => e.date && new Date(e.date + 'T12:00:00') >= now).length,
@@ -402,7 +428,9 @@ const Dashboard = () => {
               : 'Miembro'
           })),
           notes: (userNotes || []).slice(0, 4),
-        });
+        };
+        setStats(nextStats);
+        writeCachedDashStats(activeCampusId || activeCampusSlug, nextStats);
       } catch {
         console.error('Error loading dashboard');
       } finally {
@@ -410,7 +438,7 @@ const Dashboard = () => {
       }
     };
     load();
-  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampus?.name, isMemberView]);
+  }, [hasRole, userData, currentUser?.uid, activeCampusId, activeCampusSlug, activeCampus?.name, isMemberView]);
 
   useEffect(() => {
     const timer = setInterval(() => {

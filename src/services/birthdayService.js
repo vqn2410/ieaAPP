@@ -2,6 +2,14 @@ import { db } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'birthdays';
+const CACHE_TTL_MS = 60_000;
+const birthdaysCache = new Map();
+const birthdaysInFlight = new Map();
+
+export const invalidateBirthdaysCache = () => {
+  birthdaysCache.clear();
+  birthdaysInFlight.clear();
+};
 
 /**
  * Extrae mes y día numéricos a partir de cualquier formato de fecha de cumpleaños.
@@ -33,35 +41,53 @@ export const extractBirthdayParts = (data) => {
  * Permite a cualquier miembro autenticado ver los cumpleaños sin violar privacidad de miembros.
  */
 export const getBirthdays = async (campusId = null) => {
-  try {
-    let q;
-    if (campusId) {
-      q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId));
-    } else {
-      q = query(collection(db, COLLECTION_NAME));
-    }
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnap => {
-      const data = docSnap.data();
-      const day = Number(data.day);
-      const month = Number(data.month);
-      return {
-        id: docSnap.id,
-        memberId: data.memberId || docSnap.id,
-        name: data.name || 'Miembro',
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        day,
-        month,
-        campusId: data.campusId || null,
-        // Fecha virtual para compatibilidad con formateadores existentes
-        birthDate: `2000-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-      };
-    });
-  } catch (err) {
-    console.error('Error obteniendo cumpleaños:', err);
-    return [];
+  const cacheKey = campusId || 'all';
+  const cached = birthdaysCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return cached.data;
   }
+  if (birthdaysInFlight.has(cacheKey)) {
+    return birthdaysInFlight.get(cacheKey);
+  }
+
+  const request = (async () => {
+    try {
+      let q;
+      if (campusId) {
+        q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId));
+      } else {
+        q = query(collection(db, COLLECTION_NAME));
+      }
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        const day = Number(data.day);
+        const month = Number(data.month);
+        return {
+          id: docSnap.id,
+          memberId: data.memberId || docSnap.id,
+          name: data.name || 'Miembro',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          day,
+          month,
+          campusId: data.campusId || null,
+          // Fecha virtual para compatibilidad con formateadores existentes
+          birthDate: `2000-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        };
+      });
+      birthdaysCache.set(cacheKey, { ts: Date.now(), data: list });
+      return list;
+    } catch (err) {
+      console.error('Error obteniendo cumpleaños:', err);
+      return [];
+    } finally {
+      birthdaysInFlight.delete(cacheKey);
+    }
+  })();
+
+  birthdaysInFlight.set(cacheKey, request);
+  return request;
 };
 
 const BIRTHDAY_DATE_KEYS = ['birthDate', 'birthday', 'birthdate', 'dateOfBirth', 'day', 'month'];
@@ -96,6 +122,7 @@ export const syncMemberBirthday = async (member) => {
       campusId: member.campusId || null,
       updatedAt: new Date(),
     });
+    invalidateBirthdaysCache();
   } catch (err) {
     console.error('Error sincronizando cumpleaños de miembro:', err);
   }
@@ -108,6 +135,7 @@ export const deleteMemberBirthday = async (memberId) => {
   if (!memberId) return;
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, memberId));
+    invalidateBirthdaysCache();
   } catch (err) {
     console.error('Error eliminando cumpleaños:', err);
   }

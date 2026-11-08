@@ -7,18 +7,41 @@ const COLLECTION_NAME = 'events';
 const ATTENDANCE_COLLECTION = 'eventAttendance';
 const REGISTRATIONS_COLLECTION = 'eventRegistrations';
 const VOLUNTEERS_COLLECTION = 'eventVolunteers';
+const CACHE_TTL_MS = 60_000;
+let eventsCache = null;
+let eventsInFlight = null;
+
+export const invalidateEventsCache = () => {
+    eventsCache = null;
+    eventsInFlight = null;
+};
 
 export const getEvents = async () => {
-    try {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-    } catch (e) {
-        console.error("Error obteniendo eventos", e);
-        return [];
+    if (eventsCache && Date.now() - eventsCache.ts < CACHE_TTL_MS) {
+        return eventsCache.data;
     }
+    if (eventsInFlight) {
+        return eventsInFlight;
+    }
+
+    eventsInFlight = (async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+            const list = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            eventsCache = { ts: Date.now(), data: list };
+            return list;
+        } catch (e) {
+            console.error("Error obteniendo eventos", e);
+            return [];
+        } finally {
+            eventsInFlight = null;
+        }
+    })();
+
+    return eventsInFlight;
 };
 
 export const createEvent = async data => {
@@ -27,17 +50,20 @@ export const createEvent = async data => {
         createdAt: new Date(),
         updatedAt: new Date(),
     });
+    invalidateEventsCache();
     void recordAudit({ action: 'create', entity: COLLECTION_NAME, entityId: ref.id }).catch(() => {});
     return { id: ref.id, ...data };
 };
 
 export const updateEvent = async (id, data) => {
     await updateDoc(doc(db, COLLECTION_NAME, id), { ...data, updatedAt: new Date() });
+    invalidateEventsCache();
     void recordAudit({ action: 'update', entity: COLLECTION_NAME, entityId: id, metadata: { fields: Object.keys(data) } }).catch(() => {});
 };
 
 export const deleteEvent = async id => {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
+    invalidateEventsCache();
     void recordAudit({ action: 'delete', entity: COLLECTION_NAME, entityId: id }).catch(() => {});
 };
 

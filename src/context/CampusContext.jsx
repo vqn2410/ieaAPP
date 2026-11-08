@@ -1,19 +1,32 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { getCampuses, getCampusSlug, matchesCampusSlug, migrateLegacyRecordsToCampus } from '../services/campusService';
+import { DEFAULT_CAMPUSES, getCampuses, getCampusSlug, matchesCampusSlug, migrateLegacyRecordsToCampus } from '../services/campusService';
 import { getAssignedGroups } from '../services/assignedGroupService';
 import { useAuth } from './AuthContext';
 
 const CampusContext = createContext(null);
 const STORAGE_KEY = 'portal-iea-active-campus';
+const CAMPUSES_CACHE_KEY = 'portal-iea-campuses-cache';
+const LEGACY_MIGRATED_KEY = 'portal-iea-legacy-migrated-v1';
+
+const readCachedCampuses = () => {
+  if (typeof localStorage === 'undefined') return DEFAULT_CAMPUSES;
+  try {
+    const raw = localStorage.getItem(CAMPUSES_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CAMPUSES;
+  } catch {
+    return DEFAULT_CAMPUSES;
+  }
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useCampus = () => useContext(CampusContext);
 
 export function CampusProvider({ children }) {
   const { currentUser, userData, loading: authLoading, hasRole } = useAuth();
-  const [campuses, setCampuses] = useState([]);
+  const [campuses, setCampuses] = useState(readCachedCampuses);
   const [activeCampusId, setActiveCampusId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const isGlobal = hasRole(['Admin', 'Pastor']);
   const isCampusAdmin = hasRole(['CampusAdmin']);
@@ -31,13 +44,14 @@ export function CampusProvider({ children }) {
         ? getAssignedGroups().then(result => result.groups || []).catch(() => [])
         : Promise.resolve([]),
     ])
-      .then(async ([data, assignedGroups]) => {
+      .then(([data, assignedGroups]) => {
         if (!mounted) return;
         const central = data.find(campus => /central/i.test(campus.name || '') || campus.slug === 'sedecentral');
-        if (isGlobal && central && !central.id?.includes('seed')) {
-          // La base histórica no tenía campusId: pertenece a Sede Central.
-          // Se completa una sola vez; luego el servicio no encuentra legacy pendientes.
-          await migrateLegacyRecordsToCampus(central.id).catch(error => console.error('Error migrando Sede Central:', error));
+        if (isGlobal && central && !central.id?.includes('seed') && !localStorage.getItem(LEGACY_MIGRATED_KEY)) {
+          // Ejecutar en segundo plano una única vez sin bloquear la carga del portal
+          void migrateLegacyRecordsToCampus(central.id)
+            .then(() => localStorage.setItem(LEGACY_MIGRATED_KEY, '1'))
+            .catch(error => console.error('Error migrando Sede Central:', error));
         }
         const assignedCampusIds = assignedGroups.map(group => group.campusId).filter(Boolean);
         const allowedIds = [...new Set([
@@ -47,6 +61,11 @@ export function CampusProvider({ children }) {
         const visible = isGlobal ? data : data.filter(campus => allowedIds.includes(campus.id));
         const activeList = visible.filter(campus => campus.active !== false);
         setCampuses(activeList);
+        try {
+          localStorage.setItem(CAMPUSES_CACHE_KEY, JSON.stringify(activeList));
+        } catch {
+          // Ignore storage quota errors
+        }
 
         setActiveCampusId(previous => {
           if (activeList.some(campus => campus.id === previous)) return previous;

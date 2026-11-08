@@ -5,31 +5,57 @@ import { recordAudit } from './auditService';
 import { syncMemberBirthday, deleteMemberBirthday } from './birthdayService';
 
 const COLLECTION_NAME = 'members';
+const CACHE_TTL_MS = 60_000;
+const membersCache = new Map();
+const membersInFlight = new Map();
+
+export const invalidateMembersCache = () => {
+    membersCache.clear();
+    membersInFlight.clear();
+};
 
 // Obtener todos los miembros
 export const getMembers = async (groupId = null, campusId = null) => {
-    try {
-        let q;
-        if (groupId && campusId) {
-            q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId));
-        } else if (groupId) {
-            // Filtrar por grupo si el usuario es facilitador
-            q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId));
-        } else if (campusId) {
-            q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId));
-        } else {
-            // Todos los miembros
-            q = query(collection(db, COLLECTION_NAME));
-        }
-        
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .sort((a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')));
-    } catch (e) {
-        console.error("Error obteniendo miembros", e);
-        return [];
+    const cacheKey = `${groupId || 'all'}::${campusId || 'all'}`;
+    const cached = membersCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+        return cached.data;
     }
+    if (membersInFlight.has(cacheKey)) {
+        return membersInFlight.get(cacheKey);
+    }
+
+    const request = (async () => {
+        try {
+            let q;
+            if (groupId && campusId) {
+                q = query(collection(db, COLLECTION_NAME), where('groupId', '==', groupId));
+            } else if (groupId) {
+                // Filtrar por grupo si el usuario es facilitador
+                q = query(collection(db, COLLECTION_NAME), where('group', '==', groupId));
+            } else if (campusId) {
+                q = query(collection(db, COLLECTION_NAME), where('campusId', '==', campusId));
+            } else {
+                // Todos los miembros
+                q = query(collection(db, COLLECTION_NAME));
+            }
+            
+            const querySnapshot = await getDocs(q);
+            const list = querySnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')));
+            membersCache.set(cacheKey, { ts: Date.now(), data: list });
+            return list;
+        } catch (e) {
+            console.error("Error obteniendo miembros", e);
+            return [];
+        } finally {
+            membersInFlight.delete(cacheKey);
+        }
+    })();
+
+    membersInFlight.set(cacheKey, request);
+    return request;
 };
 
 // Obtener un miembro específico
@@ -75,6 +101,7 @@ export const createMember = async (memberData) => {
             ...memberData,
             createdAt: new Date()
         });
+        invalidateMembersCache();
         void recordAudit({ action: 'create', entity: COLLECTION_NAME, entityId: docRef.id }).catch(() => {});
         void syncMemberBirthday({ id: docRef.id, ...memberData }).catch(() => {});
         return { id: docRef.id, ...memberData };
@@ -91,6 +118,7 @@ export const updateMember = async (id, memberData) => {
     try {
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, { ...memberData, updatedAt: new Date() });
+        invalidateMembersCache();
         void recordAudit({ action: 'update', entity: COLLECTION_NAME, entityId: id, metadata: { fields: Object.keys(memberData) } }).catch(() => {});
         if (Object.keys(memberData || {}).some(key => BIRTHDAY_SYNC_KEYS.includes(key))) {
             void getDoc(docRef)
@@ -159,6 +187,7 @@ export const unlinkFamilyMembers = async (memberId, relatedMemberId) => {
 export const deleteMember = async (id) => {
     try {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
+        invalidateMembersCache();
         void recordAudit({ action: 'delete', entity: COLLECTION_NAME, entityId: id }).catch(() => {});
         void deleteMemberBirthday(id).catch(() => {});
     } catch (e) {

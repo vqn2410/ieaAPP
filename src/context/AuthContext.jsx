@@ -6,6 +6,26 @@ import { buildUserDataFromPreAssignment } from '../utils/authHelpers';
 
 const AuthContext = createContext();
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+const USER_CACHE_PREFIX = 'portal-iea-user-cache:';
+
+const readCachedUserData = (uid) => {
+  if (!uid || typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${USER_CACHE_PREFIX}${uid}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedUserData = (uid, data) => {
+  if (!uid || !data || typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(`${USER_CACHE_PREFIX}${uid}`, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota errors
+  }
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
@@ -53,80 +73,86 @@ export function AuthProvider({ children }) {
       setCurrentUser(user);
       
       if (user) {
-        // Fetch custom user data from Firestore
+        // Hidratar inmediatamente desde caché local para no bloquear la pantalla inicial
+        const cachedProfile = readCachedUserData(user.uid);
+        if (cachedProfile) {
+          setUserData(cachedProfile);
+          setLoading(false);
+        }
+
+        // Fetch custom user data from Firestore in parallel
         try {
           const docRef = doc(db, 'users', user.uid);
           const normalizedEmail = user.email?.trim().toLowerCase();
-          let memberSnap = { empty: true, docs: [] };
-          try {
-            if (normalizedEmail) {
-              memberSnap = await getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail)));
-            }
-          } catch (error) {
-            console.warn('No se pudo sincronizar la ficha del miembro:', error.message);
-          }
+
+          const [docSnap, memberSnap] = await Promise.all([
+            getDoc(docRef),
+            normalizedEmail
+              ? getDocs(query(collection(db, 'members'), where('email', '==', normalizedEmail))).catch((error) => {
+                  console.warn('No se pudo sincronizar la ficha del miembro:', error.message);
+                  return { empty: true, docs: [] };
+                })
+              : Promise.resolve({ empty: true, docs: [] }),
+          ]);
+
           const memberRoles = Array.isArray(memberSnap.docs[0]?.data()?.role)
             ? memberSnap.docs[0].data().role
             : [memberSnap.docs[0]?.data()?.role];
           const ownMemberDoc = memberSnap.docs[0];
           if (ownMemberDoc && ownMemberDoc.data().authUid !== user.uid) {
-            try {
-              await updateDoc(doc(db, 'members', ownMemberDoc.id), { authUid: user.uid, updatedAt: new Date() });
-            } catch (error) {
+            void updateDoc(doc(db, 'members', ownMemberDoc.id), { authUid: user.uid, updatedAt: new Date() }).catch((error) => {
               console.warn('No se pudo vincular la ficha con el UID:', error.message);
-            }
+            });
           }
           const hasAssignedGroup = memberRoles.some(role => ['Facilitator', 'CoFacilitator'].includes(role));
-          const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
             const storedData = docSnap.data();
             storedData.email = storedData.email || user.email?.toLowerCase() || '';
             storedData.name = storedData.name || user.displayName || user.email?.split('@')[0] || 'Usuario';
             storedData.role = storedData.role || ['Member'];
-            const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
-            let preData = null;
-            try {
-              const preDocSnap = await getDoc(preDocRef);
-              if (preDocSnap.exists()) preData = preDocSnap.data();
-            } catch (error) {
-              // Las reglas pueden negar la pre-asignación en instalaciones que
-              // todavía no desplegaron esa regla; no debe perderse el perfil real.
-              console.warn('No se pudo consultar la pre-asignación:', error.message);
-            }
+
             const storedRoles = Array.isArray(storedData.role) ? storedData.role : [storedData.role];
             const hasCampusAssignment = Array.isArray(storedData.campusIds) && storedData.campusIds.length > 0;
 
             if (hasAssignedGroup && storedRoles.includes('Member')) {
               const rolePatch = { role: ['Facilitator'] };
-              await updateDoc(docRef, rolePatch);
+              void updateDoc(docRef, rolePatch).catch(() => {});
               Object.assign(storedData, rolePatch);
             }
 
-            // Complete pre-assignments created before the current migration flow.
-            if (
-              preData?.isPending === true
-              && !storedData.preAssignmentAppliedAt
-              && (!hasCampusAssignment || storedRoles.includes('Member'))
-            ) {
-              const assignment = buildUserDataFromPreAssignment(preData, user.email, user.displayName);
-              const assignmentPatch = {
-                role: assignment.role,
-                campusIds: assignment.campusIds,
-                defaultCampusId: assignment.defaultCampusId,
-                preAssignmentAppliedAt: new Date(),
-              };
-              await updateDoc(docRef, assignmentPatch);
-              Object.assign(storedData, assignmentPatch);
+            // Solo consultar pre-asignación si el usuario aún no fue migrado
+            if (!storedData.preAssignmentAppliedAt && (!hasCampusAssignment || storedRoles.includes('Member'))) {
+              const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
+              let preData = null;
+              try {
+                const preDocSnap = await getDoc(preDocRef);
+                if (preDocSnap.exists()) preData = preDocSnap.data();
+              } catch (error) {
+                console.warn('No se pudo consultar la pre-asignación:', error.message);
+              }
+
+              if (preData?.isPending === true) {
+                const assignment = buildUserDataFromPreAssignment(preData, user.email, user.displayName);
+                const assignmentPatch = {
+                  role: assignment.role,
+                  campusIds: assignment.campusIds,
+                  defaultCampusId: assignment.defaultCampusId,
+                  preAssignmentAppliedAt: new Date(),
+                };
+                void updateDoc(docRef, assignmentPatch).catch(() => {});
+                Object.assign(storedData, assignmentPatch);
+              }
             }
 
             // Corrige documentos antiguos que conservaron el flag activo
             // después de haber registrado una fecha de cambio.
             if (storedData.needsPasswordChange === true && storedData.lastPasswordChange) {
-              await updateDoc(docRef, { needsPasswordChange: false });
+              void updateDoc(docRef, { needsPasswordChange: false }).catch(() => {});
               storedData.needsPasswordChange = false;
             }
             setUserData(storedData);
+            writeCachedUserData(user.uid, storedData);
           } else {
             // Document doesn't exist yet, check for pre-assignment by email
             const preDocRef = doc(db, 'users', `pre-${user.email.toLowerCase()}`);
@@ -138,10 +164,8 @@ export function AuthProvider({ children }) {
               const preData = preDocSnap.data();
               finalAuthData = buildUserDataFromPreAssignment(preData, user.email, user.displayName);
               finalAuthData.preAssignmentAppliedAt = new Date();
-              // Create the user's own document from the read-only pre-assignment.
               await setDoc(docRef, finalAuthData);
             } else {
-              // No pre-assignment, create standard Member
               finalAuthData = { 
                 role: hasAssignedGroup ? ['Facilitator'] : ['Member'],
                 email: user.email.toLowerCase(), 
@@ -153,14 +177,17 @@ export function AuthProvider({ children }) {
             }
             
             setUserData(finalAuthData);
+            writeCachedUserData(user.uid, finalAuthData);
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
-          setUserData({
-            role: ['Member'],
-            email: user.email?.toLowerCase() || '',
-            name: user.displayName || user.email?.split('@')[0] || 'Usuario',
-          });
+          if (!cachedProfile) {
+            setUserData({
+              role: ['Member'],
+              email: user.email?.toLowerCase() || '',
+              name: user.displayName || user.email?.split('@')[0] || 'Usuario',
+            });
+          }
         }
       } else {
         setUserData(null);
