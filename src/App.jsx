@@ -79,6 +79,57 @@ const NestedDashboardRedirect = () => {
   return <Navigate to={`/${campusSlug || 'sedecentral'}/${section}${location.search || ''}`} replace />;
 };
 
+const isInstalledAppMode = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const standaloneMedia =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches ||
+      window.matchMedia?.('(display-mode: fullscreen)')?.matches ||
+      window.matchMedia?.('(display-mode: minimal-ui)')?.matches;
+    const iosStandalone = window.navigator?.standalone === true;
+    const capacitorNative = window.Capacitor?.isNativePlatform?.() === true;
+    const pwaParam = new URLSearchParams(window.location.search).get('source') === 'pwa';
+    return Boolean(standaloneMedia || iosStandalone || capacitorNative || pwaParam);
+  } catch {
+    return false;
+  }
+};
+
+const RootEntry = () => {
+  const { currentUser, loading } = useAuth();
+  const { activeCampusSlug } = useCampus();
+
+  if (loading) {
+    return <RouteTransition mode="loading" message="Iniciando aplicación..." />;
+  }
+
+  if (currentUser) {
+    return <Navigate to={`/${activeCampusSlug || 'sedecentral'}/dashboard`} replace />;
+  }
+
+  if (isInstalledAppMode()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to="/home" replace />;
+};
+
+const HomeWithInstalledCheck = () => {
+  const { currentUser, loading } = useAuth();
+  const { activeCampusSlug } = useCampus();
+
+  if (isInstalledAppMode() && typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('pwa-boot-redirected')) {
+    if (loading) {
+      return <RouteTransition mode="loading" message="Iniciando aplicación..." />;
+    }
+    sessionStorage.setItem('pwa-boot-redirected', '1');
+    return <Navigate to={currentUser ? `/${activeCampusSlug || 'sedecentral'}/dashboard` : '/login'} replace />;
+  }
+
+  return <Home />;
+};
+
 const LegacyDashboardRedirect = () => {
   const { activeCampusSlug } = useCampus();
   const location = useLocation();
@@ -113,8 +164,8 @@ function App() {
         <Suspense fallback={<RouteTransition mode="loading" />}>
         <Routes>
           {/* Rutas públicas y landing */}
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/" element={<RootEntry />} />
+          <Route path="/home" element={<HomeWithInstalledCheck />} />
           <Route path="/login" element={<Login />} />
           <Route path="/session-expired" element={<SessionExpired />} />
           <Route path="/maqueta-iea" element={<IeaMockup />} />

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useCampus } from '../../context/CampusContext';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Instagram, Facebook, Youtube, Twitter } from 'lucide-react';
 import Logo from '../../components/common/Logo';
 import SeoHead from '../../components/common/SeoHead';
+import RouteTransition from '../../components/common/RouteTransition';
 import './Login.css';
 
 const Login = () => {
@@ -12,11 +14,20 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, resetPassword } = useAuth();
+  const { currentUser, loading: authLoading, login, resetPassword } = useAuth();
+  const { activeCampusSlug } = useCampus();
   const navigate = useNavigate();
   const [showReset, setShowReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  if (authLoading) {
+    return <RouteTransition mode="loading" message="Verificando sesión..." />;
+  }
+
+  if (currentUser) {
+    return <Navigate to={`/${activeCampusSlug || 'sedecentral'}/dashboard`} replace />;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
