@@ -34,6 +34,7 @@ import {
   Layers
 } from 'lucide-react';
 import EmptyState from '../../components/common/EmptyState';
+import AnnouncementsModal from '../../components/portal/AnnouncementsModal';
 import './Dashboard.css';
 
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -52,14 +53,77 @@ const normDashboard = value =>
 const currentUserEmail = userData => userData?.email || '';
 
 const announcements = [
-  { title: 'Reunión de oración', image: '/anuncios/ORACI%C3%93N.jpg' },
-  { title: 'Generosidad', image: '/anuncios/OFRENDA.jpg' },
-  { title: 'Merendero', image: '/anuncios/MERENDERO.jpg' },
-  { title: 'La Tribu adolescentes', image: '/anuncios/LA-TRIBU.jpg' },
-  { title: 'I.E.T.E.', image: '/anuncios/iete.jpg' },
-  { title: 'Grupos de amistad', image: '/anuncios/GRUPOS-DE-AMISTAD.jpg' },
-  { title: 'Cena navideña: colaboración', image: '/anuncios/DONACIONES-CENA-NAVIDE%C3%91A.jpg' },
+  {
+    title: 'Reunión de oración',
+    category: 'Oración',
+    schedule: 'Martes · 19:00 hs',
+    detail: 'Un espacio para buscar a Dios juntos, compartir pedidos y fortalecer nuestra fe como iglesia.',
+    image: '/anuncios/ORACI%C3%93N.jpg',
+  },
+  {
+    title: 'Generosidad',
+    category: 'Comunidad',
+    schedule: 'Diezmos y ofrendas',
+    detail: 'Sigamos sembrando juntos para extender el Reino y sostener la obra de la iglesia.',
+    image: '/anuncios/OFRENDA.jpg',
+  },
+  {
+    title: 'Merendero',
+    category: 'Servicio',
+    schedule: 'Miércoles · 17:00 hs',
+    detail: 'Sumate al equipo que acompaña y sirve a nuestra comunidad con amor y esperanza.',
+    image: '/anuncios/MERENDERO.jpg',
+  },
+  {
+    title: 'La Tribu adolescentes',
+    category: 'Adolescentes',
+    schedule: 'Viernes · 19:00 hs',
+    detail: 'Un encuentro pensado para adolescentes: amistad, fe, conversaciones reales y comunidad.',
+    image: '/anuncios/LA-TRIBU.jpg',
+  },
+  {
+    title: 'I.E.T.E.',
+    category: 'Formación',
+    schedule: 'Lunes · 20:00 hs',
+    detail: 'Estudiá teología con nosotros y seguí profundizando tu camino de aprendizaje y servicio.',
+    image: '/anuncios/iete.jpg',
+  },
+  {
+    title: 'Grupos de amistad',
+    category: 'Comunidad',
+    schedule: 'Consultá tu grupo cercano',
+    detail: 'Conocé un grupo cercano para compartir, crecer en la fe y transitar la vida acompañado.',
+    image: '/anuncios/GRUPOS-DE-AMISTAD.jpg',
+  },
+  {
+    title: 'Cena navideña: colaboración',
+    category: 'Solidaridad',
+    schedule: 'Campaña solidaria',
+    detail: 'Tu colaboración nos ayuda a bendecir a muchas familias en esta celebración especial.',
+    image: '/anuncios/DONACIONES-CENA-NAVIDE%C3%91A.jpg',
+  },
 ];
+
+const isMobileViewport = () => {
+  if (typeof window === 'undefined') return false;
+  if (window.Capacitor?.isNativePlatform?.() === true) return true;
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia('(max-width: 768px)').matches;
+  }
+  return window.innerWidth <= 768;
+};
+
+const shouldShowMobileAnnouncementsForUser = (uid) => {
+  if (!uid || !isMobileViewport() || typeof sessionStorage === 'undefined') return false;
+  try {
+    if (sessionStorage.getItem('portal-iea-login-announcements-pending') === '1') {
+      return true;
+    }
+    return !sessionStorage.getItem(`portal-iea-announcements-dismissed:${uid}`);
+  } catch {
+    return false;
+  }
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -325,10 +389,29 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(() => !initialCache);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const [showMobileAnnouncements, setShowMobileAnnouncements] = useState(() =>
+    shouldShowMobileAnnouncementsForUser(currentUser?.uid)
+  );
   const [quickFilter, setQuickFilter] = useState('');
   const [activeBottomTab, setActiveBottomTab] = useState('birthdays');
   const [scheduleOffset, setScheduleOffset] = useState(0);
   const [showFullBirthdayCalendar, setShowFullBirthdayCalendar] = useState(true);
+
+  // Al cerrar la ventana de anuncios, se registra el descarte para no
+  // volver a mostrarla en esta sesión (por usuario) hasta el próximo login.
+  const handleDismissMobileAnnouncements = () => {
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        if (currentUser?.uid) {
+          sessionStorage.setItem(`portal-iea-announcements-dismissed:${currentUser.uid}`, '1');
+        }
+        sessionStorage.removeItem('portal-iea-login-announcements-pending');
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    setShowMobileAnnouncements(false);
+  };
 
   const campusPrefix = `/${activeCampusSlug || 'sedecentral'}`;
   const isMemberView = hasRole(['Member'])
@@ -1220,6 +1303,12 @@ const Dashboard = () => {
           </div>
         </Motion.section>
       </div>
+
+      <AnnouncementsModal
+        open={showMobileAnnouncements}
+        onClose={handleDismissMobileAnnouncements}
+        announcements={announcements}
+      />
     </Motion.div>
   );
 };

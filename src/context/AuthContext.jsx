@@ -38,11 +38,36 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const login = useCallback((email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  const login = useCallback(async (email, password) => {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.setItem('portal-iea-login-announcements-pending', '1');
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith('portal-iea-announcements-dismissed:')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    return credential;
   }, []);
 
   const logout = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.removeItem('portal-iea-login-announcements-pending');
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith('portal-iea-announcements-dismissed:')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch {
+        // Ignore storage errors
+      }
+    }
     return signOut(auth);
   }, []);
 
