@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 
 /**
  * Sincroniza datos (rol, áreas) con el documento del usuario en `users`
@@ -38,6 +38,43 @@ export const addUserRoleByEmail = async (email, role) => {
     console.error('addUserRoleByEmail', e);
     return false;
   }
+};
+
+/**
+ * Consulta la última conexión (lastSignInTime) de los usuarios desde Firebase Auth.
+ * Devuelve un mapa `{ email: lastSignInTime|null }`.
+ */
+export const fetchLastSignInMap = async () => {
+  const user = auth.currentUser;
+  if (!user) return {};
+  const token = await user.getIdToken();
+  const res = await fetch('/api/users-last-signin', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'No se pudo obtener la última conexión de los usuarios.');
+  }
+  const data = await res.json();
+  return data.users || {};
+};
+
+/**
+ * Consulta la última conexión de un único usuario por email.
+ * Devuelve un string (lastSignInTime) o null si nunca ingresó.
+ */
+export const fetchLastSignInByEmail = async email => {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) return null;
+  const user = auth.currentUser;
+  if (!user) return null;
+  const token = await user.getIdToken();
+  const res = await fetch(`/api/users-last-signin?email=${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('No se pudo obtener la última conexión del usuario.');
+  const data = await res.json();
+  return data.users?.[key] || null;
 };
 
 export const getUserUidByEmail = async email => {

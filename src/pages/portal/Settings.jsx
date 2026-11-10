@@ -11,6 +11,8 @@ import { db } from '../../services/firebase';
 import { getHolidays, addHoliday, deleteHoliday } from '../../services/holidayService';
 import { getCampuses, createCampus, updateCampus, migrateLegacyRecordsToCampus, getCampusSlug } from '../../services/campusService';
 import { getMembers, createMember, updateMember } from '../../services/memberService';
+import { fetchLastSignInMap } from '../../services/userService';
+import { formatLastSignIn } from '../../utils/helpers';
 import { syncAllBirthdaysFromMembers } from '../../services/birthdayService';
 import MemberForm from '../../components/portal/members/MemberForm';
 import Modal from '../../components/common/Modal';
@@ -58,6 +60,7 @@ const Settings = () => {
   // Holidays state
   const [holidays, setHolidays] = useState([]);
   const [creatingUserId, setCreatingUserId] = useState(null);
+  const [lastSignInMap, setLastSignInMap] = useState({});
 
   const loadUsers = async () => {
      try {
@@ -106,6 +109,14 @@ const Settings = () => {
        });
 
        setAppUsers(finalUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+
+       // Última conexión de cada usuario (desde Firebase Auth)
+       try {
+         const signInMap = await fetchLastSignInMap();
+         setLastSignInMap(signInMap);
+       } catch (signInError) {
+         console.warn('No se pudo cargar la última conexión de los usuarios:', signInError.message);
+       }
      } catch(e) {
        console.error("Error loading combined users:", e);
      }
@@ -877,6 +888,7 @@ const Settings = () => {
                     <tr>
                       <th style={{ padding: '0.75rem 1rem' }}>Usuario</th>
                       <th style={{ padding: '0.75rem 1rem' }}>Roles Asignados</th>
+                      <th style={{ padding: '0.75rem 1rem' }}>Última conexión</th>
                       <th style={{ padding: '0.75rem 1rem' }}>Acciones</th>
                     </tr>
                   </thead>
@@ -901,6 +913,11 @@ const Settings = () => {
                                </label>
                             ))}
                           </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                            {u.isMemberOnly ? 'Nunca' : formatLastSignIn(lastSignInMap[u.email?.trim().toLowerCase()])}
+                          </span>
                         </td>
                         <td style={{ padding: '0.75rem 1rem' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>

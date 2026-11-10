@@ -52,6 +52,19 @@ export const formatDate = (dateStr) => {
   });
 };
 
+/**
+ * Formatea una fecha de última conexión (RFC 3339 / RFC 1123) a un string
+ * legible con día, mes, año y hora. Devuelve 'Nunca' si no hay valor.
+ */
+export const formatLastSignIn = (value) => {
+  if (!value) return 'Nunca';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Nunca';
+  const day = date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  return `${day} · ${time}`;
+};
+
 export const getArray = (val) => {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string' && val.trim() !== '') return val.split(',').map(s => s.trim());

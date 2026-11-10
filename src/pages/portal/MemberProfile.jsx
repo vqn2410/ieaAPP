@@ -7,6 +7,7 @@ import Badge from '../../components/common/Badge';
 import MemberForm from '../../components/portal/members/MemberForm';
 import { getMember, deleteMember, updateMember, linkFamilyMembers, unlinkFamilyMembers } from '../../services/memberService';
 import { getMembers } from '../../services/memberService';
+import { fetchLastSignInByEmail } from '../../services/userService';
 import { getGroups, updateGroup } from '../../services/groupService';
 import { ArrowLeft, User, Phone, Mail, MapPin, Hash, Shield, BookOpen, Trash2, Edit, MessageSquare, Plus, CheckCircle, Clock, AlertCircle, Flame, MoreHorizontal, QrCode, Users, GraduationCap, HeartHandshake, Wallet, Download, FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -15,7 +16,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { createFollowUp, getFollowUpsByMember, updateFollowUp, deleteFollowUp } from '../../services/followUpService';
 import { getMemberAttendanceStats } from '../../services/attendanceService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
-import { isBaptised } from '../../utils/helpers';
+import { isBaptised, formatLastSignIn } from '../../utils/helpers';
 import { getMemberFinanceHistory } from '../../services/financeIntegrationService';
 import { generateFollowUpPdf, downloadDataUrl } from '../../utils/followUpPdf';
 import { collection, getDocs, query, where, updateDoc, doc as firestoreDoc } from 'firebase/firestore';
@@ -58,6 +59,7 @@ const MemberProfile = () => {
   const [assignedGroups, setAssignedGroups] = useState([]);
   const [profileTab, setProfileTab] = useState('groups');
   const [financeHistory, setFinanceHistory] = useState(null);
+  const [lastSignIn, setLastSignIn] = useState(null);
   const [financeHistoryError, setFinanceHistoryError] = useState('');
   const [financeHistoryLoading, setFinanceHistoryLoading] = useState(false);
   const [familySearch, setFamilySearch] = useState('');
@@ -127,6 +129,9 @@ const MemberProfile = () => {
         }
         setMember(m);
         setNewGroup(m?.group || '');
+        if (isPrivileged && m?.email) {
+          fetchLastSignInByEmail(m.email).then(setLastSignIn).catch(() => setLastSignIn(null));
+        }
         setAllMembers(members.filter(other => other.id !== id));
         setFollowUps(fups);
         setAttendanceStats(attendance);
@@ -336,7 +341,7 @@ const MemberProfile = () => {
         <div className="profile-modern-card-title"><div><h2><User size={17} /> Información personal</h2><p>Carnet con QR, datos de contacto y crecimiento espiritual</p></div></div>
         <div className="profile-personal-grid">
           <div className="profile-qr-block"><div className="profile-subtitle"><QrCode size={14} /> Carnet QR</div><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrValue}`} alt="Código QR del miembro" /><small>Escaneá en grupos o eventos.</small><Button variant="outline" size="sm">Imprimir / Guardar PDF</Button></div>
-          <div className="profile-contact-block"><div className="profile-subtitle">Datos y contacto</div><div className="profile-contact-person"><div className="profile-avatar">{initialAvatar(member.firstName, member.lastName)}</div><strong>{member.firstName} {member.lastName}</strong></div><ProfileField icon={Mail} label="Email" value={member.email} /><ProfileField icon={Phone} label="Teléfono" value={member.phone} /><ProfileField icon={MapPin} label="Dirección" value={member.address} /><ProfileField icon={Hash} label="DNI" value={member.dni} /></div>
+          <div className="profile-contact-block"><div className="profile-subtitle">Datos y contacto</div><div className="profile-contact-person"><div className="profile-avatar">{initialAvatar(member.firstName, member.lastName)}</div><strong>{member.firstName} {member.lastName}</strong></div><ProfileField icon={Mail} label="Email" value={member.email} /><ProfileField icon={Phone} label="Teléfono" value={member.phone} /><ProfileField icon={MapPin} label="Dirección" value={member.address} /><ProfileField icon={Hash} label="DNI" value={member.dni} />{canViewFinance && <ProfileField icon={Clock} label="Última conexión" value={formatLastSignIn(lastSignIn)} />}</div>
           <div className="profile-growth-block"><div className="profile-subtitle"><HeartHandshake size={14} /> Crecimiento espiritual</div><p className="profile-growth-label">Etapas de crecimiento</p><div className="profile-growth-stages">{growthStages.map((stage, index) => <div className={`profile-growth-stage ${stage.active ? 'active' : ''}`} key={stage.label}><span>{index + 1}</span>{stage.label}</div>)}</div><div className="profile-active-roles"><small>Perfiles activos</small><strong>{memberRoles.join(' · ')}</strong></div></div>
         </div>
       </Card>

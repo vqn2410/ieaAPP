@@ -5,15 +5,16 @@ import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
 import MemberForm from '../../components/portal/members/MemberForm';
 import BulkUploadModal from '../../components/portal/members/BulkUploadModal';
-import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2, Users, ChevronLeft, ChevronRight, UserRoundX, SlidersHorizontal, MoreVertical, Mail, Phone, Cake } from 'lucide-react';
+import { Plus, Search, RefreshCw, FileText, Upload, Download, Edit, Trash2, Users, ChevronLeft, ChevronRight, UserRoundX, SlidersHorizontal, MoreVertical, Mail, Phone, Cake, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCampus } from '../../context/CampusContext';
 import { useSettings } from '../../context/SettingsContext';
 import { getMembers, deleteMember, updateMember } from '../../services/memberService';
+import { fetchLastSignInMap } from '../../services/userService';
 import { getGroups } from '../../services/groupService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { normalizeString, isBaptised } from '../../utils/helpers';
+import { normalizeString, isBaptised, formatLastSignIn } from '../../utils/helpers';
 import { useDebounce } from '../../utils/useDebounce';
 import EmptyState from '../../components/common/EmptyState';
 import { SkeletonTable } from '../../components/common/Skeleton';
@@ -87,6 +88,7 @@ const Members = () => {
   const [bajaMotivo, setBajaMotivo] = useState('');
   const [bajaDescripcion, setBajaDescripcion] = useState('');
   const [bajaSaving, setBajaSaving] = useState(false);
+  const [lastSignInMap, setLastSignInMap] = useState({});
 
   const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
   const canEdit = roles.some(role => ['Admin', 'Pastor', 'Facilitator', 'CoFacilitator'].includes(role));
@@ -142,6 +144,16 @@ const Members = () => {
     // actual; las dependencias correctas son el usuario y el campus activo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, activeCampusId]);
+
+  // Última conexión de cada usuario (solo Admin/Pastor).
+  useEffect(() => {
+    if (!canCreate) return;
+    let cancelled = false;
+    fetchLastSignInMap()
+      .then(map => { if (!cancelled) setLastSignInMap(map); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [canCreate]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -458,7 +470,7 @@ const Members = () => {
           <div className="members-table-wrap">
             <div className="members-results-head"><h2><Users size={18} /> Resultados ({filteredMembers.length})</h2><div className="members-sort"><span>Orden por nombre:</span><button className={sortOrder === 'asc' ? 'active' : ''} onClick={() => setSortOrder('asc')}>Nombre A-Z</button><button className={sortOrder === 'desc' ? 'active' : ''} onClick={() => setSortOrder('desc')}>Nombre Z-A</button></div></div>
             <div className="members-view-tabs"><span>Ver:</span><button className={viewStatus === 'active' ? 'active' : ''} onClick={() => { setViewStatus('active'); setCurrentPage(1); }}>Activos ({members.filter(m => !['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button><button className={viewStatus === 'all' ? 'active' : ''} onClick={() => { setViewStatus('all'); setCurrentPage(1); }}>Todas</button><button className={viewStatus === 'inactive' ? 'active' : ''} onClick={() => { setViewStatus('inactive'); setCurrentPage(1); }}>Dados de baja ({members.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).length})</button></div>
-            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}{member.dni ? ` · DNI ${member.dni}` : ' · Sin DNI'}</span>{(() => { const birthday = formatBirthday(member); return birthday ? <span className="member-birthday-inline"><Cake size={11} /> Cumpleaños: {birthday}</span> : null; })()}</div></div><div className="member-directory-status">{qualityFilter === 'incomplete' && canEdit && <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>Completar</Button>}{qualityFilter === 'duplicates' && duplicateReasonsById.has(member.id) && <Badge variant="warning">{duplicateReasonsById.get(member.id).join(' · ')}</Badge>}<Badge title={roleFullNames(member, settings)}>{roleLetters(member)}</Badge><div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div><div className="member-card-foot"><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span></div></article>)}</div>
+            <div className="members-directory-list">{filteredMembers.length === 0 ? <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." /> : paginatedMembers.map(member => <article className="member-directory-card" key={member.id}><div className="member-directory-top"><div className="member-name-cell"><div className="member-avatar">{initialAvatar(member.firstName, member.lastName)}</div><div className="member-name-info"><strong className="member-name">{member.lastName}, {member.firstName}</strong><span>{member.email || 'Sin email'}{member.dni ? ` · DNI ${member.dni}` : ' · Sin DNI'}</span>{(() => { const birthday = formatBirthday(member); return birthday ? <span className="member-birthday-inline"><Cake size={11} /> Cumpleaños: {birthday}</span> : null; })()}{canCreate && <span className="member-birthday-inline"><Clock size={11} /> Última conexión: {formatLastSignIn(lastSignInMap[member.email?.trim().toLowerCase()])}</span>}</div></div><div className="member-directory-status">{qualityFilter === 'incomplete' && canEdit && <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>Completar</Button>}{qualityFilter === 'duplicates' && duplicateReasonsById.has(member.id) && <Badge variant="warning">{duplicateReasonsById.get(member.id).join(' · ')}</Badge>}<Badge title={roleFullNames(member, settings)}>{roleLetters(member)}</Badge><div className="member-action-menu"><button className="member-more-button" onClick={() => setOpenActionId(openActionId === member.id ? null : member.id)} aria-label={`Acciones de ${member.firstName}`}><MoreVertical size={17} /></button>{openActionId === member.id && <div className="member-action-popover"><button onClick={() => navigate(`/dashboard/miembros/${member.id}`)}>Ver perfil</button>{canEdit && <button onClick={() => { setOpenActionId(null); handleEdit(member); }}>Editar</button>}{canEdit && <button onClick={() => { setOpenActionId(null); handleStatusChange(member); }}>{member.extraData?.active === 'Inactivo' ? 'Reactivar' : 'Dar de baja'}</button>}{canEdit && <button className="danger" onClick={() => { setOpenActionId(null); handleDelete(member.id); }}>Eliminar</button>}</div>}</div></div></div><div className="member-directory-details"><span><Mail />{member.email || 'Sin email'}</span><span><Phone />{member.phone || 'Sin teléfono'}</span><span>Grupo activo: <strong>{member.group || 'Sin grupo'}</strong></span></div><div className="member-card-foot"><span className={`member-status-pill ${['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'inactive' : ''}`}>{['Inactivo', 'Baja'].includes(member.extraData?.active) ? 'Inactivo' : 'Activo'}</span></div></article>)}</div>
             <table className="members-table">
               <thead>
                 <tr>
@@ -466,6 +478,7 @@ const Members = () => {
                   <th>DNI</th>
                   <th>Teléfono</th>
                   <th>Email</th>
+                  <th>Última conexión</th>
                   <th>Condición</th>
                   <th>Grupo</th>
                   <th style={{ textAlign: 'right' }}>Acciones</th>
@@ -474,7 +487,7 @@ const Members = () => {
               <tbody>
                 {filteredMembers.length === 0 ? (
                   <tr className="member-empty">
-                    <td colSpan="7">
+                    <td colSpan="8">
                       <EmptyState icon={Users} title="Sin resultados" message="No se encontraron miembros con los filtros actuales." />
                     </td>
                   </tr>
@@ -496,6 +509,9 @@ const Members = () => {
                     </td>
                     <td data-label="Email">
                       <span className="member-email">{member.email || '-'}</span>
+                    </td>
+                    <td data-label="Última conexión">
+                      <span className="member-meta-item">{canCreate ? formatLastSignIn(lastSignInMap[member.email?.trim().toLowerCase()]) : '-'}</span>
                     </td>
                     <td data-label="Condición">
                       <div className="member-meta">
