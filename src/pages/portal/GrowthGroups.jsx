@@ -11,9 +11,9 @@ import { useSettings } from '../../context/SettingsContext';
 import { getGroups, deleteGroup, updateGroup } from '../../services/groupService';
 import { getMemberByEmail, getMembers, updateMember } from '../../services/memberService';
 import { getAssignedGroups } from '../../services/assignedGroupService';
-import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats } from '../../services/attendanceService';
+import { saveAttendance, getAttendance, getAttendanceForDateRange, getGroupAttendanceStats, computeAttendanceStreaks } from '../../services/attendanceService';
 import { getHolidays } from '../../services/holidayService';
-import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck } from 'lucide-react';
+import { CalendarDays, Clock3, Heart, Users, CheckSquare, BookOpen, Save, Download, ArrowLeft, Plus, Edit, Trash2, Flame, LifeBuoy, UserPlus, Camera, Image, Network, ArrowLeftRight, FileText, CalendarCheck, Trophy } from 'lucide-react';
 import EmptyState from '../../components/common/EmptyState';
 import RadarChart from '../../components/common/RadarChart';
 import { SkeletonCard } from '../../components/common/Skeleton';
@@ -283,6 +283,7 @@ const GrowthGroups = () => {
         { id: 'rueda', title: 'Rueda de Vida', icon: <LifeBuoy size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Evaluá mes a mes la salud de tus grupos con un radar visual.', visible: canManageGroups },
         { id: 'solicitudes', title: 'Solicitudes', icon: <ArrowLeftRight size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Pedí y respondé traslados de personas entre grupos.', visible: canManageGroups },
         { id: 'listado', title: 'Listado de Asistencia', icon: <CalendarCheck size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Miembros del grupo con presentes y ausentes por día.', visible: canManageGroups },
+        { id: 'score', title: 'Score de asistentes', icon: <Trophy size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Ranking de los asistentes con mayor constancia en tus grupos.', visible: canManageGroups },
         { id: 'clases', title: 'Clases', icon: <BookOpen size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Materiales y clases disponibles para los grupos.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member']) },
         { id: 'seguimientos', title: 'Seguimientos', icon: <CheckSquare size={32} style={{ color: 'var(--color-primary)' }} />, description: 'Gestioná los seguimientos de los miembros.', visible: hasRole(['Admin', 'Pastor', 'MinistryLeader', 'Facilitator', 'CoFacilitator']) }
     ].filter(card => card.visible !== false);
@@ -477,6 +478,12 @@ const GrowthGroups = () => {
                     {activeTab === 'seguimientos' && <FollowUps />}
                     {activeTab === 'listado' && (
                         <AttendanceListTab
+                            myGroups={myGroups}
+                            myMembers={myMembers}
+                        />
+                    )}
+                    {activeTab === 'score' && (
+                        <AttendanceScoreTab
                             myGroups={myGroups}
                             myMembers={myMembers}
                         />
@@ -1275,6 +1282,152 @@ const AttendanceListTab = ({ myGroups, myMembers }) => {
                         P = presente · A = ausente · - = sin registro · Los inactivos no se incluyen.
                     </p>
                 </>
+            )}
+        </Card>
+    );
+};
+
+const AttendanceScoreTab = ({ myGroups, myMembers }) => {
+    const [period, setPeriod] = useState('mensual');
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        const groupIds = myGroups.map(g => g.id).filter(Boolean);
+        if (groupIds.length === 0) {
+            setRows([]);
+            setLoading(false);
+            return () => { cancelled = true; };
+        }
+        setLoading(true);
+        const end = new Date();
+        const start = new Date();
+        if (period === 'mensual') start.setMonth(end.getMonth() - 1);
+        if (period === 'trimestral') start.setMonth(end.getMonth() - 3);
+        if (period === 'anual') start.setFullYear(end.getFullYear() - 1);
+        if (period === 'todo') start.setFullYear(2000);
+        const fmt = (d) => d.toISOString().split('T')[0];
+
+        getAttendanceForDateRange(groupIds, fmt(start), fmt(end)).then(records => {
+            if (cancelled) return;
+            const byGroup = {};
+            records.forEach(r => { (byGroup[r.groupId] = byGroup[r.groupId] || []).push(r); });
+
+            const memberIds = new Set();
+            const nameById = new Map();
+            const groupByMember = new Map();
+            const groupNameById = new Map(myGroups.map(g => [g.id, g.name]));
+            records.forEach(r => {
+                const gName = r.groupName || groupNameById.get(r.groupId) || '';
+                (r.members || []).forEach(m => {
+                    if (!m?.id) return;
+                    memberIds.add(m.id);
+                    if (!nameById.has(m.id)) nameById.set(m.id, m);
+                    if (gName && !groupByMember.has(m.id)) groupByMember.set(m.id, gName);
+                });
+            });
+            const inactiveIds = new Set(myMembers.filter(m => ['Inactivo', 'Baja'].includes(m.extraData?.active)).map(m => m.id));
+            myMembers.forEach(m => {
+                if (!m.id || !memberIds.has(m.id)) return;
+                nameById.set(m.id, m);
+                if (m.group) groupByMember.set(m.id, m.group);
+            });
+
+            const computed = [...memberIds]
+                .filter(id => !inactiveIds.has(id))
+                .map(memberId => {
+                    let present = 0;
+                    let total = 0;
+                    let bestStreak = 0;
+                    Object.values(byGroup).forEach(groupRecords => {
+                        const s = computeAttendanceStreaks(groupRecords, memberId);
+                        present += s.present;
+                        total += s.total;
+                        bestStreak = Math.max(bestStreak, s.bestStreak);
+                    });
+                    const member = nameById.get(memberId);
+                    const fullName = member
+                        ? [member.lastName, member.firstName].filter(Boolean).join(', ')
+                        : memberId;
+                    return {
+                        id: memberId,
+                        name: fullName || memberId,
+                        group: groupByMember.get(memberId) || member?.group || '',
+                        present,
+                        total,
+                        bestStreak,
+                        percentage: total ? Math.round((present / total) * 100) : 0,
+                    };
+                })
+                .filter(r => r.total > 0)
+                .sort((a, b) => b.percentage - a.percentage || b.present - a.present || a.name.localeCompare(b.name));
+
+            setRows(computed);
+            setLoading(false);
+        });
+
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [myGroups, period]);
+
+    if (myGroups.length === 0) {
+        return <Card><p style={{ color: 'var(--color-text-muted)' }}>No tienes grupos para calcular el score.</p></Card>;
+    }
+
+    return (
+        <Card
+            title={<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Trophy size={20} style={{ color: 'var(--color-warning)' }} /> Score de asistentes</div>}
+            headerAction={
+                <select className="form-input" value={period} onChange={e => setPeriod(e.target.value)} style={{ width: 'auto', height: '38px', backgroundColor: 'var(--color-surface)' }}>
+                    <option value="mensual">Mensual (últimos 30 días)</option>
+                    <option value="trimestral">Trimestral (últimos 90 días)</option>
+                    <option value="anual">Anual (últimos 12 meses)</option>
+                    <option value="todo">General (todo el histórico)</option>
+                </select>
+            }
+        >
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                Ranking de los asistentes con mayor constancia en tus grupos, ordenados por porcentaje de asistencia.
+            </p>
+            {loading ? (
+                <p style={{ color: 'var(--color-text-muted)' }}>Calculando score...</p>
+            ) : rows.length === 0 ? (
+                <EmptyState icon={Trophy} title="Sin asistencias" message="Aún no hay registros de asistencia en este período." />
+            ) : (
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                        <thead style={{ backgroundColor: 'var(--color-surface-hover)' }}>
+                            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>#</th>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Miembro</th>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Grupo</th>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>Presentes</th>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>Encuentros</th>
+                                <th style={{ padding: '0.75rem 1rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'right' }}>% Asistencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, index) => (
+                                <tr key={row.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                    <td data-label="#" style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                        <span className={`streak-rank ${index < 3 ? `streak-rank-${index + 1}` : ''}`} style={{ display: 'inline-flex' }}>{index + 1}</span>
+                                    </td>
+                                    <td data-label="Miembro" style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--color-text)' }}>{row.name}</td>
+                                    <td data-label="Grupo" style={{ padding: '0.75rem 1rem' }}>{row.group || '-'}</td>
+                                    <td data-label="Presentes" style={{ padding: '0.75rem 1rem', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{row.present}</td>
+                                    <td data-label="Encuentros" style={{ padding: '0.75rem 1rem', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{row.total}</td>
+                                    <td data-label="% Asistencia" style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: row.percentage >= 80 ? 'var(--color-success)' : row.percentage >= 50 ? 'var(--color-warning)' : 'var(--color-danger)' }}>{row.percentage}%</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {rows.length > 0 && (
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    El % de asistencia se calcula sobre los encuentros registrados en el período seleccionado.
+                </p>
             )}
         </Card>
     );

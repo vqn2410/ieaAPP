@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpen, CalendarDays, Clock3, HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MapPin, Users, MessageCircle } from 'lucide-react';
+import { HeartHandshake, Home as HomeIcon, Sparkles, Instagram, Facebook, Youtube, ArrowUpRight, Cross, Megaphone, Smile, Gift, Heart, MessageCircle, ChevronDown, Calendar, Users, Compass } from 'lucide-react';
 import PrivacyConsentNotice from '../../components/common/PrivacyConsentNotice';
 import SeoHead from '../../components/common/SeoHead';
 import './Home.css';
@@ -11,58 +11,45 @@ const Home = () => {
   const { currentUser } = useAuth();
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   const goPortal = () => navigate(currentUser ? '/dashboard' : '/login');
-  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const heroMediaRef = useRef(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 40);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const nextSecondSaturday = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const secondSaturday = (year, month) => {
-      const first = new Date(year, month, 1);
-      return new Date(year, month, 1 + ((6 - first.getDay() + 7) % 7) + 7);
-    };
-    let candidate = secondSaturday(today.getFullYear(), today.getMonth());
-    if (candidate < today) candidate = secondSaturday(today.getFullYear(), today.getMonth() + 1);
-    return candidate;
+  const handleCardMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
   };
-  const santaCenaDate = nextSecondSaturday();
-  const santaCenaIso = santaCenaDate.toISOString().slice(0, 10);
-  const santaCenaLabel = santaCenaDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  // Editá estos datos para actualizar la agenda pública de la iglesia.
-  // Los anuncios con fecha desaparecen automáticamente al pasar ese día.
-  const announcements = [
-    { day: 'Lunes', title: 'I.E.T.E. — Estudia Teología con nosotros', time: '20:00 hs', icon: BookOpen, image: '/anuncios/iete.jpg', description: 'Formación bíblica para crecer en la Palabra.' },
-    { day: 'Martes', title: 'Reunión de Oración', time: '19:00 hs', icon: HeartHandshake, image: '/anuncios/reu_oracion.jepg.jpg', description: 'Un espacio para buscar a Dios juntos.' },
-    { day: 'Viernes', title: 'La Tribu — Adolescentes', time: '19:00 hs', icon: Users, image: '/anuncios/LA-TRIBU.jpg', description: 'Una comunidad para crecer, compartir y encontrarse.' },
-    { day: 'Sábado', title: 'Reunión general', time: '19:30 hs', icon: Heart, image: '/anuncios/reu_general.jpg', description: 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.' },
-    { date: '2026-09-17', day: 'Jueves 17 de septiembre', title: 'Reunión de Voluntarios', time: '19:30 hs', icon: Users, image: '/anuncios/reu_de_voluntarios.jpg', description: 'Nos reunimos para servir mejor y caminar juntos.' },
-    { date: '2026-09-19', day: 'Sábado 19 de septiembre', title: 'Presentación de Niños', time: '19:30 hs', icon: Sparkles, image: '/anuncios/presentacion_de_ninos.PNG', description: 'Una celebración especial para nuestra familia.' },
-    { date: santaCenaIso, day: santaCenaLabel, title: 'Santa Cena', time: '19:30 hs', icon: Heart, image: '/anuncios/santacena.jpg', description: 'Un momento especial para recordar juntos el amor de Jesús.' },
-  ];
-  const visibleAnnouncements = announcements.filter(item => {
-    if (!item.date) return true;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const date = new Date(`${item.date}T00:00:00`);
-    return date >= today;
-  });
 
   useEffect(() => {
-    if (visibleAnnouncements.length < 2) return undefined;
-    const timer = setInterval(() => setActiveAnnouncementIndex(index => (index + 1) % visibleAnnouncements.length), 6500);
-    return () => clearInterval(timer);
-  }, [visibleAnnouncements.length]);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf = 0;
 
-  const featuredAnnouncement = visibleAnnouncements[activeAnnouncementIndex % Math.max(visibleAnnouncements.length, 1)] || visibleAnnouncements[0];
+    const onScroll = () => {
+      setScrolled(window.scrollY > 40);
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        const doc = document.documentElement;
+        const total = Math.max(1, doc.scrollHeight - window.innerHeight);
+        setProgress(Math.min(1, y / total));
+
+        if (!reduceMotion) {
+          if (heroMediaRef.current) {
+            heroMediaRef.current.style.transform = `translate3d(0, ${y * 0.28}px, 0)`;
+          }
+        }
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   useEffect(() => {
     const els = Array.from(document.querySelectorAll('.iea-reveal'));
@@ -86,10 +73,18 @@ const Home = () => {
     <div className="iea-home">
       <SeoHead
         title="Iglesia Extremo Amor | Remedios de Escalada, Lanús"
-        description="Iglesia cristiana en Remedios de Escalada, Lanús. Un lugar de encuentro con Dios y comunidad para la familia. Reunión general: sábados 19:30 hs."
+        description="Iglesia cristiana en Remedios de Escalada, Lanús. Actividades para toda la familia, grupos de amistad y una comunidad para crecer juntos en la fe. Reunión general: sábados 19:30 hs."
         canonicalUrl="/home"
         ogImage="/img/slider-hero.jpg"
       />
+
+      {/* Capas cinematográficas globales */}
+      <div className="iea-grain" aria-hidden="true" />
+      <div className="iea-vignette" aria-hidden="true" />
+      <div className="iea-progress" aria-hidden="true">
+        <span style={{ transform: `scaleX(${progress})` }} />
+      </div>
+
       <header className={`iea-nav ${scrolled ? 'iea-nav-scrolled' : ''}`}>
         <div className="iea-nav-brand" onClick={() => scrollTo('top')} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && scrollTo('top')} role="button" tabIndex={0}>
           <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" className="iea-nav-logo" />
@@ -106,12 +101,22 @@ const Home = () => {
         </nav>
       </header>
 
+      {/* HERO · plano de apertura */}
       <section className="iea-hero" id="top">
-        <div className="iea-hero-media" aria-hidden="true" />
-        <div className="iea-hero-ellipse" aria-hidden="true" />
+        <div className="iea-hero-media" ref={heroMediaRef} aria-hidden="true">
+          <div className="iea-hero-media-bg" aria-hidden="true" />
+        </div>
+        <div className="iea-hero-scrim" aria-hidden="true" />
+        <div className="iea-hero-light" aria-hidden="true" />
         <div className="iea-hero-logo" aria-hidden="true">
           <img src="/img/icon-500x500.png" alt="" />
         </div>
+
+        <div className="iea-letterbox iea-letterbox-top" aria-hidden="true" />
+        <div className="iea-letterbox iea-letterbox-bottom" aria-hidden="true" />
+
+        <p className="iea-hero-eyebrow">REMEDIOS DE ESCALADA · BUENOS AIRES · SÁBADOS 19:30</p>
+
         <h1 className="iea-hero-title">
           <span className="iea-word iea-word-left iea-word-light">IGLESIA</span>
           <span className="iea-title-line">
@@ -119,19 +124,45 @@ const Home = () => {
             <span className="iea-word iea-word-left">AMOR</span>
           </span>
         </h1>
+
+        <p className="iea-hero-sub">
+          Un lugar de <em>encuentro</em>, de <em>familia</em> y de <em>amor</em>.
+        </p>
+
         <div className="iea-hero-bottom">
           <button className="iea-round-btn" onClick={() => scrollTo('visitanos')}>
-            CONOCÉ IEA <ArrowUpRight size={22} />
+            <span>CONOCÉ IEA</span>
+            <span className="iea-round-btn-arrow" aria-hidden="true">
+              <ArrowUpRight size={18} />
+            </span>
           </button>
         </div>
+
+        <button className="iea-scroll-cue" onClick={() => scrollTo('somos')} aria-label="Continuar hacia abajo">
+          <span>DESCUBRÍ MÁS</span>
+          <ChevronDown size={18} />
+        </button>
       </section>
 
-      <div className="iea-strip">
-        <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
-        <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
+      <div className="iea-strip" aria-label="Información de reuniones">
+        <div className="iea-strip-track">
+          <div className="iea-strip-set">
+            <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
+            <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
+            <p><span>GRUPOS DE AMISTAD</span><strong>Durante la semana</strong></p>
+            <p><span>UN LUGAR</span><strong>Para vos</strong></p>
+          </div>
+          <div className="iea-strip-set" aria-hidden="true">
+            <p><span>NOS ENCONTRAMOS</span><strong>Sábados · 19:30</strong></p>
+            <p><span>ESTAMOS EN</span><strong>Av. Cnel. Rosales 883 · Escalada</strong></p>
+            <p><span>GRUPOS DE AMISTAD</span><strong>Durante la semana</strong></p>
+            <p><span>UN LUGAR</span><strong>Para vos</strong></p>
+          </div>
+        </div>
       </div>
 
       <section className="iea-slogan-section" aria-label="Nuestro slogan">
+        <p className="iea-chapter-eyebrow iea-reveal">PRÓLOGO</p>
         <div className="iea-slogan-timeline">
           <div className="iea-slogan-step iea-reveal">
             <span className="iea-slogan-node"><svg className="iea-slogan-ring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" /></svg><HeartHandshake size={28} /></span>
@@ -187,129 +218,160 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Propósito · ¿Por qué existimos como iglesia? */}
+      <section className="iea-purpose-section" aria-label="Por qué existimos como iglesia">
+        <div className="iea-purpose-container">
+          <div className="iea-purpose-lead-wrap iea-reveal">
+            <span className="iea-purpose-badge">
+              <span>NUESTRO PROPÓSITO</span>
+            </span>
+            <p className="iea-purpose-lead">
+              Guiarte a tener un <em>encuentro</em> con Jesús.
+            </p>
+          </div>
+
+          <div className="iea-purpose-divider iea-reveal" aria-hidden="true" />
+
+          <h2 className="iea-purpose-title iea-reveal">
+            ¿Por qué existimos <em>como iglesia</em>?
+          </h2>
+          <div className="iea-purpose-grid">
+            <article className="iea-purpose-card iea-reveal" onMouseMove={handleCardMouseMove}>
+              <div className="iea-purpose-card-head">
+                <span className="iea-purpose-num">01</span>
+                <span className="iea-purpose-icon iea-anim-heart">
+                  <span className="iea-icon-halo" aria-hidden="true" />
+                  <Heart size={24} />
+                </span>
+              </div>
+              <h3>Para <strong>amar y adorar</strong> a Dios.</h3>
+            </article>
+
+            <article className="iea-purpose-card iea-reveal" onMouseMove={handleCardMouseMove}>
+              <div className="iea-purpose-card-head">
+                <span className="iea-purpose-num">02</span>
+                <span className="iea-purpose-icon iea-anim-handshake">
+                  <span className="iea-icon-halo" aria-hidden="true" />
+                  <HeartHandshake size={24} />
+                </span>
+              </div>
+              <h3>Para <strong>servir</strong> a las personas y a nuestra ciudad.</h3>
+            </article>
+
+            <article className="iea-purpose-card iea-reveal" onMouseMove={handleCardMouseMove}>
+              <div className="iea-purpose-card-head">
+                <span className="iea-purpose-num">03</span>
+                <span className="iea-purpose-icon iea-anim-compass">
+                  <span className="iea-icon-halo" aria-hidden="true" />
+                  <Compass size={24} />
+                </span>
+              </div>
+              <h3>Para <strong>inspirar</strong> a las personas y a nuestra ciudad a encontrar su propósito.</h3>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className="iea-section iea-light" id="valores" aria-label="Nuestros valores">
-        <p className="iea-values-eyebrow iea-reveal">IGLESIA EXTREMO AMOR</p>
+        <p className="iea-values-eyebrow iea-reveal">
+          <span className="iea-brand-book">IGLESIA</span>{' '}
+          <span className="iea-brand-wide">EXTREMO AMOR</span>
+        </p>
         <h2 className="iea-values-title iea-reveal">Nuestros <em>valores</em>.</h2>
         <div className="iea-values-grid">
           {[
-            { n: '01', t: 'Fe', Icon: Cross },
-            { n: '02', t: 'Amistad', Icon: HeartHandshake },
-            { n: '03', t: 'Jesús es nuestro mensaje', Icon: Megaphone },
-            { n: '04', t: 'Buen ánimo', Icon: Smile },
-            { n: '05', t: 'Amor', Icon: Heart },
-            { n: '06', t: 'Generosidad', Icon: Gift },
-          ].map(({ n, t, Icon }, i) => (
-            <div className="iea-value iea-reveal" key={n} style={{ '--d': `${i * 0.12}s` }}>
-              <span className="iea-value-index">{n}</span>
-              <span className="iea-value-icon"><Icon size={22} /></span>
-              <h3>{t}</h3>
+            { n: '01', t: 'Fe', full: 'La Fe, Nuestro Estilo de Vida', Icon: Cross, anim: 'iea-anim-cross' },
+            { n: '02', t: 'Amistad', full: 'La amistad, nuestra elección...', Icon: HeartHandshake, anim: 'iea-anim-handshake' },
+            { n: '03', t: 'Jesús', full: 'Jesús, nuestro mejor mensaje', Icon: Megaphone, anim: 'iea-anim-megaphone' },
+            { n: '04', t: 'Buen ánimo', full: 'El Buen Ánimo, Nuestro Lenguaje', Icon: Smile, anim: 'iea-anim-smile' },
+            { n: '05', t: 'Amor', full: 'El Amor, Nuestra Respuesta', Icon: Heart, anim: 'iea-anim-heart' },
+            { n: '06', t: 'Generosidad', full: 'La Generosidad, Nuestra Riqueza', Icon: Gift, anim: 'iea-anim-gift' },
+          ].map(({ n, t, full, Icon, anim }, i) => (
+            <div
+              className="iea-value iea-reveal"
+              key={n}
+              style={{ '--d': `${i * 0.1}s` }}
+              onMouseMove={handleCardMouseMove}
+            >
+              <div className="iea-value-top">
+                <span className="iea-value-index">{n}</span>
+                <span className={`iea-value-icon ${anim}`}>
+                  <span className="iea-icon-halo" aria-hidden="true" />
+                  <Icon size={22} />
+                </span>
+              </div>
+              <div className="iea-value-body">
+                <h3>{t}</h3>
+                <p className="iea-value-tagline">{full}</p>
+              </div>
+              <span className="iea-value-spark" aria-hidden="true" />
             </div>
           ))}
         </div>
       </section>
 
-      <section className="iea-news-section iea-dark" id="anuncios" aria-label="Anuncios IEA">
-        <div className="iea-section-label iea-reveal"><span>02</span>LO QUE ESTÁ PASANDO</div>
-        <div className="iea-news-heading">
-          <h2 className="iea-display iea-reveal">Anuncios que<br /><em>nos encuentran.</em></h2>
-          <p className="iea-news-intro iea-reveal">No son solo fechas. Son momentos para volver a encontrarnos.</p>
-        </div>
-        <div className="iea-news-board">
-          <article className="iea-news-feature iea-reveal">
-            <img className="iea-news-feature-image" src={featuredAnnouncement?.image} alt="" aria-hidden="true" />
-            <span className="iea-news-signal"><span />Ahora en IEA</span>
-            <div className="iea-news-feature-date"><strong>{featuredAnnouncement?.time || '19:30 hs'}</strong><span>{featuredAnnouncement?.day || 'Todos los sábados'}</span></div>
-            <div className="iea-news-feature-content">
-              <span>{featuredAnnouncement?.date ? 'FECHA ESPECIAL' : 'AGENDA IEA'}</span>
-              <h3>{featuredAnnouncement?.title || 'Un lugar para volver a casa.'}</h3>
-              <p>{featuredAnnouncement?.description || 'Adoración, Palabra y una comunidad que te recibe con los brazos abiertos.'}</p>
-              <button onClick={() => scrollTo('visitanos')}>Conocé más <ArrowUpRight size={16} /></button>
-            </div>
-            {visibleAnnouncements.length > 1 && (
-              <div className="iea-news-dots" role="tablist" aria-label="Anuncios destacados">
-                {visibleAnnouncements.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className={`iea-news-dot ${idx === activeAnnouncementIndex ? 'active' : ''}`}
-                    onClick={() => setActiveAnnouncementIndex(idx)}
-                    aria-label={`Ver anuncio ${idx + 1}`}
-                    role="tab"
-                    aria-selected={idx === activeAnnouncementIndex}
-                  />
-                ))}
-              </div>
-            )}
-            <div className="iea-news-orbit" aria-hidden="true" />
-          </article>
-          <div className="iea-news-stack">
-            <article className="iea-news-card iea-reveal">
-              <div className="iea-news-card-icon"><Users size={20} /></div>
-              <div><span>EN LA SEMANA</span><h3>Grupos de Amistad</h3><p>Pequeños encuentros. Vínculos reales. Una fe que se comparte.</p></div>
-              <ArrowUpRight className="iea-news-card-arrow" size={18} />
-            </article>
-            <article className="iea-news-card iea-reveal">
-              <div className="iea-news-card-icon"><CalendarDays size={20} /></div>
-              <div><span>PRÓXIMAMENTE</span><h3>Primeros Pasos</h3><p>Conocé quiénes somos, por qué existimos y cómo caminar con nosotros.</p></div>
-              <ArrowUpRight className="iea-news-card-arrow" size={18} />
-            </article>
-            <article className="iea-news-card iea-reveal">
-              <div className="iea-news-card-icon"><MapPin size={20} /></div>
-              <div><span>VENÍ A CONOCERNOS</span><h3>Remedios de Escalada</h3><p>Av. Cnel. Rosales 879-883 · Buenos Aires.</p></div>
-              <ArrowUpRight className="iea-news-card-arrow" size={18} />
-            </article>
-          </div>
-        </div>
-        <div className="iea-announcement-schedule iea-reveal">
-          <div className="iea-announcement-schedule-head">
-            <span>AGENDA ABIERTA</span>
-            <strong>Esta semana en IEA</strong>
-          </div>
-          <div className="iea-announcement-list">
-            {visibleAnnouncements.map(({ day, title, time, icon: Icon, image }) => (
-              <article className="iea-announcement-row" key={`${day}-${title}`}>
-                <span className="iea-announcement-day">{day}</span>
-                <span className="iea-announcement-icon"><Icon size={18} /></span>
-                <strong>{title}</strong>
-                <span className="iea-announcement-time"><Clock3 size={15} />{time}</span>
-                <img src={image} alt="" aria-hidden="true" />
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="iea-section iea-dark" id="comunidad">
-        <div className="iea-section-label iea-reveal"><span>03</span>VIDA EN COMUNIDAD</div>
+        <div className="iea-section-label iea-reveal"><span>02</span>VIDA EN COMUNIDAD</div>
         <div className="iea-split">
           <h2 className="iea-display iea-reveal">NOS ENCONTRAMOS PARA CRECER JUNTOS.</h2>
-          <div className="iea-body iea-reveal"><p>La iglesia no ocurre solamente durante una reunión. Se construye cuando compartimos la vida, nos cuidamos y aprendemos a seguir a Jesús con otros.</p></div>
+          <div className="iea-body iea-reveal">
+            <p>
+              No somos iglesia solo cuando nos juntamos a cantar o escuchar la palabra de Dios. La iglesia no pasa solo entre cuatro paredes ni en un horario fijo. Es acompañarnos cuando la vida pesa y en descubrir juntos cómo vivir como Jesús.
+            </p>
+          </div>
         </div>
         <div className="iea-cards">
-          <article className="iea-reveal">
-            <span className="iea-card-eyebrow">CADA SÁBADO</span>
+          <article className="iea-reveal" onMouseMove={handleCardMouseMove}>
+            <div className="iea-card-head">
+              <span className="iea-card-eyebrow">CADA SÁBADO</span>
+              <span className="iea-card-icon iea-anim-calendar">
+                <span className="iea-icon-halo" aria-hidden="true" />
+                <Calendar size={20} />
+              </span>
+            </div>
             <h3>Reunión general</h3>
             <p>Adoración, Palabra y un espacio para encontrarnos con Dios y con las personas.</p>
-            <strong>19:30</strong>
+            <div className="iea-card-footer">
+              <strong>19:30</strong>
+              <span className="iea-card-action"><ArrowUpRight size={18} /></span>
+            </div>
           </article>
-          <article className="iea-reveal">
-            <span className="iea-card-eyebrow">DURANTE LA SEMANA</span>
+          <article className="iea-reveal" onMouseMove={handleCardMouseMove}>
+            <div className="iea-card-head">
+              <span className="iea-card-eyebrow">DURANTE LA SEMANA</span>
+              <span className="iea-card-icon iea-anim-users">
+                <span className="iea-icon-halo" aria-hidden="true" />
+                <Users size={20} />
+              </span>
+            </div>
             <h3>Grupos de amistad</h3>
             <p>Encuentros cercanos para conversar, orar, hacer preguntas y caminar acompañados.</p>
-            <strong>JUNTOS</strong>
+            <div className="iea-card-footer">
+              <strong>JUNTOS</strong>
+              <span className="iea-card-action"><ArrowUpRight size={18} /></span>
+            </div>
           </article>
-          <article className="iea-reveal">
-            <span className="iea-card-eyebrow">PARA CADA ETAPA</span>
+          <article className="iea-reveal" onMouseMove={handleCardMouseMove}>
+            <div className="iea-card-head">
+              <span className="iea-card-eyebrow">PARA CADA ETAPA</span>
+              <span className="iea-card-icon iea-anim-home">
+                <span className="iea-icon-halo" aria-hidden="true" />
+                <HomeIcon size={20} />
+              </span>
+            </div>
             <h3>Un espacio de encuentro</h3>
             <p>Espacios para niños, adolescentes, jóvenes, matrimonios y familias.</p>
-            <strong>TODOS</strong>
+            <div className="iea-card-footer">
+              <strong>TODOS</strong>
+              <span className="iea-card-action"><ArrowUpRight size={18} /></span>
+            </div>
           </article>
         </div>
         <h2 className="iea-statement iea-reveal">NADIE FUE LLAMADO A CAMINAR SOLO.</h2>
       </section>
 
       <section className="iea-section iea-light" id="visitanos">
-        <div className="iea-section-label iea-reveal"><span>04</span>TU PRIMERA VISITA</div>
+        <div className="iea-section-label iea-reveal"><span>03</span>TU PRIMERA VISITA</div>
         <div className="iea-split">
           <h2 className="iea-display iea-reveal">ESTE SÁBADO, HAY UN LUGAR PARA VOS.</h2>
           <div className="iea-visit-info iea-reveal">
@@ -344,7 +406,10 @@ const Home = () => {
             <div className="iea-map-card-head">
               <img src="/img/icon-500x500.png" alt="Portal IEA" />
               <div>
-                <strong>IGLESIA EXTREMO AMOR</strong>
+                <strong>
+                  <span className="iea-brand-book">IGLESIA</span>{' '}
+                  <span className="iea-brand-wide">EXTREMO AMOR</span>
+                </strong>
                 <span>Av. Cnel. Rosales 883, Escalada</span>
                 <span>Sábados · 19:30 hs</span>
               </div>
@@ -359,7 +424,10 @@ const Home = () => {
           <div className="iea-footer-brand">
             <div className="iea-footer-brand-head">
               <img src="/img/icon-500x500.png" alt="Iglesia Extremo Amor" />
-              <span>IGLESIA EXTREMO AMOR</span>
+              <span>
+                <span className="iea-brand-book">IGLESIA</span>{' '}
+                <span className="iea-brand-wide">EXTREMO AMOR</span>
+              </span>
             </div>
             <div className="iea-footer-contact">
               <span>Av. Cnel. Rosales 879-883, Remedios de Escalada</span>

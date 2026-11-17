@@ -1,5 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
+/* ===== Tipografía de marca IEA — Novecento ===== */
+@font-face {
+  font-family: 'Novecento Sans';
+  src: local('Novecento Book'), local('Novecento-Book'), local('NovecentoSans-Book'),
+       url('/Novecento-Book.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Novecento Sans Wide';
+  src: local('Novecento WideDemiBold'), local('Novecento Wide DemiBold'), local('NovecentoSansWide-DemiBold'),
+       url('/Novecento-WideDemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 .offline-banner {
   margin: 0 0 1rem;
   padding: .7rem 1rem;
@@ -11,6 +29,10 @@
 }
 
 :root {
+  /* Tipografía de marca IEA — Novecento */
+  --iea-brand: 'Novecento Sans', 'Montserrat', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+  --iea-brand-wide: 'Novecento Sans Wide', 'Novecento Sans', 'Montserrat', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+
   /* Editorial Palette - Light Mode (crema/negro) */
   --color-primary-h: 0;
   --color-primary-s: 0%;

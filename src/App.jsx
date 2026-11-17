@@ -4,6 +4,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import MainLayout from './components/portal/layout/MainLayout';
 import InactivityTimer from './components/common/InactivityTimer';
 import RouteTransition from './components/common/RouteTransition';
+import Home from './pages/landing/Home';
 import { useAuth } from './context/AuthContext';
 import { useCampus } from './context/CampusContext';
 
@@ -18,7 +19,6 @@ const GrowthGroups = lazy(() => import('./pages/portal/GrowthGroups'));
 const Reports = lazy(() => import('./pages/portal/Reports'));
 const Settings = lazy(() => import('./pages/portal/Settings'));
 const Finances = lazy(() => import('./pages/portal/Finances'));
-const Home = lazy(() => import('./pages/landing/Home'));
 const Login = lazy(() => import('./pages/portal/Login'));
 const ChangePassword = lazy(() => import('./pages/portal/ChangePassword'));
 
@@ -100,29 +100,25 @@ const RootEntry = () => {
   const { currentUser, loading } = useAuth();
   const { activeCampusSlug } = useCampus();
 
-  if (loading) {
-    return <RouteTransition mode="loading" message="Iniciando aplicación..." />;
-  }
-
-  if (currentUser) {
-    return <Navigate to={`/${activeCampusSlug || 'sedecentral'}/dashboard`} replace />;
-  }
-
   if (isInstalledAppMode()) {
-    return <Navigate to="/login" replace />;
+    if (loading) {
+      return <RouteTransition mode="loading" message="Iniciando aplicación..." />;
+    }
+    return <Navigate to={currentUser ? `/${activeCampusSlug || 'sedecentral'}/dashboard` : '/login'} replace />;
+  }
+
+  if (!loading && currentUser) {
+    return <Navigate to={`/${activeCampusSlug || 'sedecentral'}/dashboard`} replace />;
   }
 
   return <Navigate to="/home" replace />;
 };
 
 const HomeWithInstalledCheck = () => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser } = useAuth();
   const { activeCampusSlug } = useCampus();
 
   if (isInstalledAppMode() && typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('pwa-boot-redirected')) {
-    if (loading) {
-      return <RouteTransition mode="loading" message="Iniciando aplicación..." />;
-    }
     sessionStorage.setItem('pwa-boot-redirected', '1');
     return <Navigate to={currentUser ? `/${activeCampusSlug || 'sedecentral'}/dashboard` : '/login'} replace />;
   }
