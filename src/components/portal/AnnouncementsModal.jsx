@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Megaphone, Clock } from 'lucide-react';
+import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 import './AnnouncementsModal.css';
 
 const AUTOPLAY_MS = 6500;
@@ -47,11 +48,10 @@ const AnnouncementsModal = ({ open, onClose, announcements = [] }) => {
       if (event.key === 'Escape') handleClose();
     };
     document.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    lockScroll();
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
+      unlockScroll();
     };
   }, [open, handleClose]);
 

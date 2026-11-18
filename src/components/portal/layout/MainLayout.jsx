@@ -35,6 +35,7 @@ import { useCampus } from '../../../context/CampusContext';
 import CampusSwitcher from '../campus/CampusSwitcher';
 import { getEvents, syncPendingEventAttendance } from '../../../services/eventService';
 import { getNotifications, markNotificationRead } from '../../../services/notificationService';
+import { lockScroll, unlockScroll } from '../../../utils/scrollLock';
 import './MainLayout.css';
 
 const sidebarListVariants = {
@@ -82,9 +83,12 @@ const MainLayout = () => {
     return () => clearTimeout(t);
   }, [location.pathname]);
 
+  // Bloquea el scroll del body solo mientras el menú móvil está abierto.
+  // Se delega en un lock centralizado para no pisar los locks de modales/transiciones.
   useEffect(() => {
-    document.body.style.overflow = showMobileMenu ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    if (!showMobileMenu) return undefined;
+    lockScroll();
+    return () => unlockScroll();
   }, [showMobileMenu]);
 
   // Los próximos eventos alimentan el centro de recordatorios del portal.

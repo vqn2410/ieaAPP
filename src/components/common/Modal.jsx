@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Card from './Card';
 import Button from './Button';
+import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -17,13 +18,12 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', className = '' }
 
   useLayoutEffect(() => {
     if (!isOpen) return undefined;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    lockScroll();
     const overlay = overlayRef.current;
     overlay?.scrollTo?.(0, 0);
     overlay?.querySelector('.modal-content')?.scrollTo?.(0, 0);
     return () => {
-      document.body.style.overflow = prevOverflow;
+      unlockScroll();
     };
   }, [isOpen]);
 

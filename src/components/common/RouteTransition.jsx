@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 import './RouteTransition.css';
 
 const COVER_MS = 600;
@@ -23,6 +24,7 @@ export default function RouteTransition({
   const timers = useRef([]);
   const previousPath = useRef(pathname);
   const isTransitioning = useRef(false);
+  const lockHeld = useRef(false);
 
   // Modo 'navigation': barrido de paneles con marca al ingresar al portal desde rutas públicas
   useEffect(() => {
@@ -39,7 +41,8 @@ export default function RouteTransition({
     // Solo iniciamos una nueva transición si venimos de público a portal y no estamos ya en una
     if (wasPublic && isNowPortal && !isTransitioning.current) {
       isTransitioning.current = true;
-      document.body.style.overflow = 'hidden';
+      lockScroll();
+      lockHeld.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase('cover');
 
@@ -53,7 +56,10 @@ export default function RouteTransition({
         setTimeout(() => {
           setPhase('idle');
           isTransitioning.current = false;
-          document.body.style.overflow = '';
+          if (lockHeld.current) {
+            unlockScroll();
+            lockHeld.current = false;
+          }
         }, TOTAL_MS)
       );
     }
@@ -69,7 +75,10 @@ export default function RouteTransition({
     return () => {
       timers.current.forEach(clearTimeout);
       timers.current = [];
-      document.body.style.overflow = '';
+      if (lockHeld.current) {
+        unlockScroll();
+        lockHeld.current = false;
+      }
       isTransitioning.current = false;
     };
   }, []);
