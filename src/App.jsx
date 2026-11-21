@@ -30,6 +30,8 @@ const AuditLogs = lazy(() => import('./pages/portal/AuditLogs'));
 const FocusTimer = lazy(() => import('./pages/portal/FocusTimer'));
 const Kids = lazy(() => import('./pages/portal/Kids'));
 const IbrpAssigned = lazy(() => import('./pages/portal/IbrpAssigned'));
+const Discipleship = lazy(() => import('./pages/discipulado/Discipleship'));
+const ValidateDiploma = lazy(() => import('./pages/discipulado/ValidateDiploma'));
 const IeaMockup = lazy(() => import('./pages/landing/IeaMockup'));
 const Extensions = lazy(() => import('./pages/landing/Extensions'));
 
@@ -166,6 +168,17 @@ function App() {
           <Route path="/session-expired" element={<SessionExpired />} />
           <Route path="/maqueta-iea" element={<IeaMockup />} />
           <Route path="/extensiones" element={<Extensions />} />
+
+          {/* Sección independiente fuera del Dashboard: Discipulado (Ruta de crecimiento) */}
+          <Route path="/discipulado/validar/:code" element={<ValidateDiploma />} />
+          <Route
+            path="/discipulado"
+            element={
+              <ProtectedRoute>
+                <Discipleship />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Redirecciones de rutas legacy /dashboard hacia el campus activo */}
           <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
@@ -210,6 +223,8 @@ function App() {
               } 
             />
             <Route path="crecimiento" element={<CampusRedirect to="grupos" />} />
+            <Route path="ruta-de-crecimiento" element={<Navigate to="/discipulado" replace />} />
+            <Route path="ruta-de-crecimiento/discipulado" element={<Navigate to="/discipulado" replace />} />
             <Route path="configuracion" 
               element={
                 <ProtectedRoute>

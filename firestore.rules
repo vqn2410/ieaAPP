@@ -118,7 +118,7 @@ service cloud.firestore {
       allow create: if isAuth() && canManageMemberGroup(request.resource.data.groupId);
       allow update: if isAuth() && (
         (isOwnMember(resource)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'address', 'updatedAt', 'authUid'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'address', 'updatedAt', 'authUid', 'discipleshipQuiz', 'growthPath'])
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['authUid']) || request.resource.data.authUid == request.auth.uid))
         || canManageMemberGroup(request.resource.data.groupId)
         || (resource.data.groupId != null && canManageMemberGroup(resource.data.groupId))
@@ -280,9 +280,42 @@ service cloud.firestore {
     }
 
     // === Colección: settings ===
+    match /settings/discipleship {
+      allow read: if isAuth();
+      allow write: if isGlobalManager();
+    }
+
     match /settings/{settingId} {
       allow read: if isAuth();
       allow write: if isAuth() && hasRole('Admin');
+    }
+
+    // === Colección: discipleshipSubmissions (Cuestionarios de Discipulado) ===
+    // Solo Admin y Pastor pueden leer/consultar resultados en legajos.
+    // Los miembros autenticados pueden crear su propia respuesta cuando esté habilitado.
+    match /discipleshipSubmissions/{submissionId} {
+      allow read: if isGlobalManager();
+      allow create: if isAuth() && (
+        isGlobalManager()
+        || (request.resource.data.userId == request.auth.uid && request.resource.data.courseId is string)
+      );
+      allow update, delete: if isGlobalManager();
+    }
+
+    // === Colección: discipleshipCertificates (Diplomas digitales con QR de validación) ===
+    // Lectura individual pública (get) por código único para validar el QR del diploma sin exponer listados.
+    match /discipleshipCertificates/{certificateCode} {
+      allow get: if true;
+      allow list: if isGlobalManager() || (isAuth() && resource.data.userId == request.auth.uid);
+      allow create: if isAuth() && (
+        isGlobalManager()
+        || (
+          request.resource.data.userId == request.auth.uid
+          && request.resource.data.code == certificateCode
+          && request.resource.data.moduleId is string
+        )
+      );
+      allow update, delete: if isGlobalManager();
     }
 
     // === Colección: growthGroups ===

@@ -24,7 +24,10 @@ import {
   Timer,
   Search,
   SlidersHorizontal,
-  Bell
+  Bell,
+  GraduationCap,
+  BookOpen,
+  ExternalLink
 } from 'lucide-react';
 import Logo from '../../common/Logo';
 import SeoHead from '../../common/SeoHead';
@@ -35,6 +38,7 @@ import { useCampus } from '../../../context/CampusContext';
 import CampusSwitcher from '../campus/CampusSwitcher';
 import { getEvents, syncPendingEventAttendance } from '../../../services/eventService';
 import { getNotifications, markNotificationRead } from '../../../services/notificationService';
+import { getDiscipleshipConfig } from '../../../services/discipleshipService';
 import { lockScroll, unlockScroll } from '../../../utils/scrollLock';
 import './MainLayout.css';
 
@@ -66,12 +70,15 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [openMenu, setOpenMenu] = useState('');
+  const [openMenu, setOpenMenu] = useState(() =>
+    location.pathname.includes('/ruta-de-crecimiento') ? 'Ruta de crecimiento' : ''
+  );
   const [globalSearch, setGlobalSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [discipleshipEnabledForMembers, setDiscipleshipEnabledForMembers] = useState(false);
 
   const isDarkMode = userPreferences
     ? userPreferences.theme === 'dark'
@@ -82,6 +89,17 @@ const MainLayout = () => {
     const t = setTimeout(() => setShowMobileMenu(false), 0);
     return () => clearTimeout(t);
   }, [location.pathname]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser?.uid) return undefined;
+    getDiscipleshipConfig()
+      .then((cfg) => {
+        if (mounted) setDiscipleshipEnabledForMembers(Boolean(cfg?.enabledForMembers));
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [currentUser?.uid, location.pathname]);
 
   // Bloquea el scroll del body solo mientras el menú móvil está abierto.
   // Se delega en un lock centralizado para no pisar los locks de modales/transiciones.
@@ -172,8 +190,21 @@ const MainLayout = () => {
     navigate(term ? `${campusPrefix}/miembros?search=${encodeURIComponent(term)}` : `${campusPrefix}/miembros`);
   };
 
+  const discipleshipRoles = discipleshipEnabledForMembers
+    ? ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'AreaLeader', 'Facilitator', 'CoFacilitator', 'Maestro', 'Member']
+    : ['Admin', 'Pastor'];
+
   const menuItems = [
     { name: 'Dashboard', path: `${campusPrefix}/dashboard`, icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Pastor', 'CampusAdmin', 'MinistryLeader', 'Facilitator', 'CoFacilitator', 'Member'] },
+    {
+      name: 'Ruta de crecimiento',
+      path: '/discipulado',
+      icon: <GraduationCap size={20} />,
+      roles: discipleshipRoles,
+      children: [
+        { name: 'Discipulado', path: '/discipulado', icon: <BookOpen size={18} />, roles: discipleshipRoles, newWindow: true },
+      ]
+    },
     {
       name: 'Miembros',
       path: `${campusPrefix}/miembros`,
@@ -255,9 +286,23 @@ const MainLayout = () => {
                             {item.children
                               .filter(child => !child.roles || hasRole(child.roles))
                               .map(child => (
-                                <NavLink key={child.path} to={child.path} className="nav-subitem">
-                                  {child.name}
-                                </NavLink>
+                                child.newWindow ? (
+                                  <a
+                                    key={child.path}
+                                    href={child.path}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="nav-subitem"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
+                                  >
+                                    <span>{child.name}</span>
+                                    <ExternalLink size={13} style={{ opacity: 0.7 }} />
+                                  </a>
+                                ) : (
+                                  <NavLink key={child.path} to={child.path} className="nav-subitem">
+                                    {child.name}
+                                  </NavLink>
+                                )
                               ))}
                           </Motion.div>
                         )}
@@ -541,10 +586,24 @@ const MainLayout = () => {
                         <span>{item.name}</span>
                       </div>
                       {item.children.filter(child => !child.roles || hasRole(child.roles)).map(child => (
-                        <NavLink key={child.path} to={child.path} className="nav-item mobile-nav-card mobile-nav-subitem">
-                          {child.icon && React.cloneElement(child.icon, { size: 24 })}
-                          <span>{child.name}</span>
-                        </NavLink>
+                        child.newWindow ? (
+                          <a
+                            key={child.path}
+                            href={child.path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="nav-item mobile-nav-card mobile-nav-subitem"
+                            onClick={() => setShowMobileMenu(false)}
+                          >
+                            {child.icon && React.cloneElement(child.icon, { size: 24 })}
+                            <span>{child.name}</span>
+                          </a>
+                        ) : (
+                          <NavLink key={child.path} to={child.path} className="nav-item mobile-nav-card mobile-nav-subitem">
+                            {child.icon && React.cloneElement(child.icon, { size: 24 })}
+                            <span>{child.name}</span>
+                          </NavLink>
+                        )
                       ))}
                     </div>
                   ) : item.external ? (
